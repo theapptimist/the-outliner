@@ -15,6 +15,7 @@ interface SimpleOutlineViewProps {
   onIndent: (id: string) => void;
   onOutdent: (id: string) => void;
   onAddNode: (afterId?: string | null) => void;
+  onAddBodyNode: (afterId?: string | null) => void;
   onAddChildNode: () => void;
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
@@ -32,6 +33,7 @@ export function SimpleOutlineView({
   onIndent,
   onOutdent,
   onAddNode,
+  onAddBodyNode,
   onAddChildNode,
   onDelete,
   onNavigateUp,
@@ -47,13 +49,20 @@ export function SimpleOutlineView({
   const pendingFocusAfterIdRef = useRef<string | null>(null);
   const prevNodesLengthRef = useRef(nodes.length);
 
-  // Calculate indices for each node at each depth
+  // Calculate indices for each node at each depth (skip body nodes)
   const nodeIndices = useMemo(() => {
     const indices = new Map<string, number[]>();
     const counters: number[] = [];
     let lastDepth = -1;
     
     for (const node of nodes) {
+      // Body nodes don't get numbered - they inherit the previous index
+      if (node.type === 'body') {
+        // Use the same indices as the last numbered node at this depth
+        indices.set(node.id, [...counters.slice(0, node.depth + 1)]);
+        continue;
+      }
+      
       // Going deeper: initialize new depth levels to 0
       if (node.depth > lastDepth) {
         while (counters.length <= node.depth) {
@@ -128,12 +137,18 @@ export function SimpleOutlineView({
       return;
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       handleEndEdit(id);
       // Mark that we want to focus the node created after this one
       pendingFocusAfterIdRef.current = id;
       onAddNode(id);
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      // Ctrl+Enter: create body/text node (no numbering)
+      e.preventDefault();
+      handleEndEdit(id);
+      pendingFocusAfterIdRef.current = id;
+      onAddBodyNode(id);
     } else if (e.key === 'Enter' && e.shiftKey) {
       // Shift+Enter: insert a line break inside the current item
       e.preventDefault();
@@ -175,7 +190,7 @@ export function SimpleOutlineView({
       setEditingId(null);
       onDelete(id);
     }
-  }, [handleEndEdit, onAddNode, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
 
   // Global keyboard handler
   useEffect(() => {
@@ -267,7 +282,8 @@ export function SimpleOutlineView({
     >
       {nodes.map((node) => {
         const indices = nodeIndices.get(node.id) || [1];
-        const prefix = getOutlinePrefix(outlineStyle, node.depth, indices);
+        const isBody = node.type === 'body';
+        const prefix = isBody ? '' : getOutlinePrefix(outlineStyle, node.depth, indices);
         
         return (
           <div
@@ -285,12 +301,14 @@ export function SimpleOutlineView({
             }}
           >
             
-            {/* Prefix/numbering */}
-            {prefix && (
+            {/* Prefix/numbering - body nodes get empty spacer for alignment */}
+            {prefix ? (
               <span className="text-muted-foreground font-mono text-sm min-w-[3rem] flex-shrink-0 text-right pr-1 whitespace-nowrap">
                 {prefix}
               </span>
-            )}
+            ) : isBody ? (
+              <span className="min-w-[3rem] flex-shrink-0" />
+            ) : null}
             
             {/* Label - always in edit mode when selected */}
             {editingId === node.id ? (

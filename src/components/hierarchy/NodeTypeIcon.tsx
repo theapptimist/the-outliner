@@ -4,7 +4,8 @@ import {
   Box, 
   Database, 
   Zap, 
-  Link2 
+  Link2,
+  AlignLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ const iconMap: Record<NodeType, React.ElementType> = {
   data: Database,
   action: Zap,
   reference: Link2,
+  body: AlignLeft,
 };
 
 const colorMap: Record<NodeType, string> = {
@@ -28,6 +30,7 @@ const colorMap: Record<NodeType, string> = {
   data: 'text-node-data',
   action: 'text-node-action',
   reference: 'text-node-reference',
+  body: 'text-muted-foreground',
 };
 
 export function NodeTypeIcon({ type, className, size = 14 }: NodeTypeIconProps) {
