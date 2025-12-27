@@ -119,7 +119,15 @@ export function SimpleOutlineView({
       pendingFocusAfterIdRef.current = id;
       onAddNode();
     } else if (e.key === 'Escape') {
-      setEditingId(null);
+      if (e.shiftKey) {
+        // Shift+Esc: Merge into parent with line break
+        e.preventDefault();
+        onUpdateLabel(id, editValue);
+        setEditingId(null);
+        onMergeIntoParent(id);
+      } else {
+        setEditingId(null);
+      }
     } else if (e.key === 'Tab') {
       e.preventDefault();
       // Save current value first
@@ -135,12 +143,6 @@ export function SimpleOutlineView({
       e.preventDefault();
       setEditingId(null);
       onDelete(id);
-    } else if (e.key === 'F9' && e.shiftKey) {
-      // Shift+F9: Merge into parent with line break (WordPerfect style)
-      e.preventDefault();
-      onUpdateLabel(id, editValue);
-      setEditingId(null);
-      onMergeIntoParent(id);
     }
   }, [handleEndEdit, onAddNode, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
 
@@ -194,7 +196,7 @@ export function SimpleOutlineView({
             if (node) handleStartEdit(selectedId, node.label);
           }
           break;
-        case 'F9':
+        case 'Escape':
           if (e.shiftKey && selectedId) {
             e.preventDefault();
             onMergeIntoParent(selectedId);
