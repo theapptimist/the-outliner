@@ -54,15 +54,22 @@ export function SimpleOutlineView({
     let lastDepth = -1;
     
     for (const node of nodes) {
+      // Going deeper: initialize new depth levels to 0
       if (node.depth > lastDepth) {
         while (counters.length <= node.depth) {
           counters.push(0);
         }
-      } else if (node.depth < lastDepth) {
-        counters.length = node.depth + 1;
+      } 
+      // Going shallower: truncate and reset deeper levels
+      else if (node.depth < lastDepth) {
+        // Reset counters for levels deeper than current
+        for (let i = node.depth + 1; i < counters.length; i++) {
+          counters[i] = 0;
+        }
       }
       
-      counters[node.depth] = (counters[node.depth] || 0) + 1;
+      // Increment the counter for current depth (ensure it's at least 1)
+      counters[node.depth] = (counters[node.depth] ?? 0) + 1;
       indices.set(node.id, [...counters.slice(0, node.depth + 1)]);
       lastDepth = node.depth;
     }

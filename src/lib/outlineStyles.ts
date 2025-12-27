@@ -75,6 +75,9 @@ export const OUTLINE_STYLES: OutlineStyleConfig[] = [
 
 // Convert number to Roman numerals
 function toRoman(num: number): string {
+  // Guard against 0 or negative numbers
+  if (num <= 0) return '?';
+  
   const romanNumerals: [number, string][] = [
     [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
     [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
