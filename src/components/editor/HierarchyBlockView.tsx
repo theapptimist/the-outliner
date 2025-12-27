@@ -283,9 +283,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddBodyNode={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
-                // Add body node as sibling after the anchor (same parent)
-                const anchor = flatNodes.find(n => n.id === anchorId);
-                return addNode(anchor?.parentId ?? null, 'body', '', anchorId);
+                // Add body node as child of the anchor (indented under it)
+                return addChildNode(anchorId, 'body', '');
               } else {
                 return addNode(null, 'body', '');
               }
@@ -293,23 +292,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddBodyNodeWithSpacer={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
-                // Insert spacer + typing node as siblings right after the anchor (same parent)
-                const anchor = flatNodes.find(n => n.id === anchorId);
-                const parentId = anchor?.parentId ?? null;
-
-                const spacerNode = createNode(parentId, 'body', '');
-                const typingNode = createNode(parentId, 'body', '');
+                // Insert spacer + typing node as children of the anchor (indented under it)
+                const spacerNode = createNode(anchorId, 'body', '');
+                const typingNode = createNode(anchorId, 'body', '');
 
                 setTree(prev => {
-                  const siblings = parentId
-                    ? (findNode(prev, parentId)?.children ?? [])
-                    : prev;
-
-                  const anchorIndex = getNodeIndex(siblings, anchorId);
-                  const insertAt = Math.max(0, anchorIndex + 1);
-
-                  const withSpacer = insertNode(prev, spacerNode, parentId, insertAt);
-                  return insertNode(withSpacer, typingNode, parentId, insertAt + 1);
+                  const withSpacer = insertNode(prev, spacerNode, anchorId, 0);
+                  return insertNode(withSpacer, typingNode, anchorId, 1);
                 });
 
                 setSelectedId(typingNode.id);
