@@ -361,8 +361,8 @@ export function SimpleOutlineView({
                 onKeyDown={(e) => handleKeyDown(e, node)}
                 onBlur={() => handleEndEdit(node.id)}
                 placeholder="Type here..."
-                rows={1}
-                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap"
+                rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
+                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
