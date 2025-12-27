@@ -76,7 +76,7 @@ export function SimpleOutlineView({
       inputRef.current.focus();
       inputRef.current.select();
     }
-  }, [editingId]);
+  }, [editingId, nodes.length]);
 
 
   const handleStartEdit = useCallback((id: string, currentLabel: string) => {
@@ -89,7 +89,15 @@ export function SimpleOutlineView({
     if (!pendingAutoEdit || !selectedId) return;
     const node = nodes.find((n) => n.id === selectedId);
     if (!node) return;
+
     handleStartEdit(selectedId, node.label);
+
+    // Ensure focus lands in the newly created input even if the DOM updates are slightly delayed
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+
     setPendingAutoEdit(false);
   }, [pendingAutoEdit, selectedId, nodes, handleStartEdit]);
 
