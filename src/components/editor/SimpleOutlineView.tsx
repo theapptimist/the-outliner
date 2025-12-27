@@ -123,6 +123,11 @@ export function SimpleOutlineView({
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+
+      // If the current line is empty, don't allow spamming Enter to create infinite empty lines.
+      // Users can still create another line after typing something (or via Add-item UI).
+      if (editValue.trim() === '') return;
+
       handleEndEdit(id);
       // Mark that we want to focus the node created after this one
       pendingFocusAfterIdRef.current = id;
