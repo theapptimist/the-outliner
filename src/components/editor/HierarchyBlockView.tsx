@@ -281,8 +281,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddBodyNode={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
-                const anchor = flatNodes.find(n => n.id === anchorId);
-                return addNode(anchor?.parentId ?? null, 'body', '', anchorId);
+                // Add body node as first child of the anchor
+                return addChildNode(anchorId, 'body', '');
               } else {
                 return addNode(null, 'body', '');
               }
@@ -290,12 +290,14 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddBodyNodeWithSpacer={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
-                const anchor = flatNodes.find(n => n.id === anchorId);
-                const parentId = anchor?.parentId ?? null;
-                // Create empty spacer body node
-                const spacerId = addNode(parentId, 'body', '', anchorId);
-                // Create second body node after spacer, return its ID for focus
-                return addNode(parentId, 'body', '', spacerId);
+                // Create empty spacer body node as child of anchor
+                const spacerId = addChildNode(anchorId, 'body', '');
+                if (spacerId) {
+                  // Create second body node after spacer (as sibling), return its ID for focus
+                  const anchor = flatNodes.find(n => n.id === anchorId);
+                  return addNode(anchorId, 'body', '', spacerId);
+                }
+                return null;
               } else {
                 const spacerId = addNode(null, 'body', '');
                 return addNode(null, 'body', '', spacerId);
