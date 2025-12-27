@@ -38,6 +38,7 @@ export function SimpleOutlineView({
 }: SimpleOutlineViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [pendingAutoEdit, setPendingAutoEdit] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -77,10 +78,20 @@ export function SimpleOutlineView({
     }
   }, [editingId]);
 
+
   const handleStartEdit = useCallback((id: string, currentLabel: string) => {
     setEditingId(id);
     setEditValue(currentLabel);
   }, []);
+
+  // After creating a new node via Enter, immediately put it into edit mode
+  useEffect(() => {
+    if (!pendingAutoEdit || !selectedId) return;
+    const node = nodes.find((n) => n.id === selectedId);
+    if (!node) return;
+    handleStartEdit(selectedId, node.label);
+    setPendingAutoEdit(false);
+  }, [pendingAutoEdit, selectedId, nodes, handleStartEdit]);
 
   const handleEndEdit = useCallback((id: string) => {
     onUpdateLabel(id, editValue);
@@ -91,7 +102,8 @@ export function SimpleOutlineView({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleEndEdit(id);
-      // Add sibling after current
+      // Add sibling after current and keep typing
+      setPendingAutoEdit(true);
       setTimeout(() => onAddNode(), 0);
     } else if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
