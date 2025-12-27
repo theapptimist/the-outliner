@@ -204,9 +204,6 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     const appended = nodeLabel.length > 0 ? `\n${nodeLabel}` : `\n`;
     const newLabel = `${targetNode.label ?? ''}${appended}`;
 
-    console.log('[merge] node', { nodeId, nodeLabel, parentId: node.parentId });
-    console.log('[merge] target', { targetId: targetNode.id, newLabel });
-
     setTree(prev => {
       const updated = updateNode(prev, targetNode!.id, { label: newLabel });
       return deleteNode(updated, nodeId);
@@ -272,16 +269,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onMove={handleMove}
             onIndent={handleIndent}
             onOutdent={handleOutdent}
-            onAddNode={() => {
-              console.log('[onAddNode] selectedId=', selectedId, 'flatNodes=', flatNodes.length);
-              if (selectedId) {
-                const node = flatNodes.find(n => n.id === selectedId);
-                console.log('[onAddNode] found node=', node?.id, 'parentId=', node?.parentId);
-                const newId = addNode(node?.parentId ?? null, 'default', '', selectedId);
-                console.log('[onAddNode] created new node id=', newId);
+            onAddNode={(afterId) => {
+              const anchorId = afterId ?? selectedId;
+              if (anchorId) {
+                const anchor = flatNodes.find(n => n.id === anchorId);
+                addNode(anchor?.parentId ?? null, 'default', '', anchorId);
               } else {
-                const newId = addNode(null, 'default', '');
-                console.log('[onAddNode] created root node id=', newId);
+                addNode(null, 'default', '');
               }
             }}
             onAddChildNode={() => {
