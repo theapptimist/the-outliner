@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { FlatNode, DropPosition } from '@/types/node';
 import { OutlineStyle, getOutlinePrefix } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+
 
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
@@ -195,24 +195,6 @@ export function SimpleOutlineView({
               }
             }}
           >
-            {/* Collapse toggle for nodes with children */}
-            {node.hasChildren ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleCollapse(node.id);
-                }}
-                className="w-4 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground flex-shrink-0"
-              >
-                {node.collapsed ? (
-                  <ChevronRight className="h-3 w-3" />
-                ) : (
-                  <ChevronDown className="h-3 w-3" />
-                )}
-              </button>
-            ) : (
-              <span className="w-4 flex-shrink-0" />
-            )}
             
             {/* Prefix/numbering */}
             {prefix && (
