@@ -19,7 +19,7 @@ interface SimpleOutlineViewProps {
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
   onNavigateDown: () => void;
-  onMergeIntoParent: (id: string) => void;
+  onMergeIntoParent: (id: string, currentValue?: string) => { targetId: string; targetLabel: string } | null;
 }
 
 export function SimpleOutlineView({
@@ -40,7 +40,7 @@ export function SimpleOutlineView({
 }: SimpleOutlineViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Track pending focus after Enter creates new node
@@ -118,13 +118,28 @@ export function SimpleOutlineView({
       // Mark that we want to focus the node created after this one
       pendingFocusAfterIdRef.current = id;
       onAddNode();
+    } else if (e.key === 'Enter' && e.shiftKey) {
+      // Shift+Enter: insert a line break inside the current item
+      e.preventDefault();
+      const input = e.currentTarget as HTMLTextAreaElement;
+      const start = input.selectionStart ?? editValue.length;
+      const end = input.selectionEnd ?? editValue.length;
+      const nextValue = `${editValue.slice(0, start)}\n${editValue.slice(end)}`;
+      setEditValue(nextValue);
+      requestAnimationFrame(() => {
+        input.selectionStart = input.selectionEnd = start + 1;
+      });
     } else if (e.key === 'Escape') {
       if (e.shiftKey) {
-        // Shift+Esc: Merge into parent with line break
+        // Shift+Esc: Merge into previous sibling with line break
         e.preventDefault();
-        onUpdateLabel(id, editValue);
-        setEditingId(null);
-        onMergeIntoParent(id);
+        const result = onMergeIntoParent(id, editValue);
+        if (result) {
+          setEditingId(result.targetId);
+          setEditValue(result.targetLabel);
+        } else {
+          setEditingId(null);
+        }
       } else {
         setEditingId(null);
       }
@@ -199,7 +214,11 @@ export function SimpleOutlineView({
         case 'Escape':
           if (e.shiftKey && selectedId) {
             e.preventDefault();
-            onMergeIntoParent(selectedId);
+            const current = nodes.find(n => n.id === selectedId);
+            const result = onMergeIntoParent(selectedId, current?.label);
+            // We'll naturally render the updated state; editing can be started by clicking.
+            // (We avoid forcing edit mode here because state updates happen in the parent.)
+            void result;
           }
           break;
       }
@@ -210,7 +229,7 @@ export function SimpleOutlineView({
   }, [editingId, selectedId, nodes, onNavigateUp, onNavigateDown, onAddNode, onAddChildNode, onIndent, onOutdent, onDelete, handleStartEdit, onMergeIntoParent]);
 
   // Callback ref to store input references
-  const setInputRef = useCallback((id: string) => (el: HTMLInputElement | null) => {
+  const setInputRef = useCallback((id: string) => (el: HTMLTextAreaElement | null) => {
     if (el) {
       inputRefs.current.set(id, el);
     } else {
@@ -253,15 +272,15 @@ export function SimpleOutlineView({
             
             {/* Label - always in edit mode when selected */}
             {editingId === node.id ? (
-              <input
+              <textarea
                 ref={setInputRef(node.id)}
-                type="text"
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, node.id)}
                 onBlur={() => handleEndEdit(node.id)}
                 placeholder="Type here..."
-                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50"
+                rows={1}
+                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
