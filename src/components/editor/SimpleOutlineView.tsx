@@ -144,47 +144,16 @@ export function SimpleOutlineView({
     setEditingId(null);
   }, [editValue, onUpdateLabel]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent, id: string) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>, node: FlatNode) => {
     // Prevent key-repeat (holding Enter) from creating many empty nodes.
     if (e.key === 'Enter' && (e as any).repeat) {
       e.preventDefault();
       return;
     }
 
-    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    const insertLineBreak = () => {
       e.preventDefault();
-      handleEndEdit(id);
-      // Mark that we want to focus the node created after this one
-      pendingFocusAfterIdRef.current = id;
-      onAddNode(id);
-    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-      // Ctrl+Enter: create spacer + body node (two nodes, focus the second)
-      e.preventDefault();
-      handleEndEdit(id);
-      if (onAddBodyNodeWithSpacer) {
-        const newId = onAddBodyNodeWithSpacer(id);
-        if (newId) {
-          pendingNewNodeIdRef.current = newId;
-        }
-      } else {
-        // Fallback to single body node
-        const newId = onAddBodyNode(id);
-        if (newId) {
-          pendingNewNodeIdRef.current = newId;
-        }
-      }
-    } else if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
-      // Ctrl+/: create single body node, focus it
-      e.preventDefault();
-      handleEndEdit(id);
-      const newId = onAddBodyNode(id);
-      if (newId) {
-        pendingNewNodeIdRef.current = newId;
-      }
-    } else if (e.key === 'Enter' && e.shiftKey) {
-      // Shift+Enter: insert a line break inside the current item
-      e.preventDefault();
-      const input = e.currentTarget as HTMLTextAreaElement;
+      const input = e.currentTarget;
       const start = input.selectionStart ?? editValue.length;
       const end = input.selectionEnd ?? editValue.length;
       const nextValue = `${editValue.slice(0, start)}\n${editValue.slice(end)}`;
@@ -192,11 +161,52 @@ export function SimpleOutlineView({
       requestAnimationFrame(() => {
         input.selectionStart = input.selectionEnd = start + 1;
       });
+    };
+
+    // BODY NODES: Enter should continue the same block (newline), not create a new node.
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && node.type === 'body') {
+      insertLineBreak();
+      return;
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      handleEndEdit(node.id);
+      // Mark that we want to focus the node created after this one
+      pendingFocusAfterIdRef.current = node.id;
+      onAddNode(node.id);
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      // Ctrl+Enter: create spacer + body node (two nodes, focus the second)
+      e.preventDefault();
+      handleEndEdit(node.id);
+      if (onAddBodyNodeWithSpacer) {
+        const newId = onAddBodyNodeWithSpacer(node.id);
+        if (newId) {
+          pendingNewNodeIdRef.current = newId;
+        }
+      } else {
+        // Fallback to single body node
+        const newId = onAddBodyNode(node.id);
+        if (newId) {
+          pendingNewNodeIdRef.current = newId;
+        }
+      }
+    } else if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+/: create single body node, focus it
+      e.preventDefault();
+      handleEndEdit(node.id);
+      const newId = onAddBodyNode(node.id);
+      if (newId) {
+        pendingNewNodeIdRef.current = newId;
+      }
+    } else if (e.key === 'Enter' && e.shiftKey) {
+      // Shift+Enter: insert a line break inside the current item
+      insertLineBreak();
     } else if (e.key === 'Escape') {
       if (e.shiftKey) {
         // Shift+Esc: Merge into previous sibling with line break
         e.preventDefault();
-        const result = onMergeIntoParent(id, editValue);
+        const result = onMergeIntoParent(node.id, editValue);
         if (result) {
           setEditingId(result.targetId);
           setEditValue(result.targetLabel);
@@ -209,18 +219,18 @@ export function SimpleOutlineView({
     } else if (e.key === 'Tab') {
       e.preventDefault();
       // Save current value first
-      onUpdateLabel(id, editValue);
+      onUpdateLabel(node.id, editValue);
       // Indent or outdent
       if (e.shiftKey) {
-        onOutdent(id);
+        onOutdent(node.id);
       } else {
-        onIndent(id);
+        onIndent(node.id);
       }
       // Keep editing the same node - don't call setEditingId(null)
     } else if (e.key === 'Backspace' && editValue === '') {
       e.preventDefault();
       setEditingId(null);
-      onDelete(id);
+      onDelete(node.id);
     }
   }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
 
@@ -348,7 +358,7 @@ export function SimpleOutlineView({
                 ref={setInputRef(node.id)}
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, node.id)}
+                onKeyDown={(e) => handleKeyDown(e, node)}
                 onBlur={() => handleEndEdit(node.id)}
                 placeholder="Type here..."
                 rows={1}
