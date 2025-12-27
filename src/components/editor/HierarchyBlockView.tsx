@@ -48,38 +48,40 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     afterNodeId?: string
   ) => {
     const newNode = createNode(parentId, type, label);
-    
-    if (afterNodeId) {
-      const siblings = parentId 
-        ? (findNode(tree, parentId)?.children ?? [])
-        : tree;
-      const afterIndex = getNodeIndex(siblings, afterNodeId);
-      setTree(prev => insertNode(prev, newNode, parentId, afterIndex + 1));
-    } else {
-      const siblings = parentId 
-        ? (findNode(tree, parentId)?.children ?? [])
-        : tree;
-      setTree(prev => insertNode(prev, newNode, parentId, siblings.length));
-    }
-    
+
+    setTree(prev => {
+      const siblings = parentId
+        ? (findNode(prev, parentId)?.children ?? [])
+        : prev;
+
+      const index = afterNodeId
+        ? Math.max(0, getNodeIndex(siblings, afterNodeId) + 1)
+        : siblings.length;
+
+      return insertNode(prev, newNode, parentId, index);
+    });
+
     setSelectedId(newNode.id);
     return newNode.id;
-  }, [tree]);
+  }, []);
 
   const addChildNode = useCallback((parentId: string, type: NodeType = 'default', label: string = '') => {
-    const parent = findNode(tree, parentId);
-    if (!parent) return null;
-    
     const newNode = createNode(parentId, type, label);
-    setTree(prev => insertNode(prev, newNode, parentId, parent.children.length));
+
+    setTree(prev => {
+      const parent = findNode(prev, parentId);
+      if (!parent) return prev;
+
+      let next = insertNode(prev, newNode, parentId, parent.children.length);
+      if (parent.collapsed) {
+        next = toggleCollapse(next, parentId);
+      }
+      return next;
+    });
+
     setSelectedId(newNode.id);
-    
-    if (parent.collapsed) {
-      setTree(prev => toggleCollapse(prev, parentId));
-    }
-    
     return newNode.id;
-  }, [tree]);
+  }, []);
 
   const removeNode = useCallback((nodeId: string) => {
     const nodeIndex = flatNodes.findIndex(n => n.id === nodeId);
@@ -290,18 +292,33 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddBodyNodeWithSpacer={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
-                // Create empty spacer body node as child of anchor
-                const spacerId = addChildNode(anchorId, 'body', '');
-                if (spacerId) {
-                  // Create second body node after spacer (as sibling), return its ID for focus
-                  const anchor = flatNodes.find(n => n.id === anchorId);
-                  return addNode(anchorId, 'body', '', spacerId);
-                }
-                return null;
-              } else {
-                const spacerId = addNode(null, 'body', '');
-                return addNode(null, 'body', '', spacerId);
+                // Insert spacer + typing node as the last two children of the anchor (in one state update)
+                const spacerNode = createNode(anchorId, 'body', '');
+                const typingNode = createNode(anchorId, 'body', '');
+
+                setTree(prev => {
+                  const parent = findNode(prev, anchorId);
+                  if (!parent) return prev;
+
+                  const insertAt = parent.children.length;
+                  const withSpacer = insertNode(prev, spacerNode, anchorId, insertAt);
+                  return insertNode(withSpacer, typingNode, anchorId, insertAt + 1);
+                });
+
+                setSelectedId(typingNode.id);
+                return typingNode.id;
               }
+
+              // No anchor: append both at root
+              const spacerNode = createNode(null, 'body', '');
+              const typingNode = createNode(null, 'body', '');
+              setTree(prev => {
+                const insertAt = prev.length;
+                const withSpacer = insertNode(prev, spacerNode, null, insertAt);
+                return insertNode(withSpacer, typingNode, null, insertAt + 1);
+              });
+              setSelectedId(typingNode.id);
+              return typingNode.id;
             }}
             onAddChildNode={() => {
               if (selectedId) {
