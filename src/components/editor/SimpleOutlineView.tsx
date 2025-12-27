@@ -115,6 +115,12 @@ export function SimpleOutlineView({
   }, [editValue, onUpdateLabel]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, id: string) => {
+    // Prevent key-repeat (holding Enter) from creating many empty nodes.
+    if (e.key === 'Enter' && (e as any).repeat) {
+      e.preventDefault();
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleEndEdit(id);
@@ -171,6 +177,12 @@ export function SimpleOutlineView({
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (editingId) return;
       if (!containerRef.current?.contains(document.activeElement) && document.activeElement !== containerRef.current) return;
+
+      // Prevent key-repeat (holding Enter) from creating many empty nodes.
+      if (e.key === 'Enter' && e.repeat) {
+        e.preventDefault();
+        return;
+      }
       
       switch (e.key) {
         case 'ArrowUp':
