@@ -138,7 +138,7 @@ export function SimpleOutlineView({
       // Add sibling after current and keep typing
       autoEditAfterIdRef.current = id;
       setPendingAutoEdit(true);
-      setTimeout(() => onAddNode(), 0);
+      onAddNode();
     } else if (e.key === 'Escape') {
       setEditingId(null);
     } else if (e.key === 'Tab') {
