@@ -14,7 +14,7 @@ interface SimpleOutlineViewProps {
   onMove: (nodeId: string, targetId: string, position: DropPosition) => void;
   onIndent: (id: string) => void;
   onOutdent: (id: string) => void;
-  onAddNode: () => void;
+  onAddNode: (afterId?: string | null) => void;
   onAddChildNode: () => void;
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
@@ -120,7 +120,7 @@ export function SimpleOutlineView({
       handleEndEdit(id);
       // Mark that we want to focus the node created after this one
       pendingFocusAfterIdRef.current = id;
-      onAddNode();
+      onAddNode(id);
     } else if (e.key === 'Enter' && e.shiftKey) {
       // Shift+Enter: insert a line break inside the current item
       e.preventDefault();
@@ -187,7 +187,7 @@ export function SimpleOutlineView({
             const node = nodes.find(n => n.id === selectedId);
             if (node) handleStartEdit(selectedId, node.label);
           } else {
-            onAddNode();
+            onAddNode(null);
           }
           break;
         case 'Tab':
