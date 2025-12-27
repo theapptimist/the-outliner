@@ -12,12 +12,14 @@ interface OutlineHelpProps {
 
 const shortcuts = [
   { key: 'Enter', action: 'Add new item below' },
-  { key: 'Shift + Enter', action: 'Indent (make child)' },
-  { key: 'Tab', action: 'Indent (make child)' },
-  { key: 'Shift + Tab', action: 'Outdent (move up level)' },
+  { key: 'Shift + Enter', action: 'Add child item' },
+  { key: 'Tab', action: 'Indent item' },
+  { key: 'Shift + Tab', action: 'Outdent item' },
   { key: '↑ / ↓', action: 'Navigate items' },
-  { key: 'Delete', action: 'Remove item' },
-  { key: 'Click', action: 'Edit item text' },
+  { key: '← / →', action: 'Collapse/expand or select parent' },
+  { key: 'Delete / Backspace', action: 'Remove item' },
+  { key: 'F2', action: 'Edit item text' },
+  { key: 'Double-click', action: 'Edit item text' },
 ];
 
 const tips = [
