@@ -273,11 +273,15 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onIndent={handleIndent}
             onOutdent={handleOutdent}
             onAddNode={() => {
+              console.log('[onAddNode] selectedId=', selectedId, 'flatNodes=', flatNodes.length);
               if (selectedId) {
                 const node = flatNodes.find(n => n.id === selectedId);
-                addNode(node?.parentId ?? null, 'default', '', selectedId);
+                console.log('[onAddNode] found node=', node?.id, 'parentId=', node?.parentId);
+                const newId = addNode(node?.parentId ?? null, 'default', '', selectedId);
+                console.log('[onAddNode] created new node id=', newId);
               } else {
-                addNode(null, 'default', '');
+                const newId = addNode(null, 'default', '');
+                console.log('[onAddNode] created root node id=', newId);
               }
             }}
             onAddChildNode={() => {
