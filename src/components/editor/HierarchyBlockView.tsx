@@ -155,22 +155,23 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   }, []);
 
   // Shift+Esc: Merge node into previous sibling (or parent if no sibling) with line break
-  const handleMergeIntoParent = useCallback((nodeId: string) => {
+  const handleMergeIntoParent = useCallback((nodeId: string, currentValue?: string) => {
     const node = findNode(tree, nodeId);
-    if (!node) return;
-    
+    if (!node) return null;
+
+    const nodeLabel = (currentValue ?? node.label) ?? '';
+
     // Get siblings at this level
     const flatIndex = flatNodes.findIndex(n => n.id === nodeId);
     const currentNode = flatNodes[flatIndex];
-    
+
     // Find previous sibling at same depth
     let targetNode: { id: string; label: string } | null = null;
-    
+
     // Look backwards for a sibling at the same depth
     for (let i = flatIndex - 1; i >= 0; i--) {
       const prevNode = flatNodes[i];
       if (prevNode.depth === currentNode.depth && prevNode.parentId === currentNode.parentId) {
-        // Found previous sibling
         targetNode = { id: prevNode.id, label: prevNode.label };
         break;
       }
@@ -179,7 +180,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         break;
       }
     }
-    
+
     // If no previous sibling, try to merge into parent
     if (!targetNode && node.parentId) {
       const parent = findNode(tree, node.parentId);
@@ -187,22 +188,23 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         targetNode = { id: parent.id, label: parent.label };
       }
     }
-    
-    if (!targetNode) return; // Can't merge root-level first item
-    
-    // Append this node's label to target with line break
-    const newLabel = targetNode.label 
-      ? `${targetNode.label}\n${node.label}`
-      : node.label;
-    
+
+    if (!targetNode) return null; // Can't merge root-level first item
+
+    // Append this node's label to target with a NEW blank line if nodeLabel is empty
+    const appended = nodeLabel.length > 0 ? `\n${nodeLabel}` : `\n`;
+    const newLabel = `${targetNode.label ?? ''}${appended}`;
+
     // Update target label and delete this node
     setTree(prev => {
       const updated = updateNode(prev, targetNode!.id, { label: newLabel });
       return deleteNode(updated, nodeId);
     });
-    
+
     // Select the target
     setSelectedId(targetNode.id);
+
+    return { targetId: targetNode.id, targetLabel: newLabel };
   }, [tree, flatNodes]);
 
   return (
