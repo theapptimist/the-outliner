@@ -136,12 +136,13 @@
   background: hsl(var(--primary) / 0.3);
 }
 
-/* Focus ring for selected nodes (disabled for hierarchy blocks) */
+/* Focus ring for selected nodes */
 .ProseMirror .ProseMirror-selectednode {
   outline: 2px solid hsl(var(--primary));
   outline-offset: 2px;
 }
 
-.ProseMirror .ProseMirror-selectednode.hierarchy-block {
+/* Disable selection outline for hierarchy blocks */
+.ProseMirror div[data-type="hierarchy-block"].ProseMirror-selectednode {
   outline: none !important;
 }
