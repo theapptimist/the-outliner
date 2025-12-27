@@ -125,6 +125,7 @@ export function HierarchyEditor() {
                 nodes={flatNodes}
                 selectedId={selectedId}
                 onSelect={handleSelectNode}
+                onUpdateLabel={handleUpdateLabel}
               />
             )}
             {projection === 'graph' && (
