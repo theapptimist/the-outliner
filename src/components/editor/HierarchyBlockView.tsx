@@ -14,7 +14,6 @@ import {
   flattenTree, 
   getSiblings, 
   getNodeIndex,
-  createSampleTree,
 } from '@/lib/nodeOperations';
 import { TreeView } from '@/components/hierarchy/TreeView';
 import { Trash2, Minimize2, Maximize2 } from 'lucide-react';
@@ -28,8 +27,10 @@ interface HierarchyBlockViewProps extends NodeViewProps {
 export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected }: HierarchyBlockViewProps) {
   const blockId = node.attrs.blockId as string;
   
-  // Local hierarchy state for this block
-  const [tree, setTree] = useState<HierarchyNode[]>(() => createSampleTree());
+  // Local hierarchy state for this block - start with one empty node
+  const [tree, setTree] = useState<HierarchyNode[]>(() => [
+    createNode(null, 'default', '')
+  ]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
