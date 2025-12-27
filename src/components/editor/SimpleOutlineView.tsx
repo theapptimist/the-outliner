@@ -113,11 +113,6 @@ export function SimpleOutlineView({
       // Add sibling after current and keep typing
       setPendingAutoEdit(true);
       setTimeout(() => onAddNode(), 0);
-    } else if (e.key === 'Enter' && e.shiftKey) {
-      e.preventDefault();
-      handleEndEdit(id);
-      // Indent - make child of previous sibling
-      setTimeout(() => onIndent(id), 0);
     } else if (e.key === 'Escape') {
       setEditingId(null);
     } else if (e.key === 'Tab') {
@@ -155,10 +150,7 @@ export function SimpleOutlineView({
           break;
         case 'Enter':
           e.preventDefault();
-          if (e.shiftKey) {
-            // Indent - make child of previous sibling
-            if (selectedId) onIndent(selectedId);
-          } else if (selectedId) {
+          if (selectedId) {
             const node = nodes.find(n => n.id === selectedId);
             if (node) handleStartEdit(selectedId, node.label);
           } else {
