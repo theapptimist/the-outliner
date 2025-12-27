@@ -96,8 +96,8 @@ export function SimpleOutlineView({
     } else if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
       handleEndEdit(id);
-      // Add child
-      setTimeout(() => onAddChildNode(), 0);
+      // Indent - make child of previous sibling
+      setTimeout(() => onIndent(id), 0);
     } else if (e.key === 'Escape') {
       setEditingId(null);
     } else if (e.key === 'Tab') {
@@ -109,7 +109,7 @@ export function SimpleOutlineView({
         onIndent(id);
       }
     }
-  }, [handleEndEdit, onAddNode, onAddChildNode, onIndent, onOutdent]);
+  }, [handleEndEdit, onAddNode, onIndent, onOutdent]);
 
   // Global keyboard handler
   useEffect(() => {
@@ -131,7 +131,8 @@ export function SimpleOutlineView({
         case 'Enter':
           e.preventDefault();
           if (e.shiftKey) {
-            onAddChildNode();
+            // Indent - make child of previous sibling
+            if (selectedId) onIndent(selectedId);
           } else if (selectedId) {
             const node = nodes.find(n => n.id === selectedId);
             if (node) handleStartEdit(selectedId, node.label);
