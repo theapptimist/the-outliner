@@ -154,6 +154,29 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     setTree(prev => updateNode(prev, nodeId, { label }));
   }, []);
 
+  // Shift+F9: Merge node into parent with line break
+  const handleMergeIntoParent = useCallback((nodeId: string) => {
+    const node = findNode(tree, nodeId);
+    if (!node || !node.parentId) return; // Can't merge root-level nodes
+    
+    const parent = findNode(tree, node.parentId);
+    if (!parent) return;
+    
+    // Append this node's label to parent with line break
+    const newParentLabel = parent.label 
+      ? `${parent.label}\n${node.label}`
+      : node.label;
+    
+    // Update parent label and delete this node
+    setTree(prev => {
+      const updated = updateNode(prev, parent.id, { label: newParentLabel });
+      return deleteNode(updated, nodeId);
+    });
+    
+    // Select the parent
+    setSelectedId(parent.id);
+  }, [tree]);
+
   return (
     <NodeViewWrapper 
       className={cn(
@@ -223,6 +246,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onDelete={removeNode}
             onNavigateUp={navigateUp}
             onNavigateDown={navigateDown}
+            onMergeIntoParent={handleMergeIntoParent}
           />
         </div>
       )}
