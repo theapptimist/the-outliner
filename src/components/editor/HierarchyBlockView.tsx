@@ -15,7 +15,9 @@ import {
   getSiblings, 
   getNodeIndex,
 } from '@/lib/nodeOperations';
-import { TreeView } from '@/components/hierarchy/TreeView';
+import { SimpleOutlineView } from './SimpleOutlineView';
+import { OutlineStylePicker } from './OutlineStylePicker';
+import { OutlineStyle } from '@/lib/outlineStyles';
 import { Trash2, Minimize2, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -33,13 +35,14 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   ]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('none');
 
   const flatNodes = flattenTree(tree);
 
   const addNode = useCallback((
     parentId: string | null = null,
     type: NodeType = 'default',
-    label: string = 'New Node',
+    label: string = '',
     afterNodeId?: string
   ) => {
     const newNode = createNode(parentId, type, label);
@@ -61,7 +64,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     return newNode.id;
   }, [tree]);
 
-  const addChildNode = useCallback((parentId: string, type: NodeType = 'default', label: string = 'New Node') => {
+  const addChildNode = useCallback((parentId: string, type: NodeType = 'default', label: string = '') => {
     const parent = findNode(tree, parentId);
     if (!parent) return null;
     
@@ -89,10 +92,6 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     
     setTree(prev => deleteNode(prev, nodeId));
   }, [flatNodes]);
-
-  const updateNodeData = useCallback((nodeId: string, updates: Partial<HierarchyNode>) => {
-    setTree(prev => updateNode(prev, nodeId, updates));
-  }, []);
 
   const handleMove = useCallback((nodeId: string, targetId: string, position: DropPosition) => {
     if (nodeId === targetId) return;
@@ -157,12 +156,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   return (
     <NodeViewWrapper 
       className={cn(
-        'my-2 rounded-lg overflow-hidden group',
+        'my-2 rounded-lg overflow-hidden group relative',
         selected ? 'ring-2 ring-primary/50' : ''
       )}
     >
-      {/* Minimal hover controls */}
-      <div className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+      {/* Hover controls */}
+      <div className="absolute -right-10 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
         <Button
           variant="ghost"
           size="sm"
@@ -187,12 +187,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         </Button>
       </div>
       
-      {/* Tree view - seamless */}
+      {/* Outline view */}
       {!isCollapsed && (
-        <div className="border-l-2 border-border/50 pl-2 ml-1">
-          <TreeView
+        <div className="border-l-2 border-border/50 ml-1">
+          <SimpleOutlineView
             nodes={flatNodes}
             selectedId={selectedId}
+            outlineStyle={outlineStyle}
             onSelect={setSelectedId}
             onToggleCollapse={handleToggleCollapse}
             onUpdateLabel={handleUpdateLabel}
@@ -202,14 +203,14 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddNode={() => {
               if (selectedId) {
                 const node = flatNodes.find(n => n.id === selectedId);
-                addNode(node?.parentId ?? null, 'default', 'New Node', selectedId);
+                addNode(node?.parentId ?? null, 'default', '', selectedId);
               } else {
-                addNode(null, 'default', 'New Node');
+                addNode(null, 'default', '');
               }
             }}
             onAddChildNode={() => {
               if (selectedId) {
-                addChildNode(selectedId, 'default', 'New Node');
+                addChildNode(selectedId, 'default', '');
               }
             }}
             onDelete={removeNode}
@@ -222,7 +223,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       {isCollapsed && (
         <button 
           onClick={() => setIsCollapsed(false)}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1 px-2"
         >
           ▸ {flatNodes.length} items
         </button>
