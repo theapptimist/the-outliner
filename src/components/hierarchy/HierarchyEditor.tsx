@@ -8,10 +8,12 @@ import { NodeInspector } from './NodeInspector';
 import { Toolbar } from './Toolbar';
 import { ProjectionTabs } from './ProjectionTabs';
 import { cn } from '@/lib/utils';
+import { OutlineStyle } from '@/lib/outlineStyles';
 
 export function HierarchyEditor() {
   const [projection, setProjection] = useState<ProjectionType>('tree');
   const [showInspector, setShowInspector] = useState(true);
+  const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('numeric');
 
   const {
     tree,
@@ -90,6 +92,8 @@ export function HierarchyEditor() {
         <div className="flex-1 flex flex-col min-w-0">
           <Toolbar
             hasSelection={!!selectedId}
+            outlineStyle={outlineStyle}
+            onOutlineStyleChange={setOutlineStyle}
             onAddNode={handleAddNode}
             onAddChildNode={handleAddChildNode}
             onDeleteNode={handleDeleteNode}
