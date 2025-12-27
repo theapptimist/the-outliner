@@ -1,4 +1,4 @@
-export type NodeType = 'default' | 'container' | 'data' | 'action' | 'reference';
+export type NodeType = 'default' | 'container' | 'data' | 'action' | 'reference' | 'body';
 
 export interface NodeProperty {
   key: string;

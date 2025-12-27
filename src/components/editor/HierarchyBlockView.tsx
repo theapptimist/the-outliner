@@ -278,6 +278,15 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
                 addNode(null, 'default', '');
               }
             }}
+            onAddBodyNode={(afterId) => {
+              const anchorId = afterId ?? selectedId;
+              if (anchorId) {
+                const anchor = flatNodes.find(n => n.id === anchorId);
+                addNode(anchor?.parentId ?? null, 'body', '', anchorId);
+              } else {
+                addNode(null, 'body', '');
+              }
+            }}
             onAddChildNode={() => {
               if (selectedId) {
                 addChildNode(selectedId, 'default', '');
