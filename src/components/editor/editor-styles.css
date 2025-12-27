@@ -136,13 +136,17 @@
   background: hsl(var(--primary) / 0.3);
 }
 
-/* Focus ring for selected nodes */
+/* Focus ring for selected nodes (disabled to remove the blue selection box) */
 .ProseMirror .ProseMirror-selectednode {
-  outline: 2px solid hsl(var(--primary));
-  outline-offset: 2px;
+  outline: none;
+  outline-offset: 0;
 }
 
-/* Disable selection outline for hierarchy blocks */
-.ProseMirror div[data-type="hierarchy-block"].ProseMirror-selectednode {
+/* Disable selection outline for hierarchy blocks (the Outline block) */
+.ProseMirror .ProseMirror-selectednode.hierarchy-block,
+.ProseMirror [data-node-view-wrapper].ProseMirror-selectednode.hierarchy-block,
+.ProseMirror [data-type="hierarchy-block"].ProseMirror-selectednode {
   outline: none !important;
+  box-shadow: none !important;
 }
+
