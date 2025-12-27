@@ -36,7 +36,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   ]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('none');
+  const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
 
   const flatNodes = flattenTree(tree);
 

@@ -13,7 +13,7 @@ import { OutlineStyle } from '@/lib/outlineStyles';
 export function HierarchyEditor() {
   const [projection, setProjection] = useState<ProjectionType>('tree');
   const [showInspector, setShowInspector] = useState(true);
-  const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('numeric');
+  const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
 
   const {
     tree,
