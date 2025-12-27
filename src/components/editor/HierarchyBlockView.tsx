@@ -161,32 +161,37 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         selected ? 'ring-2 ring-primary/50' : ''
       )}
     >
-      {/* Hover controls */}
-      <div className="absolute -right-10 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-        <OutlineHelp className="h-6 w-6 p-0" />
-        <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? 'Expand' : 'Collapse'}
-        >
-          {isCollapsed ? (
-            <Maximize2 className="h-3 w-3" />
-          ) : (
-            <Minimize2 className="h-3 w-3" />
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-          onClick={() => deleteBlockNode()}
-          title="Delete outline"
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+      {/* Toolbar with help and controls */}
+      <div className="flex items-center justify-between px-2 py-1 border-b border-border/30 bg-muted/20">
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground font-medium">Outline</span>
+          <OutlineHelp className="h-5 w-5 p-0" />
+        </div>
+        <div className="flex items-center gap-1">
+          <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title={isCollapsed ? 'Expand' : 'Collapse'}
+          >
+            {isCollapsed ? (
+              <Maximize2 className="h-3 w-3" />
+            ) : (
+              <Minimize2 className="h-3 w-3" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+            onClick={() => deleteBlockNode()}
+            title="Delete outline"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
       
       {/* Outline view */}
