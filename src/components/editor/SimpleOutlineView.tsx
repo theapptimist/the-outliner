@@ -102,10 +102,11 @@ export function SimpleOutlineView({
       const newNode = nodes.find(n => n.id === newNodeId);
       if (newNode) {
         handleStartEdit(newNode.id, newNode.label);
+        pendingNewNodeIdRef.current = null;
+        prevNodesLengthRef.current = nodes.length;
+        return;
       }
-      pendingNewNodeIdRef.current = null;
-      prevNodesLengthRef.current = nodes.length;
-      return;
+      // If the node isn't in the list yet (batched state updates), keep the id for next render.
     }
     
     // Second priority: focus node after anchor (for regular Enter)
