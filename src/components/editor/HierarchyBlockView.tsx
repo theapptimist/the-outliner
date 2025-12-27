@@ -220,7 +220,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   return (
     <NodeViewWrapper 
-      className="my-2 rounded-lg overflow-hidden group relative"
+      className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
     >
       {/* Toolbar with help and controls */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-border/30 bg-muted/20">
