@@ -205,7 +205,7 @@ export function SimpleOutlineView({
   return (
     <div 
       ref={containerRef}
-      className="py-1 focus:outline-none" 
+      className="p-4 focus:outline-none" 
       tabIndex={0}
     >
       {nodes.map((node) => {
@@ -216,10 +216,10 @@ export function SimpleOutlineView({
           <div
             key={node.id}
             className={cn(
-              'flex items-start gap-1 py-0.5 px-1 rounded cursor-text group',
+              'flex items-start gap-2 py-1.5 px-2 rounded cursor-text group',
               selectedId === node.id && 'bg-secondary'
             )}
-            style={{ paddingLeft: `${node.depth * 20 + 4}px` }}
+            style={{ paddingLeft: `${node.depth * 24 + 8}px` }}
             onClick={() => {
               onSelect(node.id);
               if (editingId !== node.id) {
