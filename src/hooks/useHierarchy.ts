@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { HierarchyNode, NodeType, FlatNode, DropPosition } from '@/types/node';
 import {
   createNode,
@@ -16,8 +16,38 @@ import {
   createSampleTree,
 } from '@/lib/nodeOperations';
 
+const STORAGE_KEY = 'hierarchy-tree-data';
+
+function loadFromStorage(): HierarchyNode[] | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.warn('Failed to load hierarchy from localStorage:', e);
+  }
+  return null;
+}
+
+function saveToStorage(tree: HierarchyNode[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tree));
+  } catch (e) {
+    console.warn('Failed to save hierarchy to localStorage:', e);
+  }
+}
+
 export function useHierarchy(initialTree?: HierarchyNode[]) {
-  const [tree, setTree] = useState<HierarchyNode[]>(initialTree ?? createSampleTree());
+  const [tree, setTree] = useState<HierarchyNode[]>(() => {
+    const stored = loadFromStorage();
+    return stored ?? initialTree ?? createSampleTree();
+  });
+
+  // Persist to localStorage whenever tree changes
+  useEffect(() => {
+    saveToStorage(tree);
+  }, [tree]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const flatNodes = useMemo(() => flattenTree(tree), [tree]);
