@@ -104,9 +104,9 @@ export function SlashCommandMenu({
       action: () => editor.chain().focus().setHorizontalRule().run(),
     },
     {
-      id: 'hierarchy',
-      label: 'Hierarchy',
-      description: 'Insert an interactive hierarchy block',
+      id: 'outline',
+      label: 'Outline',
+      description: 'Insert an interactive outline',
       icon: <GitBranch className="h-4 w-4" />,
       action: onInsertHierarchy,
     },

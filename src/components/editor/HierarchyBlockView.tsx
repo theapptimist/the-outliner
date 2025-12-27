@@ -156,44 +156,39 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   return (
     <NodeViewWrapper 
       className={cn(
-        'my-4 rounded-lg border bg-card overflow-hidden',
-        selected ? 'ring-2 ring-primary border-primary' : 'border-border'
+        'my-2 rounded-lg overflow-hidden group',
+        selected ? 'ring-2 ring-primary/50' : ''
       )}
     >
-      {/* Block header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Hierarchy Block
-        </span>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            title={isCollapsed ? 'Expand' : 'Collapse'}
-          >
-            {isCollapsed ? (
-              <Maximize2 className="h-3 w-3" />
-            ) : (
-              <Minimize2 className="h-3 w-3" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-            onClick={() => deleteBlockNode()}
-            title="Delete block"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
+      {/* Minimal hover controls */}
+      <div className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Expand' : 'Collapse'}
+        >
+          {isCollapsed ? (
+            <Maximize2 className="h-3 w-3" />
+          ) : (
+            <Minimize2 className="h-3 w-3" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+          onClick={() => deleteBlockNode()}
+          title="Delete outline"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
       </div>
       
-      {/* Tree view */}
+      {/* Tree view - seamless */}
       {!isCollapsed && (
-        <div className="max-h-96 overflow-auto">
+        <div className="border-l-2 border-border/50 pl-2 ml-1">
           <TreeView
             nodes={flatNodes}
             selectedId={selectedId}
@@ -224,9 +219,12 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       )}
       
       {isCollapsed && (
-        <div className="px-3 py-2 text-sm text-muted-foreground">
-          {flatNodes.length} nodes • Click to expand
-        </div>
+        <button 
+          onClick={() => setIsCollapsed(false)}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+        >
+          ▸ {flatNodes.length} items
+        </button>
       )}
     </NodeViewWrapper>
   );

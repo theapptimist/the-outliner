@@ -164,16 +164,16 @@ export function EditorToolbar({ editor, onInsertHierarchy }: EditorToolbarProps)
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
-      {/* Hierarchy Block */}
+      {/* Outline Block */}
       <Button
         variant="outline"
         size="sm"
         onClick={onInsertHierarchy}
         className="h-8 gap-1.5 text-xs"
-        title="Insert Hierarchy Block"
+        title="Insert Outline"
       >
         <GitBranch className="h-4 w-4" />
-        <span className="hidden sm:inline">Hierarchy</span>
+        <span className="hidden sm:inline">Outline</span>
       </Button>
     </div>
   );
