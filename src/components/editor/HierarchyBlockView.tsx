@@ -154,28 +154,56 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     setTree(prev => updateNode(prev, nodeId, { label }));
   }, []);
 
-  // Shift+F9: Merge node into parent with line break
+  // Shift+Esc: Merge node into previous sibling (or parent if no sibling) with line break
   const handleMergeIntoParent = useCallback((nodeId: string) => {
     const node = findNode(tree, nodeId);
-    if (!node || !node.parentId) return; // Can't merge root-level nodes
+    if (!node) return;
     
-    const parent = findNode(tree, node.parentId);
-    if (!parent) return;
+    // Get siblings at this level
+    const flatIndex = flatNodes.findIndex(n => n.id === nodeId);
+    const currentNode = flatNodes[flatIndex];
     
-    // Append this node's label to parent with line break
-    const newParentLabel = parent.label 
-      ? `${parent.label}\n${node.label}`
+    // Find previous sibling at same depth
+    let targetNode: { id: string; label: string } | null = null;
+    
+    // Look backwards for a sibling at the same depth
+    for (let i = flatIndex - 1; i >= 0; i--) {
+      const prevNode = flatNodes[i];
+      if (prevNode.depth === currentNode.depth && prevNode.parentId === currentNode.parentId) {
+        // Found previous sibling
+        targetNode = { id: prevNode.id, label: prevNode.label };
+        break;
+      }
+      if (prevNode.depth < currentNode.depth) {
+        // We've gone up a level, no previous sibling exists
+        break;
+      }
+    }
+    
+    // If no previous sibling, try to merge into parent
+    if (!targetNode && node.parentId) {
+      const parent = findNode(tree, node.parentId);
+      if (parent) {
+        targetNode = { id: parent.id, label: parent.label };
+      }
+    }
+    
+    if (!targetNode) return; // Can't merge root-level first item
+    
+    // Append this node's label to target with line break
+    const newLabel = targetNode.label 
+      ? `${targetNode.label}\n${node.label}`
       : node.label;
     
-    // Update parent label and delete this node
+    // Update target label and delete this node
     setTree(prev => {
-      const updated = updateNode(prev, parent.id, { label: newParentLabel });
+      const updated = updateNode(prev, targetNode!.id, { label: newLabel });
       return deleteNode(updated, nodeId);
     });
     
-    // Select the parent
-    setSelectedId(parent.id);
-  }, [tree]);
+    // Select the target
+    setSelectedId(targetNode.id);
+  }, [tree, flatNodes]);
 
   return (
     <NodeViewWrapper 
