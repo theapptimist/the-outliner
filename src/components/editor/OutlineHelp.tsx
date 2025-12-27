@@ -12,7 +12,7 @@ interface OutlineHelpProps {
 
 const shortcuts = [
   { key: 'Enter', action: 'Add new item below' },
-  { key: 'Shift + Enter', action: 'Add child item' },
+  { key: 'Shift + Enter', action: 'Indent (make child)' },
   { key: 'Tab', action: 'Indent (make child)' },
   { key: 'Shift + Tab', action: 'Outdent (move up level)' },
   { key: '↑ / ↓', action: 'Navigate items' },
