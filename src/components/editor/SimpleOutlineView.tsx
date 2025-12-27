@@ -108,8 +108,13 @@ export function SimpleOutlineView({
       } else {
         onIndent(id);
       }
+    } else if (e.key === 'Backspace' && editValue === '') {
+      // Delete empty line on backspace
+      e.preventDefault();
+      setEditingId(null);
+      onDelete(id);
     }
-  }, [handleEndEdit, onAddNode, onIndent, onOutdent]);
+  }, [handleEndEdit, onAddNode, onIndent, onOutdent, editValue, onDelete]);
 
   // Global keyboard handler
   useEffect(() => {
