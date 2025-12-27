@@ -326,6 +326,9 @@ export function SimpleOutlineView({
         const indices = nodeIndices.get(node.id) || [1];
         const isBody = node.type === 'body';
         const prefix = isBody ? '' : getOutlinePrefix(outlineStyle, node.depth, indices);
+
+        // Body nodes are logically children, but should visually align under the parent's text.
+        const visualDepth = isBody ? Math.max(0, node.depth - 1) : node.depth;
         
         return (
           <div
@@ -334,7 +337,7 @@ export function SimpleOutlineView({
               'flex items-start gap-2 py-1.5 px-2 rounded cursor-text group',
               selectedId === node.id && 'bg-secondary'
             )}
-            style={{ paddingLeft: `${node.depth * 24 + 8}px` }}
+            style={{ paddingLeft: `${visualDepth * 24 + 8}px` }}
             onClick={() => {
               onSelect(node.id);
               if (editingId !== node.id) {
