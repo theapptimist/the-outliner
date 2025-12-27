@@ -17,6 +17,7 @@ import {
 } from '@/lib/nodeOperations';
 import { SimpleOutlineView } from './SimpleOutlineView';
 import { OutlineStylePicker } from './OutlineStylePicker';
+import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle } from '@/lib/outlineStyles';
 import { Trash2, Minimize2, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -162,6 +163,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     >
       {/* Hover controls */}
       <div className="absolute -right-10 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        <OutlineHelp className="h-6 w-6 p-0" />
         <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
         <Button
           variant="ghost"
