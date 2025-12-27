@@ -15,7 +15,8 @@ interface SimpleOutlineViewProps {
   onIndent: (id: string) => void;
   onOutdent: (id: string) => void;
   onAddNode: (afterId?: string | null) => void;
-  onAddBodyNode: (afterId?: string | null) => void;
+  onAddBodyNode: (afterId?: string | null) => string | undefined;
+  onAddBodyNodeWithSpacer?: (afterId?: string | null) => string | undefined;
   onAddChildNode: () => void;
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
@@ -34,6 +35,7 @@ export function SimpleOutlineView({
   onOutdent,
   onAddNode,
   onAddBodyNode,
+  onAddBodyNodeWithSpacer,
   onAddChildNode,
   onDelete,
   onNavigateUp,
@@ -45,7 +47,8 @@ export function SimpleOutlineView({
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Track pending focus after Enter creates new node
+  // Track pending focus - stores exact new node ID to focus
+  const pendingNewNodeIdRef = useRef<string | null>(null);
   const pendingFocusAfterIdRef = useRef<string | null>(null);
   const prevNodesLengthRef = useRef(nodes.length);
 
@@ -93,16 +96,26 @@ export function SimpleOutlineView({
 
   // When a new node is added after pressing Enter, auto-focus it
   useEffect(() => {
-    const afterId = pendingFocusAfterIdRef.current;
+    // First priority: focus node by exact ID (for body node shortcuts)
+    const newNodeId = pendingNewNodeIdRef.current;
+    if (newNodeId) {
+      const newNode = nodes.find(n => n.id === newNodeId);
+      if (newNode) {
+        handleStartEdit(newNode.id, newNode.label);
+      }
+      pendingNewNodeIdRef.current = null;
+      prevNodesLengthRef.current = nodes.length;
+      return;
+    }
     
-    // Check if a node was added
+    // Second priority: focus node after anchor (for regular Enter)
+    const afterId = pendingFocusAfterIdRef.current;
     if (afterId && nodes.length > prevNodesLengthRef.current) {
       const afterIndex = nodes.findIndex((n) => n.id === afterId);
       const newNode = afterIndex >= 0 ? nodes[afterIndex + 1] : null;
 
       if (newNode) {
         handleStartEdit(newNode.id, newNode.label);
-        // Focus will happen via the effect below
       }
       pendingFocusAfterIdRef.current = null;
     }
@@ -144,11 +157,29 @@ export function SimpleOutlineView({
       pendingFocusAfterIdRef.current = id;
       onAddNode(id);
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-      // Ctrl+Enter: create body/text node (no numbering)
+      // Ctrl+Enter: create spacer + body node (two nodes, focus the second)
       e.preventDefault();
       handleEndEdit(id);
-      pendingFocusAfterIdRef.current = id;
-      onAddBodyNode(id);
+      if (onAddBodyNodeWithSpacer) {
+        const newId = onAddBodyNodeWithSpacer(id);
+        if (newId) {
+          pendingNewNodeIdRef.current = newId;
+        }
+      } else {
+        // Fallback to single body node
+        const newId = onAddBodyNode(id);
+        if (newId) {
+          pendingNewNodeIdRef.current = newId;
+        }
+      }
+    } else if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+/: create single body node, focus it
+      e.preventDefault();
+      handleEndEdit(id);
+      const newId = onAddBodyNode(id);
+      if (newId) {
+        pendingNewNodeIdRef.current = newId;
+      }
     } else if (e.key === 'Enter' && e.shiftKey) {
       // Shift+Enter: insert a line break inside the current item
       e.preventDefault();
@@ -190,7 +221,7 @@ export function SimpleOutlineView({
       setEditingId(null);
       onDelete(id);
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
 
   // Global keyboard handler
   useEffect(() => {

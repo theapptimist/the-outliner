@@ -282,9 +282,23 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
                 const anchor = flatNodes.find(n => n.id === anchorId);
-                addNode(anchor?.parentId ?? null, 'body', '', anchorId);
+                return addNode(anchor?.parentId ?? null, 'body', '', anchorId);
               } else {
-                addNode(null, 'body', '');
+                return addNode(null, 'body', '');
+              }
+            }}
+            onAddBodyNodeWithSpacer={(afterId) => {
+              const anchorId = afterId ?? selectedId;
+              if (anchorId) {
+                const anchor = flatNodes.find(n => n.id === anchorId);
+                const parentId = anchor?.parentId ?? null;
+                // Create empty spacer body node
+                const spacerId = addNode(parentId, 'body', '', anchorId);
+                // Create second body node after spacer, return its ID for focus
+                return addNode(parentId, 'body', '', spacerId);
+              } else {
+                const spacerId = addNode(null, 'body', '');
+                return addNode(null, 'body', '', spacerId);
               }
             }}
             onAddChildNode={() => {
