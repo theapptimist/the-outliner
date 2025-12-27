@@ -38,13 +38,12 @@ export function SimpleOutlineView({
 }: SimpleOutlineViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [pendingAutoEdit, setPendingAutoEdit] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Helps us reliably start editing the *newly created* sibling after Enter
-  const autoEditAfterIdRef = useRef<string | null>(null);
-  const prevNodesRef = useRef<FlatNode[]>(nodes);
+  // Track pending focus after Enter creates new node
+  const pendingFocusAfterIdRef = useRef<string | null>(null);
+  const prevNodesLengthRef = useRef(nodes.length);
 
   // Calculate indices for each node at each depth
   const nodeIndices = useMemo(() => {
@@ -53,21 +52,15 @@ export function SimpleOutlineView({
     let lastDepth = -1;
     
     for (const node of nodes) {
-      // Adjust counters based on depth change
       if (node.depth > lastDepth) {
-        // Going deeper - push new counter
         while (counters.length <= node.depth) {
           counters.push(0);
         }
       } else if (node.depth < lastDepth) {
-        // Going shallower - reset deeper counters
         counters.length = node.depth + 1;
       }
       
-      // Increment counter at current depth
       counters[node.depth] = (counters[node.depth] || 0) + 1;
-      
-      // Store a copy of current indices for this node
       indices.set(node.id, [...counters.slice(0, node.depth + 1)]);
       lastDepth = node.depth;
     }
@@ -75,56 +68,41 @@ export function SimpleOutlineView({
     return indices;
   }, [nodes]);
 
-  useEffect(() => {
-    if (editingId && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editingId, nodes.length]);
-
-
   const handleStartEdit = useCallback((id: string, currentLabel: string) => {
     setEditingId(id);
     setEditValue(currentLabel);
   }, []);
 
-  // After creating a new node via Enter, immediately put the *new* node into edit mode
+  // When a new node is added after pressing Enter, auto-focus it
   useEffect(() => {
-    if (!pendingAutoEdit) return;
-
-    const afterId = autoEditAfterIdRef.current;
-    const prev = prevNodesRef.current;
-
-    // If a node was added, it should appear right after the current node
-    if (afterId && nodes.length > prev.length) {
+    const afterId = pendingFocusAfterIdRef.current;
+    
+    // Check if a node was added
+    if (afterId && nodes.length > prevNodesLengthRef.current) {
       const afterIndex = nodes.findIndex((n) => n.id === afterId);
-      const candidate = afterIndex >= 0 ? nodes[afterIndex + 1] : null;
+      const newNode = afterIndex >= 0 ? nodes[afterIndex + 1] : null;
 
-      if (candidate) {
-        handleStartEdit(candidate.id, candidate.label);
-        requestAnimationFrame(() => inputRef.current?.focus());
-        setPendingAutoEdit(false);
-        autoEditAfterIdRef.current = null;
-        return;
+      if (newNode) {
+        handleStartEdit(newNode.id, newNode.label);
+        // Focus will happen via the effect below
       }
+      pendingFocusAfterIdRef.current = null;
     }
+    
+    prevNodesLengthRef.current = nodes.length;
+  }, [nodes, handleStartEdit]);
 
-    // Fallback: if selection already moved, edit selected
-    if (selectedId) {
-      const node = nodes.find((n) => n.id === selectedId);
-      if (node) {
-        handleStartEdit(selectedId, node.label);
-        requestAnimationFrame(() => inputRef.current?.focus());
-        setPendingAutoEdit(false);
-        autoEditAfterIdRef.current = null;
-      }
-    }
-  }, [pendingAutoEdit, selectedId, nodes, handleStartEdit]);
-
-  // Track previous nodes so we can detect when a node was added
+  // Focus input when editingId changes
   useEffect(() => {
-    prevNodesRef.current = nodes;
-  }, [nodes]);
+    if (editingId) {
+      requestAnimationFrame(() => {
+        const input = inputRefs.current.get(editingId);
+        if (input) {
+          input.focus();
+        }
+      });
+    }
+  }, [editingId]);
 
   const handleEndEdit = useCallback((id: string) => {
     onUpdateLabel(id, editValue);
@@ -135,27 +113,28 @@ export function SimpleOutlineView({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleEndEdit(id);
-      // Add sibling after current and keep typing
-      autoEditAfterIdRef.current = id;
-      setPendingAutoEdit(true);
+      // Mark that we want to focus the node created after this one
+      pendingFocusAfterIdRef.current = id;
       onAddNode();
     } else if (e.key === 'Escape') {
       setEditingId(null);
     } else if (e.key === 'Tab') {
       e.preventDefault();
-      handleEndEdit(id);
+      // Save current value first
+      onUpdateLabel(id, editValue);
+      // Indent or outdent
       if (e.shiftKey) {
         onOutdent(id);
       } else {
         onIndent(id);
       }
+      // Keep editing the same node - don't call setEditingId(null)
     } else if (e.key === 'Backspace' && editValue === '') {
-      // Delete empty line on backspace
       e.preventDefault();
       setEditingId(null);
       onDelete(id);
     }
-  }, [handleEndEdit, onAddNode, onIndent, onOutdent, editValue, onDelete]);
+  }, [handleEndEdit, onAddNode, onIndent, onOutdent, editValue, onDelete, onUpdateLabel]);
 
   // Global keyboard handler
   useEffect(() => {
@@ -214,6 +193,15 @@ export function SimpleOutlineView({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [editingId, selectedId, nodes, onNavigateUp, onNavigateDown, onAddNode, onAddChildNode, onIndent, onOutdent, onDelete, handleStartEdit]);
 
+  // Callback ref to store input references
+  const setInputRef = useCallback((id: string) => (el: HTMLInputElement | null) => {
+    if (el) {
+      inputRefs.current.set(id, el);
+    } else {
+      inputRefs.current.delete(id);
+    }
+  }, []);
+
   return (
     <div 
       ref={containerRef}
@@ -250,7 +238,7 @@ export function SimpleOutlineView({
             {/* Label - always in edit mode when selected */}
             {editingId === node.id ? (
               <input
-                ref={inputRef}
+                ref={setInputRef(node.id)}
                 type="text"
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
