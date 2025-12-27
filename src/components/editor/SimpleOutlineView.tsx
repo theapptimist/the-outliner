@@ -92,10 +92,9 @@ export function SimpleOutlineView({
 
     handleStartEdit(selectedId, node.label);
 
-    // Ensure focus lands in the newly created input even if the DOM updates are slightly delayed
+    // Ensure focus lands in the newly created input - don't select, just focus
     requestAnimationFrame(() => {
       inputRef.current?.focus();
-      inputRef.current?.select();
     });
 
     setPendingAutoEdit(false);
