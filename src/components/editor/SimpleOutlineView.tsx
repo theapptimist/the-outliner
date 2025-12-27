@@ -287,7 +287,7 @@ export function SimpleOutlineView({
             
             {/* Prefix/numbering */}
             {prefix && (
-              <span className="text-muted-foreground font-mono text-sm min-w-[3rem] flex-shrink-0 text-right pr-1">
+              <span className="text-muted-foreground font-mono text-sm min-w-[3rem] flex-shrink-0 text-right pr-1 whitespace-nowrap">
                 {prefix}
               </span>
             )}
