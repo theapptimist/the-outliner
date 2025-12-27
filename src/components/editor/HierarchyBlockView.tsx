@@ -283,8 +283,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddBodyNode={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
-                // Add body node as first child of the anchor
-                return addChildNode(anchorId, 'body', '');
+                // Add body node as sibling after the anchor (same parent)
+                const anchor = flatNodes.find(n => n.id === anchorId);
+                return addNode(anchor?.parentId ?? null, 'body', '', anchorId);
               } else {
                 return addNode(null, 'body', '');
               }
