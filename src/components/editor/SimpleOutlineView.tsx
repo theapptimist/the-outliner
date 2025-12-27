@@ -19,6 +19,7 @@ interface SimpleOutlineViewProps {
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
   onNavigateDown: () => void;
+  onMergeIntoParent: (id: string) => void;
 }
 
 export function SimpleOutlineView({
@@ -35,6 +36,7 @@ export function SimpleOutlineView({
   onDelete,
   onNavigateUp,
   onNavigateDown,
+  onMergeIntoParent,
 }: SimpleOutlineViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -133,8 +135,14 @@ export function SimpleOutlineView({
       e.preventDefault();
       setEditingId(null);
       onDelete(id);
+    } else if (e.key === 'F9' && e.shiftKey) {
+      // Shift+F9: Merge into parent with line break (WordPerfect style)
+      e.preventDefault();
+      onUpdateLabel(id, editValue);
+      setEditingId(null);
+      onMergeIntoParent(id);
     }
-  }, [handleEndEdit, onAddNode, onIndent, onOutdent, editValue, onDelete, onUpdateLabel]);
+  }, [handleEndEdit, onAddNode, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
 
   // Global keyboard handler
   useEffect(() => {
@@ -186,12 +194,18 @@ export function SimpleOutlineView({
             if (node) handleStartEdit(selectedId, node.label);
           }
           break;
+        case 'F9':
+          if (e.shiftKey && selectedId) {
+            e.preventDefault();
+            onMergeIntoParent(selectedId);
+          }
+          break;
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [editingId, selectedId, nodes, onNavigateUp, onNavigateDown, onAddNode, onAddChildNode, onIndent, onOutdent, onDelete, handleStartEdit]);
+  }, [editingId, selectedId, nodes, onNavigateUp, onNavigateDown, onAddNode, onAddChildNode, onIndent, onOutdent, onDelete, handleStartEdit, onMergeIntoParent]);
 
   // Callback ref to store input references
   const setInputRef = useCallback((id: string) => (el: HTMLInputElement | null) => {
@@ -250,7 +264,7 @@ export function SimpleOutlineView({
               />
             ) : (
               <span className={cn(
-                'flex-1 text-sm',
+                'flex-1 text-sm whitespace-pre-wrap',
                 node.label ? 'text-foreground' : 'text-muted-foreground/50'
               )}>
                 {node.label || 'Type here...'}
