@@ -22,6 +22,7 @@ import { OutlineStyle } from '@/lib/outlineStyles';
 import { Trash2, Minimize2, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
@@ -157,18 +158,24 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   // Shift+Esc: Merge node into previous sibling (or parent if no sibling) with line break
   const handleMergeIntoParent = useCallback((nodeId: string, currentValue?: string) => {
     const node = findNode(tree, nodeId);
-    if (!node) return null;
+    if (!node) {
+      toast({ title: 'Merge failed', description: 'Could not find the selected line.' });
+      return null;
+    }
 
     const nodeLabel = (currentValue ?? node.label) ?? '';
 
-    // Get siblings at this level
     const flatIndex = flatNodes.findIndex(n => n.id === nodeId);
+    if (flatIndex < 0) {
+      toast({ title: 'Merge failed', description: 'Could not locate the line in the outline.' });
+      return null;
+    }
+
     const currentNode = flatNodes[flatIndex];
 
     // Find previous sibling at same depth
     let targetNode: { id: string; label: string } | null = null;
 
-    // Look backwards for a sibling at the same depth
     for (let i = flatIndex - 1; i >= 0; i--) {
       const prevNode = flatNodes[i];
       if (prevNode.depth === currentNode.depth && prevNode.parentId === currentNode.parentId) {
@@ -176,7 +183,6 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         break;
       }
       if (prevNode.depth < currentNode.depth) {
-        // We've gone up a level, no previous sibling exists
         break;
       }
     }
@@ -189,20 +195,26 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       }
     }
 
-    if (!targetNode) return null; // Can't merge root-level first item
+    if (!targetNode) {
+      toast({ title: 'Nothing to merge into', description: 'This line has no previous line or parent to merge into.' });
+      return null;
+    }
 
-    // Append this node's label to target with a NEW blank line if nodeLabel is empty
+    // Append this node's label to target; if empty, create a blank new line
     const appended = nodeLabel.length > 0 ? `\n${nodeLabel}` : `\n`;
     const newLabel = `${targetNode.label ?? ''}${appended}`;
 
-    // Update target label and delete this node
+    console.log('[merge] node', { nodeId, nodeLabel, parentId: node.parentId });
+    console.log('[merge] target', { targetId: targetNode.id, newLabel });
+
     setTree(prev => {
       const updated = updateNode(prev, targetNode!.id, { label: newLabel });
       return deleteNode(updated, nodeId);
     });
 
-    // Select the target
     setSelectedId(targetNode.id);
+
+    toast({ title: 'Merged', description: 'Merged into the line above.' });
 
     return { targetId: targetNode.id, targetLabel: newLabel };
   }, [tree, flatNodes]);

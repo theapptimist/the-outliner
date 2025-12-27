@@ -101,6 +101,9 @@ export function SimpleOutlineView({
         const input = inputRefs.current.get(editingId);
         if (input) {
           input.focus();
+          const len = input.value.length;
+          input.selectionStart = len;
+          input.selectionEnd = len;
         }
       });
     }
