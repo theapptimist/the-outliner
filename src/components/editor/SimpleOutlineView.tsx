@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from 'react';
 import { FlatNode, DropPosition } from '@/types/node';
 import { OutlineStyle, getOutlinePrefix } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
-
 
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
@@ -21,31 +20,51 @@ interface SimpleOutlineViewProps {
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
   onNavigateDown: () => void;
-  onMergeIntoParent: (id: string, currentValue?: string) => { targetId: string; targetLabel: string } | null;
+  onMergeIntoParent: (
+    id: string,
+    currentValue?: string
+  ) => { targetId: string; targetLabel: string } | null;
 }
 
-export function SimpleOutlineView({
-  nodes,
-  selectedId,
-  outlineStyle,
-  onSelect,
-  onToggleCollapse,
-  onUpdateLabel,
-  onIndent,
-  onOutdent,
-  onAddNode,
-  onAddBodyNode,
-  onAddBodyNodeWithSpacer,
-  onAddChildNode,
-  onDelete,
-  onNavigateUp,
-  onNavigateDown,
-  onMergeIntoParent,
-}: SimpleOutlineViewProps) {
+export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
+  {
+    nodes,
+    selectedId,
+    outlineStyle,
+    onSelect,
+    onToggleCollapse,
+    onUpdateLabel,
+    onIndent,
+    onOutdent,
+    onAddNode,
+    onAddBodyNode,
+    onAddBodyNodeWithSpacer,
+    onAddChildNode,
+    onDelete,
+    onNavigateUp,
+    onNavigateDown,
+    onMergeIntoParent,
+  },
+  forwardedRef
+) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // If a parent passes a ref, we attach it to our focusable container.
+  const setContainerRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      containerRef.current = el;
+      if (!forwardedRef) return;
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(el);
+      } else {
+        forwardedRef.current = el;
+      }
+    },
+    [forwardedRef]
+  );
 
   // Track pending focus - stores exact new node ID to focus
   const pendingNewNodeIdRef = useRef<string | null>(null);
@@ -318,7 +337,7 @@ export function SimpleOutlineView({
 
   return (
     <div 
-      ref={containerRef}
+      ref={setContainerRef}
       className="p-4 focus:outline-none" 
       tabIndex={0}
     >
@@ -387,4 +406,4 @@ export function SimpleOutlineView({
       )}
     </div>
   );
-}
+});
