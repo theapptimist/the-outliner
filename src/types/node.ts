@@ -14,6 +14,8 @@ export interface HierarchyNode {
   properties: Record<string, string | number | boolean | null>;
   collapsed: boolean;
   children: HierarchyNode[];
+  /** Rich text content stored as TipTap JSON */
+  content?: any;
 }
 
 export interface FlatNode extends Omit<HierarchyNode, 'children'> {
