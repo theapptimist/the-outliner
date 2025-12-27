@@ -293,17 +293,23 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onAddBodyNodeWithSpacer={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
-                // Insert spacer + typing node as the last two children of the anchor (in one state update)
-                const spacerNode = createNode(anchorId, 'body', '');
-                const typingNode = createNode(anchorId, 'body', '');
+                // Insert spacer + typing node as siblings right after the anchor (same parent)
+                const anchor = flatNodes.find(n => n.id === anchorId);
+                const parentId = anchor?.parentId ?? null;
+
+                const spacerNode = createNode(parentId, 'body', '');
+                const typingNode = createNode(parentId, 'body', '');
 
                 setTree(prev => {
-                  const parent = findNode(prev, anchorId);
-                  if (!parent) return prev;
+                  const siblings = parentId
+                    ? (findNode(prev, parentId)?.children ?? [])
+                    : prev;
 
-                  const insertAt = parent.children.length;
-                  const withSpacer = insertNode(prev, spacerNode, anchorId, insertAt);
-                  return insertNode(withSpacer, typingNode, anchorId, insertAt + 1);
+                  const anchorIndex = getNodeIndex(siblings, anchorId);
+                  const insertAt = Math.max(0, anchorIndex + 1);
+
+                  const withSpacer = insertNode(prev, spacerNode, parentId, insertAt);
+                  return insertNode(withSpacer, typingNode, parentId, insertAt + 1);
                 });
 
                 setSelectedId(typingNode.id);
