@@ -15,9 +15,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { OutlineStylePicker } from '@/components/editor/OutlineStylePicker';
+import { OutlineStyle } from '@/lib/outlineStyles';
 
 interface ToolbarProps {
   hasSelection: boolean;
+  outlineStyle: OutlineStyle;
+  onOutlineStyleChange: (style: OutlineStyle) => void;
   onAddNode: () => void;
   onAddChildNode: () => void;
   onDeleteNode: () => void;
@@ -71,6 +75,8 @@ function ToolbarButton({
 
 export function Toolbar({
   hasSelection,
+  outlineStyle,
+  onOutlineStyleChange,
   onAddNode,
   onAddChildNode,
   onDeleteNode,
@@ -124,6 +130,10 @@ export function Toolbar({
         label="Expand all"
         onClick={onExpandAll}
       />
+      
+      <Separator orientation="vertical" className="h-5 mx-1" />
+      
+      <OutlineStylePicker value={outlineStyle} onChange={onOutlineStyleChange} />
       
       <div className="flex-1" />
       
