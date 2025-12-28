@@ -17,7 +17,7 @@ interface SimpleOutlineViewProps {
   onAddNode: (afterId?: string | null) => void;
   onAddBodyNode: (afterId?: string | null) => string | undefined;
   onAddBodyNodeWithSpacer?: (afterId?: string | null) => string | undefined;
-  onAddChildNode: (parentId?: string) => void;
+  onAddChildNode: (parentId?: string) => string | undefined;
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
   onNavigateDown: () => void;
@@ -196,8 +196,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       e.preventDefault();
       handleEndEdit(node.id);
       if (autoDescend) {
-        // Auto-descend: create child node
-        onAddChildNode(node.id);
+        // Auto-descend: create child node and focus it
+        const newId = onAddChildNode(node.id);
+        if (newId) {
+          pendingNewNodeIdRef.current = newId;
+        }
       } else {
         // Normal: create sibling node after this one
         pendingFocusAfterIdRef.current = node.id;
