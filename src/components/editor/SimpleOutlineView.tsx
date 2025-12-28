@@ -457,8 +457,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 placeholder="Type here..."
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 className={cn(
-                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6 caret-foreground",
-                  levelStyle.underline && "underline"
+                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 placeholder:no-underline resize-none whitespace-pre-wrap leading-6 caret-foreground",
+                  levelStyle.underline && editValue && "underline"
                 )}
                 onClick={(e) => e.stopPropagation()}
               />
@@ -466,7 +466,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               <span className="flex-1 text-sm whitespace-pre-wrap">
                 <span className={cn(
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
-                  levelStyle.underline && 'underline'
+                  levelStyle.underline && node.label && 'underline'
                 )}>
                   {node.label || 'Type here...'}
                 </span>
