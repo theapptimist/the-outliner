@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { OutlineStyle, OUTLINE_STYLES, MixedStyleConfig, DEFAULT_MIXED_CONFIG, FORMAT_OPTIONS, FormatType, LevelStyle, UNDERLINED_HEADING_CONFIG } from '@/lib/outlineStyles';
+import { OutlineStyle, OUTLINE_STYLES, MixedStyleConfig, DEFAULT_MIXED_CONFIG, FORMAT_OPTIONS, FormatType, LevelStyle, STANDARD_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -170,7 +170,7 @@ export function OutlineStylePicker({
                 variant="outline"
                 size="sm"
                 className="h-6 text-xs flex-1"
-                onClick={() => applyPreset(DEFAULT_MIXED_CONFIG)}
+                onClick={() => applyPreset(STANDARD_MIXED_CONFIG)}
               >
                 Standard
               </Button>
@@ -178,7 +178,7 @@ export function OutlineStylePicker({
                 variant="outline"
                 size="sm"
                 className="h-6 text-xs flex-1"
-                onClick={() => applyPreset(UNDERLINED_HEADING_CONFIG)}
+                onClick={() => applyPreset(DEFAULT_MIXED_CONFIG)}
               >
                 <Underline className="h-3 w-3 mr-1" />
                 Heading:

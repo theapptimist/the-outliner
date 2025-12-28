@@ -33,7 +33,8 @@ export interface MixedStyleConfig {
   levels: [LevelStyle, LevelStyle, LevelStyle, LevelStyle, LevelStyle, LevelStyle];
 }
 
-export const DEFAULT_MIXED_CONFIG: MixedStyleConfig = {
+// Standard mixed config (no styling)
+export const STANDARD_MIXED_CONFIG: MixedStyleConfig = {
   levels: [
     { format: 'numeric' },
     { format: 'alpha-lower' },
@@ -44,8 +45,8 @@ export const DEFAULT_MIXED_CONFIG: MixedStyleConfig = {
   ]
 };
 
-// Preset with underlined level 1 followed by colon
-export const UNDERLINED_HEADING_CONFIG: MixedStyleConfig = {
+// Default: underlined level 1 followed by colon
+export const DEFAULT_MIXED_CONFIG: MixedStyleConfig = {
   levels: [
     { format: 'numeric', underline: true, suffix: ':' },
     { format: 'alpha-lower' },
