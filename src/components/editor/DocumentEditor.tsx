@@ -127,7 +127,11 @@ export function DocumentEditor() {
     <div className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative">
       <div className="flex-1 overflow-auto">
         <PaginatedDocument>
-          <EditorContent editor={editor} />
+          {editor ? (
+            <EditorContent editor={editor} />
+          ) : (
+            <div className="min-h-[800px]" />
+          )}
         </PaginatedDocument>
       </div>
 
