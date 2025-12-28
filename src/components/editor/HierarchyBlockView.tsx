@@ -488,7 +488,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       
       {/* Outline view */}
       {!isCollapsed && (
-        <div className="border-l-2 border-border/50 ml-1">
+        <div>
           <SimpleOutlineView
             nodes={flatNodes}
             selectedId={selectedId}
