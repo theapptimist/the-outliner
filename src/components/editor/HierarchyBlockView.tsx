@@ -1,5 +1,6 @@
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
 import { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
 import { 
   createNode, 
@@ -20,7 +21,7 @@ import { SimpleOutlineView } from './SimpleOutlineView';
 import { OutlineStylePicker } from './OutlineStylePicker';
 import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle } from '@/lib/outlineStyles';
-import { Trash2, Minimize2, Maximize2 } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -238,6 +239,17 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         </div>
         <div className="flex items-center gap-1">
           <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            asChild
+            title="Open in Hierarchy Editor"
+          >
+            <Link to="/hierarchy">
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
