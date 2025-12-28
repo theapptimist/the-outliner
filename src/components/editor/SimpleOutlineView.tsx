@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from 'react';
 import { FlatNode, DropPosition } from '@/types/node';
-import { OutlineStyle, getOutlinePrefix } from '@/lib/outlineStyles';
+import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
 
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
   selectedId: string | null;
   outlineStyle: OutlineStyle;
+  mixedConfig?: MixedStyleConfig;
   onSelect: (id: string) => void;
   onToggleCollapse: (id: string) => void;
   onUpdateLabel: (id: string, label: string) => void;
@@ -33,6 +34,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     nodes,
     selectedId,
     outlineStyle,
+    mixedConfig = DEFAULT_MIXED_CONFIG,
     onSelect,
     onToggleCollapse,
     onUpdateLabel,
@@ -385,7 +387,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       {nodes.map((node) => {
         const indices = nodeIndices.get(node.id) || [1];
         const isBody = node.type === 'body';
-        const prefix = isBody ? '' : getOutlinePrefix(outlineStyle, node.depth, indices);
+        const prefix = isBody ? '' : (
+          outlineStyle === 'mixed' 
+            ? getOutlinePrefixCustom(node.depth, indices, mixedConfig)
+            : getOutlinePrefix(outlineStyle, node.depth, indices)
+        );
 
         // Body nodes are logically children, but should visually align under the parent's text.
         // Also add visualIndent for Block Tab feature

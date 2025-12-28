@@ -9,6 +9,42 @@ export type OutlineStyle =
   | 'legal'          // 1.1, 1.1.1
   | 'mixed';         // 1. a. i.
 
+// Individual format types for customization
+export type FormatType = 
+  | 'numeric'        // 1.
+  | 'numeric-paren'  // (1)
+  | 'alpha'          // A.
+  | 'alpha-paren'    // (A)
+  | 'alpha-lower'    // a.
+  | 'alpha-lower-paren' // (a)
+  | 'roman'          // I.
+  | 'roman-paren'    // (I)
+  | 'roman-lower'    // i.
+  | 'roman-lower-paren' // (i)
+  | 'bullet';        // •
+
+export interface MixedStyleConfig {
+  levels: [FormatType, FormatType, FormatType, FormatType, FormatType, FormatType];
+}
+
+export const DEFAULT_MIXED_CONFIG: MixedStyleConfig = {
+  levels: ['numeric', 'alpha-lower', 'roman-lower', 'numeric-paren', 'alpha-lower-paren', 'roman-lower-paren']
+};
+
+export const FORMAT_OPTIONS: { id: FormatType; label: string; example: string }[] = [
+  { id: 'numeric', label: '1.', example: '1.' },
+  { id: 'numeric-paren', label: '(1)', example: '(1)' },
+  { id: 'alpha', label: 'A.', example: 'A.' },
+  { id: 'alpha-paren', label: '(A)', example: '(A)' },
+  { id: 'alpha-lower', label: 'a.', example: 'a.' },
+  { id: 'alpha-lower-paren', label: '(a)', example: '(a)' },
+  { id: 'roman', label: 'I.', example: 'I.' },
+  { id: 'roman-paren', label: '(I)', example: '(I)' },
+  { id: 'roman-lower', label: 'i.', example: 'i.' },
+  { id: 'roman-lower-paren', label: '(i)', example: '(i)' },
+  { id: 'bullet', label: '•', example: '•' },
+];
+
 export interface OutlineStyleConfig {
   id: OutlineStyle;
   name: string;
@@ -141,7 +177,7 @@ export function getOutlinePrefix(
       return indices.slice(0, depth + 1).join('.') + (depth > 0 ? '' : '.');
     
     case 'mixed': {
-      // Cycle through: 1. a. i. (1) (a) (i)
+      // Use default pattern - for custom, use getOutlinePrefixCustom
       const patterns = [
         () => `${currentIndex}.`,
         () => `${toAlpha(currentIndex).toLowerCase()}.`,
@@ -155,5 +191,47 @@ export function getOutlinePrefix(
     
     default:
       return '';
+  }
+}
+
+// Get prefix using custom mixed config
+export function getOutlinePrefixCustom(
+  depth: number,
+  indices: number[],
+  config: MixedStyleConfig
+): string {
+  const currentIndex = indices[depth] || 1;
+  const format = config.levels[depth % config.levels.length];
+  
+  return formatIndex(currentIndex, format);
+}
+
+// Format a single index based on format type
+function formatIndex(index: number, format: FormatType): string {
+  switch (format) {
+    case 'numeric':
+      return `${index}.`;
+    case 'numeric-paren':
+      return `(${index})`;
+    case 'alpha':
+      return `${toAlpha(index)}.`;
+    case 'alpha-paren':
+      return `(${toAlpha(index)})`;
+    case 'alpha-lower':
+      return `${toAlpha(index).toLowerCase()}.`;
+    case 'alpha-lower-paren':
+      return `(${toAlpha(index).toLowerCase()})`;
+    case 'roman':
+      return `${toRoman(index)}.`;
+    case 'roman-paren':
+      return `(${toRoman(index)})`;
+    case 'roman-lower':
+      return `${toRoman(index).toLowerCase()}.`;
+    case 'roman-lower-paren':
+      return `(${toRoman(index).toLowerCase()})`;
+    case 'bullet':
+      return '•';
+    default:
+      return `${index}.`;
   }
 }

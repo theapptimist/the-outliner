@@ -21,7 +21,7 @@ import {
 import { SimpleOutlineView } from './SimpleOutlineView';
 import { OutlineStylePicker } from './OutlineStylePicker';
 import { OutlineHelp } from './OutlineHelp';
-import { OutlineStyle } from '@/lib/outlineStyles';
+import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { Trash2, Minimize2, Maximize2, ExternalLink, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
+  const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(DEFAULT_MIXED_CONFIG);
   const [autoDescend, setAutoDescend] = useState(false);
 
   const flatNodes = flattenTree(tree);
@@ -240,7 +241,12 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           <OutlineHelp className="h-5 w-5 p-0" />
         </div>
         <div className="flex items-center gap-1">
-          <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
+          <OutlineStylePicker 
+            value={outlineStyle} 
+            onChange={setOutlineStyle}
+            mixedConfig={mixedConfig}
+            onMixedConfigChange={setMixedConfig}
+          />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -302,6 +308,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             nodes={flatNodes}
             selectedId={selectedId}
             outlineStyle={outlineStyle}
+            mixedConfig={mixedConfig}
             onSelect={setSelectedId}
             onToggleCollapse={handleToggleCollapse}
             onUpdateLabel={handleUpdateLabel}
