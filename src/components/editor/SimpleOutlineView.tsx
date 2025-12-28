@@ -488,7 +488,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             
             {/* Prefix/numbering - body nodes get empty spacer for alignment */}
             {prefix ? (
-              <span className="text-muted-foreground font-mono text-sm leading-6 min-w-[3rem] flex-shrink-0 text-right pr-1 whitespace-nowrap pt-[3px]">
+              <span className="text-muted-foreground font-mono text-sm leading-6 min-w-[3rem] flex-shrink-0 text-right pr-1 whitespace-nowrap">
                 {prefix}
               </span>
             ) : isBody ? (
@@ -507,13 +507,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 style={{ caretColor: 'hsl(var(--primary))' }}
                 className={cn(
-                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
+                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6 pt-[3px]",
                   levelStyle.underline && editValue && "underline decoration-foreground"
                 )}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="flex-1 text-sm whitespace-pre-wrap">
+              <span className="flex-1 text-sm whitespace-pre-wrap pt-[3px]">
                 <span className={cn(
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
                   levelStyle.underline && node.label && 'underline'
