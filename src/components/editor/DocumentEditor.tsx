@@ -2,14 +2,15 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useState, useCallback, useEffect } from 'react';
-import { EditorToolbar } from './EditorToolbar';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
 import { useDocument } from '@/hooks/useDocument';
+import { useEditorContext } from './EditorContext';
 import './editor-styles.css';
 
 export function DocumentEditor() {
   const { document, addHierarchyBlock, updateContent } = useDocument();
+  const { setEditor, setInsertHierarchyHandler } = useEditorContext();
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = useState({ top: 0, left: 0 });
 
@@ -56,6 +57,12 @@ export function DocumentEditor() {
     },
   });
 
+  // Register editor in context
+  useEffect(() => {
+    setEditor(editor);
+    return () => setEditor(null);
+  }, [editor, setEditor]);
+
   // Close slash menu when clicking outside
   useEffect(() => {
     if (!slashMenuOpen) return;
@@ -80,10 +87,13 @@ export function DocumentEditor() {
     setSlashMenuOpen(false);
   }, [editor, addHierarchyBlock]);
 
+  // Register insert hierarchy handler
+  useEffect(() => {
+    setInsertHierarchyHandler(handleInsertHierarchy);
+  }, [handleInsertHierarchy, setInsertHierarchyHandler]);
+
   return (
     <div className="flex flex-col h-full bg-background">
-      <EditorToolbar editor={editor} onInsertHierarchy={handleInsertHierarchy} />
-      
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto">
           <EditorContent editor={editor} />

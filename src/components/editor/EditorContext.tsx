@@ -1,4 +1,5 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback } from 'react';
+import { Editor } from '@tiptap/react';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 
 interface EditorContextValue {
@@ -6,6 +7,10 @@ interface EditorContextValue {
   mixedConfig: MixedStyleConfig;
   autoDescend: boolean;
   showRevealCodes: boolean;
+  editor: Editor | null;
+  setEditor: (editor: Editor | null) => void;
+  onInsertHierarchy: () => void;
+  setInsertHierarchyHandler: (handler: () => void) => void;
   registerUndoRedo: (
     undo: () => void,
     redo: () => void,
@@ -19,6 +24,10 @@ const EditorContext = createContext<EditorContextValue>({
   mixedConfig: DEFAULT_MIXED_CONFIG,
   autoDescend: false,
   showRevealCodes: false,
+  editor: null,
+  setEditor: () => {},
+  onInsertHierarchy: () => {},
+  setInsertHierarchyHandler: () => {},
   registerUndoRedo: () => {},
 });
 
@@ -44,6 +53,13 @@ export function EditorProvider({
   showRevealCodes,
   onUndoRedoChange,
 }: EditorProviderProps) {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
+
+  const setInsertHierarchyHandler = useCallback((handler: () => void) => {
+    setInsertHierarchyHandlerState(() => handler);
+  }, []);
+
   const registerUndoRedo = (
     undo: () => void,
     redo: () => void,
@@ -60,6 +76,10 @@ export function EditorProvider({
         mixedConfig,
         autoDescend,
         showRevealCodes,
+        editor,
+        setEditor,
+        onInsertHierarchy: insertHierarchyHandler,
+        setInsertHierarchyHandler,
         registerUndoRedo,
       }}
     >
