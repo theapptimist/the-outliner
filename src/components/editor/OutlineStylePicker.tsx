@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Settings2 } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OutlineStylePickerProps {
@@ -14,16 +14,20 @@ interface OutlineStylePickerProps {
 }
 
 export function OutlineStylePicker({ value, onChange }: OutlineStylePickerProps) {
+  const currentStyle = OUTLINE_STYLES.find(s => s.id === value);
+  const displayText = currentStyle?.example.join('.') || '1.a.i';
+  
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 w-6 p-0"
-          title="Outline style"
+          className="h-6 px-1.5 gap-0.5 text-xs font-mono"
+          title="Outline numbering style"
         >
-          <Settings2 className="h-3 w-3" />
+          <span>{displayText}</span>
+          <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="start">
