@@ -1,5 +1,5 @@
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Link } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
@@ -27,6 +27,34 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
+const MIXED_CONFIG_STORAGE_KEY = 'outline-mixed-config';
+
+// Load mixed config from localStorage
+function loadMixedConfig(): MixedStyleConfig {
+  try {
+    const stored = localStorage.getItem(MIXED_CONFIG_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Validate structure
+      if (parsed?.levels?.length === 6) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load mixed config from localStorage:', e);
+  }
+  return DEFAULT_MIXED_CONFIG;
+}
+
+// Save mixed config to localStorage
+function saveMixedConfig(config: MixedStyleConfig) {
+  try {
+    localStorage.setItem(MIXED_CONFIG_STORAGE_KEY, JSON.stringify(config));
+  } catch (e) {
+    console.warn('Failed to save mixed config to localStorage:', e);
+  }
+}
+
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
 }
@@ -41,8 +69,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
-  const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(DEFAULT_MIXED_CONFIG);
+  const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
   const [autoDescend, setAutoDescend] = useState(false);
+
+  // Save mixed config to localStorage whenever it changes
+  useEffect(() => {
+    saveMixedConfig(mixedConfig);
+  }, [mixedConfig]);
 
   const flatNodes = flattenTree(tree);
 
