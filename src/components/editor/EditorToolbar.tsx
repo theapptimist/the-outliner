@@ -53,7 +53,7 @@ export function EditorToolbar({ editor, onInsertHierarchy }: EditorToolbarProps)
   if (!editor) return null;
 
   return (
-    <div className="flex items-center gap-0.5 p-2 border-b border-border bg-card/50 flex-wrap">
+    <div className="flex items-center justify-start gap-0.5 p-2 border-b border-border bg-card/50 flex-wrap">
       {/* History */}
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
