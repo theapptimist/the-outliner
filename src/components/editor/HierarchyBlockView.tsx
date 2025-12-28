@@ -19,42 +19,12 @@ import {
   getNodeIndex,
 } from '@/lib/nodeOperations';
 import { SimpleOutlineView } from './SimpleOutlineView';
-import { OutlineStylePicker } from './OutlineStylePicker';
-import { OutlineHelp } from './OutlineHelp';
-import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
-import { Trash2, Minimize2, Maximize2, ExternalLink, ArrowDownRight, Undo2, Redo2, Code2 } from 'lucide-react';
 import { RevealCodes } from './RevealCodes';
+import { useEditorContext } from './EditorContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-
-const MIXED_CONFIG_STORAGE_KEY = 'outline-mixed-config';
-
-// Load mixed config from localStorage
-function loadMixedConfig(): MixedStyleConfig {
-  try {
-    const stored = localStorage.getItem(MIXED_CONFIG_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Validate structure
-      if (parsed?.levels?.length === 6) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to load mixed config from localStorage:', e);
-  }
-  return DEFAULT_MIXED_CONFIG;
-}
-
-// Save mixed config to localStorage
-function saveMixedConfig(config: MixedStyleConfig) {
-  try {
-    localStorage.setItem(MIXED_CONFIG_STORAGE_KEY, JSON.stringify(config));
-  } catch (e) {
-    console.warn('Failed to save mixed config to localStorage:', e);
-  }
-}
+import { Trash2, Minimize2, Maximize2, ExternalLink } from 'lucide-react';
 
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
@@ -62,6 +32,9 @@ interface HierarchyBlockViewProps extends NodeViewProps {
 
 export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected }: HierarchyBlockViewProps) {
   const blockId = node.attrs.blockId as string;
+  
+  // Get settings from context
+  const { outlineStyle, mixedConfig, autoDescend, showRevealCodes, registerUndoRedo } = useEditorContext();
   
   // Local hierarchy state for this block - start with one empty node
   const [{ tree: initialTree, firstNodeId }] = useState(() => {
@@ -71,11 +44,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [tree, setTreeState] = useState<HierarchyNode[]>(initialTree);
   const [selectedId, setSelectedId] = useState<string | null>(firstNodeId);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
-  const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
-  const [autoDescend, setAutoDescend] = useState(false);
   const [autoFocusId, setAutoFocusId] = useState<string | null>(firstNodeId);
-  const [showRevealCodes, setShowRevealCodes] = useState(false);
 
   // Undo/Redo history
   const historyRef = useRef<HierarchyNode[][]>([initialTree]);
@@ -129,19 +98,17 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     return false;
   }, []);
 
-  // Save mixed config to localStorage whenever it changes
+  // Register undo/redo with context
   useEffect(() => {
-    saveMixedConfig(mixedConfig);
-  }, [mixedConfig]);
+    const canUndo = historyIndexRef.current > 0;
+    const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+    registerUndoRedo(undo, redo, canUndo, canRedo);
+  }, [undo, redo, registerUndoRedo, tree]);
 
-  // Global keyboard handler (undo/redo + reveal codes)
+  // Global keyboard handler (undo/redo only - reveal codes handled in Editor.tsx)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Alt+F3: Toggle Reveal Codes (WordPerfect style)
-      if (e.altKey && e.key === 'F3') {
-        e.preventDefault();
-        setShowRevealCodes(prev => !prev);
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
@@ -349,56 +316,10 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     <NodeViewWrapper 
       className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
     >
-      {/* Toolbar with help and controls */}
+      {/* Minimal toolbar - main controls are in sidebar */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-border/30 bg-muted/20">
+        <span className="text-xs text-muted-foreground font-medium">Outline</span>
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground font-medium">Outline</span>
-          <OutlineHelp className="h-5 w-5 p-0" />
-        </div>
-        <div className="flex items-center gap-1">
-          <OutlineStylePicker 
-            value={outlineStyle} 
-            onChange={setOutlineStyle}
-            mixedConfig={mixedConfig}
-            onMixedConfigChange={setMixedConfig}
-          />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={autoDescend ? "secondary" : "ghost"}
-                size="sm"
-                className={cn(
-                  "h-6 w-6 p-0",
-                  autoDescend && "bg-primary/10 text-primary hover:bg-primary/20"
-                )}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setAutoDescend(!autoDescend)}
-              >
-                <ArrowDownRight className="h-3 w-3" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Auto-Descend: Enter creates child (1 → a → i)</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "h-6 w-6 p-0",
-                  showRevealCodes && "bg-secondary text-secondary-foreground"
-                )}
-                onClick={() => setShowRevealCodes(!showRevealCodes)}
-              >
-                <Code2 className="h-3 w-3" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Reveal Codes (Alt+F3)</p>
-            </TooltipContent>
-          </Tooltip>
           <Button
             variant="ghost"
             size="sm"
