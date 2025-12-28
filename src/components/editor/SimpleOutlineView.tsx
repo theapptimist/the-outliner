@@ -503,7 +503,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, node)}
                 onBlur={() => handleEndEdit(node.id)}
-                placeholder="Type here..."
+                placeholder=""
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 style={{ caretColor: 'hsl(var(--primary))' }}
                 className={cn(
@@ -518,7 +518,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
                   levelStyle.underline && node.label && 'underline'
                 )}>
-                  {node.label || 'Type here...'}
+                  {node.label || ''}
                 </span>
                 {levelStyle.suffix && node.label && (
                   <span className="text-foreground">{levelStyle.suffix}</span>
