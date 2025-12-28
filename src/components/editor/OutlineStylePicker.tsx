@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronDown, Settings2, Underline } from 'lucide-react';
+import { ChevronDown, Settings2, Underline, ChevronUp, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -76,7 +76,15 @@ export function OutlineStylePicker({
     onMixedConfigChange(preset);
   };
 
-  const levelLabels = ['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
+  const moveLevel = (index: number, direction: 'up' | 'down') => {
+    if (!onMixedConfigChange) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= mixedConfig.levels.length) return;
+    
+    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
+    [newLevels[index], newLevels[targetIndex]] = [newLevels[targetIndex], newLevels[index]];
+    onMixedConfigChange({ levels: newLevels });
+  };
   
   return (
     <Popover>
@@ -177,17 +185,38 @@ export function OutlineStylePicker({
               </Button>
             </div>
             
-            <div className="grid gap-2">
-              {levelLabels.map((label, index) => {
-                const level = mixedConfig.levels[index];
+            <div className="grid gap-1.5">
+              {mixedConfig.levels.map((level, index) => {
                 return (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-12">{label}</span>
+                  <div key={index} className="flex items-center gap-1">
+                    {/* Reorder buttons */}
+                    <div className="flex flex-col">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-3 w-5 p-0"
+                        onClick={() => moveLevel(index, 'up')}
+                        disabled={index === 0}
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-3 w-5 p-0"
+                        onClick={() => moveLevel(index, 'down')}
+                        disabled={index === mixedConfig.levels.length - 1}
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    
+                    <span className="text-xs text-muted-foreground w-8">L{index + 1}</span>
                     <Select
                       value={level.format}
                       onValueChange={(val) => handleLevelChange(index, val as FormatType)}
                     >
-                      <SelectTrigger className="h-7 text-xs w-20">
+                      <SelectTrigger className="h-7 text-xs w-16">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -199,7 +228,7 @@ export function OutlineStylePicker({
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                       <Checkbox
                         id={`underline-${index}`}
                         checked={level.underline || false}
@@ -214,7 +243,7 @@ export function OutlineStylePicker({
                       value={level.suffix || ''}
                       onChange={(e) => handleSuffixChange(index, e.target.value)}
                       placeholder=":"
-                      className="h-7 w-10 text-xs text-center px-1"
+                      className="h-7 w-8 text-xs text-center px-0.5"
                       maxLength={2}
                     />
                   </div>
