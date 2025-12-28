@@ -8,6 +8,8 @@ interface SimpleOutlineViewProps {
   selectedId: string | null;
   outlineStyle: OutlineStyle;
   mixedConfig?: MixedStyleConfig;
+  autoFocusId?: string | null;
+  onAutoFocusHandled?: () => void;
   onSelect: (id: string) => void;
   onToggleCollapse: (id: string) => void;
   onUpdateLabel: (id: string, label: string) => void;
@@ -35,6 +37,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     selectedId,
     outlineStyle,
     mixedConfig = DEFAULT_MIXED_CONFIG,
+    autoFocusId,
+    onAutoFocusHandled,
     onSelect,
     onToggleCollapse,
     onUpdateLabel,
@@ -118,6 +122,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     setEditingId(id);
     setEditValue(currentLabel);
   }, []);
+
+  // Auto-focus on initial mount if autoFocusId is provided
+  useEffect(() => {
+    if (autoFocusId && nodes.length > 0) {
+      const node = nodes.find(n => n.id === autoFocusId);
+      if (node) {
+        handleStartEdit(autoFocusId, node.label);
+        onAutoFocusHandled?.();
+      }
+    }
+  }, [autoFocusId, nodes, handleStartEdit, onAutoFocusHandled]);
 
   // When a new node is added after pressing Enter, auto-focus it
   useEffect(() => {

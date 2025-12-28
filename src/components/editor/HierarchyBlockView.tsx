@@ -63,14 +63,17 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const blockId = node.attrs.blockId as string;
   
   // Local hierarchy state for this block - start with one empty node
-  const [tree, setTree] = useState<HierarchyNode[]>(() => [
-    createNode(null, 'default', '')
-  ]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [{ tree: initialTree, firstNodeId }] = useState(() => {
+    const node = createNode(null, 'default', '');
+    return { tree: [node], firstNodeId: node.id };
+  });
+  const [tree, setTree] = useState<HierarchyNode[]>(initialTree);
+  const [selectedId, setSelectedId] = useState<string | null>(firstNodeId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
   const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
   const [autoDescend, setAutoDescend] = useState(false);
+  const [autoFocusId, setAutoFocusId] = useState<string | null>(firstNodeId);
 
   // Save mixed config to localStorage whenever it changes
   useEffect(() => {
@@ -342,6 +345,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             selectedId={selectedId}
             outlineStyle={outlineStyle}
             mixedConfig={mixedConfig}
+            autoFocusId={autoFocusId}
+            onAutoFocusHandled={() => setAutoFocusId(null)}
             onSelect={setSelectedId}
             onToggleCollapse={handleToggleCollapse}
             onUpdateLabel={handleUpdateLabel}
