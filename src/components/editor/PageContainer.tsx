@@ -15,6 +15,10 @@ const PAGE_WIDTH = 816;
 const PAGE_HEIGHT = 1056;
 const SCALE = 0.85; // Scale factor for screen display
 
+const SCALED_WIDTH = Math.round(PAGE_WIDTH * SCALE);
+const SCALED_HEIGHT = Math.round(PAGE_HEIGHT * SCALE);
+const SCALED_PADDING = Math.round(96 * SCALE); // Standard 1" margin, scaled
+
 export function PageContainer({ 
   children, 
   pageNumber = 1, 
@@ -33,10 +37,10 @@ export function PageContainer({
           className
         )}
         style={{
-          width: `${PAGE_WIDTH * SCALE}px`,
-          minHeight: `${PAGE_HEIGHT * SCALE}px`,
-          // Standard margins: 1 inch = 96px, scaled
-          padding: `${96 * SCALE}px`,
+          width: `${SCALED_WIDTH}px`,
+          minHeight: `${SCALED_HEIGHT}px`,
+          // Standard margins: 1 inch = 96px, scaled (rounded to avoid sub-pixel layout shifts)
+          padding: `${SCALED_PADDING}px`,
         }}
       >
         {/* Content area */}
