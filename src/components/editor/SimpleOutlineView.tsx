@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from 'react';
 import { FlatNode, DropPosition } from '@/types/node';
-import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
+import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfig, DEFAULT_MIXED_CONFIG, getLevelStyle } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
 
 interface SimpleOutlineViewProps {
@@ -392,6 +392,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             ? getOutlinePrefixCustom(node.depth, indices, mixedConfig)
             : getOutlinePrefix(outlineStyle, node.depth, indices)
         );
+        
+        // Get level styling for mixed mode
+        const levelStyle = outlineStyle === 'mixed' && !isBody
+          ? getLevelStyle(node.depth, mixedConfig)
+          : { underline: false, suffix: '' };
 
         // Body nodes are logically children, but should visually align under the parent's text.
         // Also add visualIndent for Block Tab feature
@@ -434,15 +439,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onBlur={() => handleEndEdit(node.id)}
                 placeholder="Type here..."
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
-                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6"
+                className={cn(
+                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
+                  levelStyle.underline && "underline"
+                )}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <span className={cn(
                 'flex-1 text-sm whitespace-pre-wrap',
-                node.label ? 'text-foreground' : 'text-muted-foreground/50'
+                node.label ? 'text-foreground' : 'text-muted-foreground/50',
+                levelStyle.underline && 'underline'
               )}>
-                {node.label || 'Type here...'}
+                {node.label || 'Type here...'}{levelStyle.suffix && node.label ? levelStyle.suffix : ''}
               </span>
             )}
           </div>
