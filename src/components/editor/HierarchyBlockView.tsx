@@ -22,7 +22,8 @@ import { SimpleOutlineView } from './SimpleOutlineView';
 import { OutlineStylePicker } from './OutlineStylePicker';
 import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
-import { Trash2, Minimize2, Maximize2, ExternalLink, ArrowDownRight, Undo2, Redo2 } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink, ArrowDownRight, Undo2, Redo2, Code2 } from 'lucide-react';
+import { RevealCodes } from './RevealCodes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -74,6 +75,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
   const [autoDescend, setAutoDescend] = useState(false);
   const [autoFocusId, setAutoFocusId] = useState<string | null>(firstNodeId);
+  const [showRevealCodes, setShowRevealCodes] = useState(false);
 
   // Undo/Redo history
   const historyRef = useRef<HierarchyNode[][]>([initialTree]);
@@ -132,10 +134,14 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     saveMixedConfig(mixedConfig);
   }, [mixedConfig]);
 
-  // Global undo/redo keyboard handler
+  // Global keyboard handler (undo/redo + reveal codes)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      // Alt+F3: Toggle Reveal Codes (WordPerfect style)
+      if (e.altKey && e.key === 'F3') {
+        e.preventDefault();
+        setShowRevealCodes(prev => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
@@ -375,6 +381,24 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               <p>Auto-Descend: Enter creates child (1 → a → i)</p>
             </TooltipContent>
           </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-6 w-6 p-0",
+                  showRevealCodes && "bg-secondary text-secondary-foreground"
+                )}
+                onClick={() => setShowRevealCodes(!showRevealCodes)}
+              >
+                <Code2 className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Reveal Codes (Alt+F3)</p>
+            </TooltipContent>
+          </Tooltip>
           <Button
             variant="ghost"
             size="sm"
@@ -496,6 +520,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         >
           ▸ {flatNodes.length} items
         </button>
+      )}
+      
+      {/* Reveal Codes panel - WordPerfect style */}
+      {showRevealCodes && !isCollapsed && (
+        <RevealCodes nodes={flatNodes} selectedId={selectedId} />
       )}
     </NodeViewWrapper>
   );
