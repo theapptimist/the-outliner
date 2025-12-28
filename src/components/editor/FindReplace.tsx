@@ -22,34 +22,34 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
   const [matches, setMatches] = useState<{ from: number; to: number }[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // Find all matches in the document using simple text position mapping
+  // Find all matches in the document (string search per text node)
   const findMatches = useCallback(() => {
-    if (!editor || !searchTerm.trim()) {
+    const needleRaw = searchTerm.trim();
+    if (!editor || !needleRaw) {
       setMatches([]);
       return;
     }
 
     const doc = editor.state.doc;
-    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const needle = caseSensitive ? needleRaw : needleRaw.toLowerCase();
     const foundMatches: { from: number; to: number }[] = [];
 
-    // Build a map of text positions
-    const textPositions: { pos: number; text: string }[] = [];
     doc.descendants((node, pos) => {
-      if (node.isText && node.text) {
-        textPositions.push({ pos, text: node.text });
-      }
-    });
+      if (!node.isText || !node.text) return;
 
-    // Search in each text node
-    textPositions.forEach(({ pos, text }) => {
-      const regex = new RegExp(escapedTerm, caseSensitive ? 'g' : 'gi');
-      let match;
-      while ((match = regex.exec(text)) !== null) {
+      const haystack = caseSensitive ? node.text : node.text.toLowerCase();
+      let idx = 0;
+
+      while (true) {
+        const at = haystack.indexOf(needle, idx);
+        if (at === -1) break;
+
         foundMatches.push({
-          from: pos + match.index,
-          to: pos + match.index + match[0].length,
+          from: pos + at,
+          to: pos + at + needleRaw.length,
         });
+
+        idx = at + Math.max(1, needleRaw.length);
       }
     });
 
