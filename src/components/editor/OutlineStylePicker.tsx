@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { OutlineStyle, OUTLINE_STYLES, MixedStyleConfig, DEFAULT_MIXED_CONFIG, FORMAT_OPTIONS, FormatType } from '@/lib/outlineStyles';
+import { OutlineStyle, OUTLINE_STYLES, MixedStyleConfig, DEFAULT_MIXED_CONFIG, FORMAT_OPTIONS, FormatType, LevelStyle, UNDERLINED_HEADING_CONFIG } from '@/lib/outlineStyles';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -13,8 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronDown, Settings2 } from 'lucide-react';
+import { ChevronDown, Settings2, Underline } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 
 interface OutlineStylePickerProps {
   value: OutlineStyle;
@@ -33,10 +35,14 @@ export function OutlineStylePicker({
   
   const currentStyle = OUTLINE_STYLES.find(s => s.id === value);
   
+  // Helper to get format from LevelStyle
+  const getFormat = (level: LevelStyle): FormatType => level.format;
+  
   // Build display text from mixed config if using mixed style
   const getDisplayText = () => {
     if (value === 'mixed' && mixedConfig) {
-      return mixedConfig.levels.slice(0, 3).map(format => {
+      return mixedConfig.levels.slice(0, 3).map(level => {
+        const format = getFormat(level);
         const opt = FORMAT_OPTIONS.find(f => f.id === format);
         return opt?.example || '?';
       }).join(' ');
@@ -47,8 +53,27 @@ export function OutlineStylePicker({
   const handleLevelChange = (levelIndex: number, format: FormatType) => {
     if (!onMixedConfigChange) return;
     const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
-    newLevels[levelIndex] = format;
+    newLevels[levelIndex] = { ...newLevels[levelIndex], format };
     onMixedConfigChange({ levels: newLevels });
+  };
+
+  const handleUnderlineChange = (levelIndex: number, underline: boolean) => {
+    if (!onMixedConfigChange) return;
+    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
+    newLevels[levelIndex] = { ...newLevels[levelIndex], underline };
+    onMixedConfigChange({ levels: newLevels });
+  };
+
+  const handleSuffixChange = (levelIndex: number, suffix: string) => {
+    if (!onMixedConfigChange) return;
+    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
+    newLevels[levelIndex] = { ...newLevels[levelIndex], suffix };
+    onMixedConfigChange({ levels: newLevels });
+  };
+
+  const applyPreset = (preset: MixedStyleConfig) => {
+    if (!onMixedConfigChange) return;
+    onMixedConfigChange(preset);
   };
 
   const levelLabels = ['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
@@ -66,7 +91,7 @@ export function OutlineStylePicker({
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-2" align="start">
+      <PopoverContent className="w-80 p-2" align="start">
         {!showCustomize ? (
           <>
             <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
@@ -130,34 +155,80 @@ export function OutlineStylePicker({
                 ← Back
               </Button>
             </div>
+            
+            {/* Presets */}
+            <div className="flex gap-1 mb-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-xs flex-1"
+                onClick={() => applyPreset(DEFAULT_MIXED_CONFIG)}
+              >
+                Standard
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-xs flex-1"
+                onClick={() => applyPreset(UNDERLINED_HEADING_CONFIG)}
+              >
+                <Underline className="h-3 w-3 mr-1" />
+                Heading:
+              </Button>
+            </div>
+            
             <div className="grid gap-2">
-              {levelLabels.map((label, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground w-14">{label}</span>
-                  <Select
-                    value={mixedConfig.levels[index]}
-                    onValueChange={(val) => handleLevelChange(index, val as FormatType)}
-                  >
-                    <SelectTrigger className="h-7 text-xs flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FORMAT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.id} className="text-xs">
-                          <span className="font-mono mr-2">{opt.example}</span>
-                          <span className="text-muted-foreground">{opt.label}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
+              {levelLabels.map((label, index) => {
+                const level = mixedConfig.levels[index];
+                return (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-12">{label}</span>
+                    <Select
+                      value={level.format}
+                      onValueChange={(val) => handleLevelChange(index, val as FormatType)}
+                    >
+                      <SelectTrigger className="h-7 text-xs w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FORMAT_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.id} className="text-xs">
+                            <span className="font-mono mr-2">{opt.example}</span>
+                            <span className="text-muted-foreground">{opt.label}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1">
+                      <Checkbox
+                        id={`underline-${index}`}
+                        checked={level.underline || false}
+                        onCheckedChange={(checked) => handleUnderlineChange(index, !!checked)}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor={`underline-${index}`} className="cursor-pointer">
+                        <Underline className="h-3 w-3 text-muted-foreground" />
+                      </label>
+                    </div>
+                    <Input
+                      value={level.suffix || ''}
+                      onChange={(e) => handleSuffixChange(index, e.target.value)}
+                      placeholder=":"
+                      className="h-7 w-10 text-xs text-center px-1"
+                      maxLength={2}
+                    />
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-3 pt-2 border-t border-border/50">
               <div className="text-xs text-muted-foreground">
-                Preview: {mixedConfig.levels.map((f, i) => {
-                  const opt = FORMAT_OPTIONS.find(o => o.id === f);
-                  return opt?.example || '?';
+                Preview: {mixedConfig.levels.map((level, i) => {
+                  const opt = FORMAT_OPTIONS.find(o => o.id === level.format);
+                  let preview = opt?.example || '?';
+                  if (level.underline) preview = `̲${preview}`;
+                  if (level.suffix) preview = `${preview}${level.suffix}`;
+                  return preview;
                 }).join(' → ')}
               </div>
             </div>

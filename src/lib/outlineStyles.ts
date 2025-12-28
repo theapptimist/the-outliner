@@ -23,12 +23,37 @@ export type FormatType =
   | 'roman-lower-paren' // (i)
   | 'bullet';        // •
 
+export interface LevelStyle {
+  format: FormatType;
+  underline?: boolean;
+  suffix?: string; // e.g., ":" to add after the text
+}
+
 export interface MixedStyleConfig {
-  levels: [FormatType, FormatType, FormatType, FormatType, FormatType, FormatType];
+  levels: [LevelStyle, LevelStyle, LevelStyle, LevelStyle, LevelStyle, LevelStyle];
 }
 
 export const DEFAULT_MIXED_CONFIG: MixedStyleConfig = {
-  levels: ['numeric', 'alpha-lower', 'roman-lower', 'numeric-paren', 'alpha-lower-paren', 'roman-lower-paren']
+  levels: [
+    { format: 'numeric' },
+    { format: 'alpha-lower' },
+    { format: 'roman-lower' },
+    { format: 'numeric-paren' },
+    { format: 'alpha-lower-paren' },
+    { format: 'roman-lower-paren' }
+  ]
+};
+
+// Preset with underlined level 1 followed by colon
+export const UNDERLINED_HEADING_CONFIG: MixedStyleConfig = {
+  levels: [
+    { format: 'numeric', underline: true, suffix: ':' },
+    { format: 'alpha-lower' },
+    { format: 'roman-lower' },
+    { format: 'numeric-paren' },
+    { format: 'alpha-lower-paren' },
+    { format: 'roman-lower-paren' }
+  ]
 };
 
 export const FORMAT_OPTIONS: { id: FormatType; label: string; example: string }[] = [
@@ -201,9 +226,25 @@ export function getOutlinePrefixCustom(
   config: MixedStyleConfig
 ): string {
   const currentIndex = indices[depth] || 1;
-  const format = config.levels[depth % config.levels.length];
+  const levelStyle = config.levels[depth % config.levels.length];
+  const format = typeof levelStyle === 'string' ? levelStyle : levelStyle.format;
   
   return formatIndex(currentIndex, format);
+}
+
+// Get level style info (underline, suffix) for rendering
+export function getLevelStyle(
+  depth: number,
+  config: MixedStyleConfig
+): { underline: boolean; suffix: string } {
+  const levelStyle = config.levels[depth % config.levels.length];
+  if (typeof levelStyle === 'string') {
+    return { underline: false, suffix: '' };
+  }
+  return {
+    underline: levelStyle.underline || false,
+    suffix: levelStyle.suffix || ''
+  };
 }
 
 // Format a single index based on format type
