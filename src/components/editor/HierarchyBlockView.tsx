@@ -5,7 +5,8 @@ import {
   createNode, 
   findNode, 
   insertNode, 
-  deleteNode, 
+  deleteNode,
+  deleteNodeAndPromoteChildren, 
   updateNode, 
   moveNode, 
   indentNode, 
@@ -94,7 +95,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       setSelectedId(null);
     }
     
-    setTree(prev => deleteNode(prev, nodeId));
+    setTree(prev => deleteNodeAndPromoteChildren(prev, nodeId));
   }, [flatNodes]);
 
   const handleMove = useCallback((nodeId: string, targetId: string, position: DropPosition) => {

@@ -115,6 +115,34 @@ export function deleteNode(root: HierarchyNode[], nodeId: string): HierarchyNode
     }));
 }
 
+// Deletes a node but promotes its children to take its place
+export function deleteNodeAndPromoteChildren(root: HierarchyNode[], nodeId: string): HierarchyNode[] {
+  const processNodes = (nodes: HierarchyNode[]): HierarchyNode[] => {
+    const result: HierarchyNode[] = [];
+    
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        // Found the node to delete - promote its children to this level
+        const promotedChildren = node.children.map(child => ({
+          ...child,
+          parentId: node.parentId,
+        }));
+        result.push(...promotedChildren);
+      } else {
+        // Keep this node but process its children recursively
+        result.push({
+          ...node,
+          children: processNodes(node.children),
+        });
+      }
+    }
+    
+    return reorderSiblings(result);
+  };
+  
+  return processNodes(root);
+}
+
 export function updateNode(
   root: HierarchyNode[],
   nodeId: string,
