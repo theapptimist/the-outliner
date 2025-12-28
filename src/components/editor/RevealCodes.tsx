@@ -32,12 +32,6 @@ function getVisualIndentCode(visualIndent: number | undefined): string {
 
 export function RevealCodes({ nodes, selectedId }: RevealCodesProps) {
   const selectedNode = nodes.find(n => n.id === selectedId);
-  const selectedIndex = nodes.findIndex(n => n.id === selectedId);
-  
-  // Show context: 2 nodes before and after selected, or first 5 if nothing selected
-  const contextStart = selectedId ? Math.max(0, selectedIndex - 2) : 0;
-  const contextEnd = selectedId ? Math.min(nodes.length, selectedIndex + 3) : Math.min(5, nodes.length);
-  const visibleNodes = nodes.slice(contextStart, contextEnd);
 
   return (
     <div className="bg-[#1a1a2e] border-t-2 border-[#4a4a6a] font-mono text-xs">
@@ -47,15 +41,15 @@ export function RevealCodes({ nodes, selectedId }: RevealCodesProps) {
         <span className="text-[#6666aa]">Alt+F3 to toggle</span>
       </div>
       
-      {/* Codes display */}
+      {/* Codes display - show ALL nodes */}
       <ScrollArea className="h-24">
         <div className="p-2 space-y-0.5">
-          {visibleNodes.length === 0 ? (
+          {nodes.length === 0 ? (
             <div className="text-[#6666aa] italic">No nodes</div>
           ) : (
-            visibleNodes.map((node, idx) => {
+            nodes.map((node, idx) => {
               const isSelected = node.id === selectedId;
-              const globalIdx = contextStart + idx;
+              
               
               return (
                 <div 
@@ -67,7 +61,7 @@ export function RevealCodes({ nodes, selectedId }: RevealCodesProps) {
                 >
                   {/* Line number */}
                   <span className="text-[#4a4a6a] w-6 text-right flex-shrink-0">
-                    {globalIdx + 1}:
+                    {idx + 1}:
                   </span>
                   
                   {/* Codes */}
