@@ -456,8 +456,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onBlur={() => handleEndEdit(node.id)}
                 placeholder="Type here..."
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
+                style={{ caretColor: 'hsl(var(--primary))' }}
                 className={cn(
-                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6 caret-foreground",
+                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
                   levelStyle.underline && editValue && "underline decoration-foreground"
                 )}
                 onClick={(e) => e.stopPropagation()}
