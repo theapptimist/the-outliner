@@ -333,26 +333,23 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             void result;
           }
           break;
-        case ']':
-          // Ctrl+]: Visual indent (Block Tab) for body nodes
-          if ((e.ctrlKey || e.metaKey) && selectedId) {
-            const node = nodes.find(n => n.id === selectedId);
-            if (node?.type === 'body' && onVisualIndent) {
-              e.preventDefault();
-              onVisualIndent(selectedId, 1);
-            }
+      }
+      
+      // Handle Ctrl+] and Ctrl+[ for visual indent (using e.code for reliability)
+      if ((e.ctrlKey || e.metaKey) && selectedId) {
+        if (e.code === 'BracketRight' || e.key === ']') {
+          const node = nodes.find(n => n.id === selectedId);
+          if (node?.type === 'body' && onVisualIndent) {
+            e.preventDefault();
+            onVisualIndent(selectedId, 1);
           }
-          break;
-        case '[':
-          // Ctrl+[: Visual outdent (Block Tab) for body nodes
-          if ((e.ctrlKey || e.metaKey) && selectedId) {
-            const node = nodes.find(n => n.id === selectedId);
-            if (node?.type === 'body' && onVisualIndent) {
-              e.preventDefault();
-              onVisualIndent(selectedId, -1);
-            }
+        } else if (e.code === 'BracketLeft' || e.key === '[') {
+          const node = nodes.find(n => n.id === selectedId);
+          if (node?.type === 'body' && onVisualIndent) {
+            e.preventDefault();
+            onVisualIndent(selectedId, -1);
           }
-          break;
+        }
       }
     };
 
