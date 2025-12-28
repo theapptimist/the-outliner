@@ -63,21 +63,31 @@ export function EditorSidebar({
   return (
     <div 
       className={cn(
-        "flex flex-col border-r border-border bg-card/50 transition-all duration-200",
+        "flex flex-col border-r border-border/30 transition-all duration-300 relative overflow-hidden",
         collapsed ? "w-12" : "w-56"
       )}
     >
+      {/* Gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-accent/5 to-success/5 dark:from-primary/10 dark:via-accent/8 dark:to-success/8" />
+      <div className="absolute inset-0 bg-card/80 backdrop-blur-sm" />
+      
+      {/* Decorative accent line */}
+      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary via-accent to-success opacity-60" />
+
       {/* Header with collapse toggle */}
-      <div className="flex items-center justify-between p-2 border-b border-border/50">
+      <div className="relative flex items-center justify-between p-2 border-b border-border/30">
         {!collapsed && (
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent uppercase tracking-wider">
             Tools
           </span>
         )}
         <Button
           variant="ghost"
           size="sm"
-          className={cn("h-7 w-7 p-0", collapsed && "mx-auto")}
+          className={cn(
+            "h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary transition-colors",
+            collapsed && "mx-auto"
+          )}
           onClick={() => setCollapsed(!collapsed)}
         >
           {collapsed ? (
@@ -89,7 +99,7 @@ export function EditorSidebar({
       </div>
 
       {/* Tools section */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="relative flex-1 overflow-y-auto p-2 space-y-1">
         {/* Undo/Redo */}
         <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}>
           <Tooltip>
@@ -97,7 +107,7 @@ export function EditorSidebar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 hover:bg-primary/15 hover:text-primary transition-colors"
                 onClick={onUndo}
                 disabled={!canUndo}
               >
@@ -113,7 +123,7 @@ export function EditorSidebar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 hover:bg-primary/15 hover:text-primary transition-colors"
                 onClick={onRedo}
                 disabled={!canRedo}
               >
@@ -133,8 +143,8 @@ export function EditorSidebar({
           <div className="flex justify-center">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Layers className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-accent/15 hover:text-accent transition-colors">
+                  <Layers className="h-4 w-4 text-accent" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
@@ -144,7 +154,7 @@ export function EditorSidebar({
           </div>
         ) : (
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider px-1">
+            <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
               Style
             </span>
             <OutlineStylePicker
@@ -161,7 +171,7 @@ export function EditorSidebar({
         {/* Toggle buttons */}
         <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
           {!collapsed && (
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider px-1">
+            <span className="text-[10px] font-medium text-success uppercase tracking-wider px-1">
               Options
             </span>
           )}
@@ -174,11 +184,12 @@ export function EditorSidebar({
                 size="sm"
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  autoDescend && "bg-primary/10 text-primary hover:bg-primary/20"
+                  "hover:bg-success/15 transition-colors",
+                  autoDescend && "bg-success/15 text-success hover:bg-success/25 border border-success/30"
                 )}
                 onClick={() => onAutoDescendChange(!autoDescend)}
               >
-                <ArrowDownRight className="h-4 w-4" />
+                <ArrowDownRight className={cn("h-4 w-4", autoDescend && "text-success")} />
                 {!collapsed && <span className="ml-2 text-xs">Auto-Descend</span>}
               </Button>
             </TooltipTrigger>
@@ -195,11 +206,12 @@ export function EditorSidebar({
                 size="sm"
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  showRevealCodes && "bg-secondary text-secondary-foreground"
+                  "hover:bg-accent/15 transition-colors",
+                  showRevealCodes && "bg-accent/15 text-accent hover:bg-accent/25 border border-accent/30"
                 )}
                 onClick={() => onShowRevealCodesChange(!showRevealCodes)}
               >
-                <Code2 className="h-4 w-4" />
+                <Code2 className={cn("h-4 w-4", showRevealCodes && "text-accent")} />
                 {!collapsed && <span className="ml-2 text-xs">Reveal Codes</span>}
               </Button>
             </TooltipTrigger>
@@ -216,11 +228,12 @@ export function EditorSidebar({
               variant="ghost"
               size="sm"
               className={cn(
-                collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2"
+                collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                "hover:bg-warning/15 transition-colors"
               )}
               onClick={() => setIsDark(!isDark)}
             >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDark ? <Sun className="h-4 w-4 text-warning" /> : <Moon className="h-4 w-4 text-primary" />}
               {!collapsed && <span className="ml-2 text-xs">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
             </Button>
           </TooltipTrigger>
@@ -234,14 +247,14 @@ export function EditorSidebar({
         {/* Help */}
         <div className={cn(collapsed && "flex justify-center")}>
           {collapsed ? (
-            <OutlineHelp className="h-8 w-8 p-0" />
+            <OutlineHelp className="h-8 w-8 p-0 hover:bg-primary/15 hover:text-primary transition-colors" />
           ) : (
             <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider px-1">
+              <span className="text-[10px] font-medium text-primary uppercase tracking-wider px-1">
                 Help
               </span>
               <div className="flex items-center gap-1">
-                <OutlineHelp className="h-8 w-8 p-0" />
+                <OutlineHelp className="h-8 w-8 p-0 hover:bg-primary/15 hover:text-primary transition-colors" />
                 <span className="text-xs text-muted-foreground">Shortcuts</span>
               </div>
             </div>
@@ -251,9 +264,9 @@ export function EditorSidebar({
 
       {/* Footer */}
       {!collapsed && (
-        <div className="p-2 border-t border-border/50">
+        <div className="relative p-2 border-t border-border/30">
           <p className="text-[10px] text-muted-foreground text-center">
-            Press ? for shortcuts
+            Press <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">?</kbd> for shortcuts
           </p>
         </div>
       )}
