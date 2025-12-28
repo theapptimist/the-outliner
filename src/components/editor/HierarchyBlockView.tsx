@@ -21,7 +21,7 @@ import { SimpleOutlineView } from './SimpleOutlineView';
 import { OutlineStylePicker } from './OutlineStylePicker';
 import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle } from '@/lib/outlineStyles';
-import { Trash2, Minimize2, Maximize2, ExternalLink } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -40,6 +40,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
+  const [autoDescend, setAutoDescend] = useState(false);
 
   const flatNodes = flattenTree(tree);
 
@@ -240,6 +241,19 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         <div className="flex items-center gap-1">
           <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
           <Button
+            variant={autoDescend ? "secondary" : "ghost"}
+            size="sm"
+            className={cn(
+              "h-6 px-1.5 gap-1",
+              autoDescend && "bg-primary/10 text-primary hover:bg-primary/20"
+            )}
+            onClick={() => setAutoDescend(!autoDescend)}
+            title="Auto-Descend Mode: Enter creates child nodes (1 → a → i)"
+          >
+            <ArrowDownRight className="h-3 w-3" />
+            <span className="text-[10px]">Auto</span>
+          </Button>
+          <Button
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0"
@@ -344,6 +358,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onNavigateUp={navigateUp}
             onNavigateDown={navigateDown}
             onMergeIntoParent={handleMergeIntoParent}
+            autoDescend={autoDescend}
           />
         </div>
       )}
