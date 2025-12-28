@@ -9,6 +9,18 @@ import {
   Redo2,
   Sun,
   Moon,
+  Bold,
+  Italic,
+  Strikethrough,
+  Code,
+  Heading1,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  Quote,
+  Minus,
+  GitBranch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -16,6 +28,7 @@ import { Separator } from '@/components/ui/separator';
 import { OutlineStylePicker } from './OutlineStylePicker';
 import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
+import { useEditorContext } from './EditorContext';
 import { cn } from '@/lib/utils';
 
 interface EditorSidebarProps {
@@ -31,6 +44,51 @@ interface EditorSidebarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+}
+
+interface ToolButtonProps {
+  onClick: () => void;
+  isActive?: boolean;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  label: string;
+  tooltip: string;
+  collapsed: boolean;
+  color?: string;
+}
+
+function ToolButton({ onClick, isActive, disabled, icon, label, tooltip, collapsed, color = "primary" }: ToolButtonProps) {
+  const colorClasses = {
+    primary: "hover:bg-primary/15 hover:text-primary",
+    accent: "hover:bg-accent/15 hover:text-accent",
+    success: "hover:bg-success/15 hover:text-success",
+    warning: "hover:bg-warning/15 hover:text-warning",
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClick}
+          disabled={disabled}
+          className={cn(
+            collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+            "transition-colors",
+            colorClasses[color as keyof typeof colorClasses],
+            isActive && `bg-${color}/15 text-${color}`
+          )}
+        >
+          {icon}
+          {!collapsed && <span className="ml-2 text-xs">{label}</span>}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function EditorSidebar({
@@ -51,6 +109,7 @@ export function EditorSidebar({
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
+  const { editor, onInsertHierarchy } = useEditorContext();
 
   useEffect(() => {
     if (isDark) {
@@ -99,7 +158,7 @@ export function EditorSidebar({
       </div>
 
       {/* Tools section */}
-      <div className="relative flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="relative flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
         {/* Undo/Redo */}
         <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}>
           <Tooltip>
@@ -138,6 +197,175 @@ export function EditorSidebar({
 
         <Separator className="my-2" />
 
+        {/* Text Formatting */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-primary uppercase tracking-wider px-1">
+            Format
+          </span>
+        )}
+        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+            isActive={editor?.isActive('bold')}
+            disabled={!editor}
+            icon={<Bold className="h-4 w-4" />}
+            label="Bold"
+            tooltip="Bold (Ctrl+B)"
+            collapsed={collapsed}
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+            isActive={editor?.isActive('italic')}
+            disabled={!editor}
+            icon={<Italic className="h-4 w-4" />}
+            label="Italic"
+            tooltip="Italic (Ctrl+I)"
+            collapsed={collapsed}
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleStrike().run()}
+            isActive={editor?.isActive('strike')}
+            disabled={!editor}
+            icon={<Strikethrough className="h-4 w-4" />}
+            label="Strikethrough"
+            tooltip="Strikethrough"
+            collapsed={collapsed}
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleCode().run()}
+            isActive={editor?.isActive('code')}
+            disabled={!editor}
+            icon={<Code className="h-4 w-4" />}
+            label="Code"
+            tooltip="Inline Code"
+            collapsed={collapsed}
+          />
+        </div>
+
+        <Separator className="my-2" />
+
+        {/* Headings */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
+            Headings
+          </span>
+        )}
+        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+            isActive={editor?.isActive('heading', { level: 1 })}
+            disabled={!editor}
+            icon={<Heading1 className="h-4 w-4" />}
+            label="Heading 1"
+            tooltip="Heading 1"
+            collapsed={collapsed}
+            color="accent"
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+            isActive={editor?.isActive('heading', { level: 2 })}
+            disabled={!editor}
+            icon={<Heading2 className="h-4 w-4" />}
+            label="Heading 2"
+            tooltip="Heading 2"
+            collapsed={collapsed}
+            color="accent"
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+            isActive={editor?.isActive('heading', { level: 3 })}
+            disabled={!editor}
+            icon={<Heading3 className="h-4 w-4" />}
+            label="Heading 3"
+            tooltip="Heading 3"
+            collapsed={collapsed}
+            color="accent"
+          />
+        </div>
+
+        <Separator className="my-2" />
+
+        {/* Lists & Blocks */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-success uppercase tracking-wider px-1">
+            Blocks
+          </span>
+        )}
+        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            isActive={editor?.isActive('bulletList')}
+            disabled={!editor}
+            icon={<List className="h-4 w-4" />}
+            label="Bullet List"
+            tooltip="Bullet List"
+            collapsed={collapsed}
+            color="success"
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+            isActive={editor?.isActive('orderedList')}
+            disabled={!editor}
+            icon={<ListOrdered className="h-4 w-4" />}
+            label="Numbered List"
+            tooltip="Numbered List"
+            collapsed={collapsed}
+            color="success"
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+            isActive={editor?.isActive('blockquote')}
+            disabled={!editor}
+            icon={<Quote className="h-4 w-4" />}
+            label="Quote"
+            tooltip="Block Quote"
+            collapsed={collapsed}
+            color="success"
+          />
+          <ToolButton
+            onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+            disabled={!editor}
+            icon={<Minus className="h-4 w-4" />}
+            label="Divider"
+            tooltip="Horizontal Rule"
+            collapsed={collapsed}
+            color="success"
+          />
+        </div>
+
+        <Separator className="my-2" />
+
+        {/* Outline */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-warning uppercase tracking-wider px-1">
+            Outline
+          </span>
+        )}
+        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onInsertHierarchy}
+                disabled={!editor}
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-warning/15 hover:text-warning transition-colors"
+                )}
+              >
+                <GitBranch className="h-4 w-4 text-warning" />
+                {!collapsed && <span className="ml-2 text-xs">Insert Outline</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Insert hierarchical outline block</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <Separator className="my-2" />
+
         {/* Outline Style */}
         {collapsed ? (
           <div className="flex justify-center">
@@ -168,14 +396,13 @@ export function EditorSidebar({
 
         <Separator className="my-2" />
 
-        {/* Toggle buttons */}
+        {/* Options */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+            Options
+          </span>
+        )}
         <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
-          {!collapsed && (
-            <span className="text-[10px] font-medium text-success uppercase tracking-wider px-1">
-              Options
-            </span>
-          )}
-          
           {/* Auto-Descend */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -219,28 +446,28 @@ export function EditorSidebar({
               <p>WordPerfect-style codes (Alt+F3)</p>
             </TooltipContent>
           </Tooltip>
-        </div>
 
-        {/* Theme Toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                "hover:bg-warning/15 transition-colors"
-              )}
-              onClick={() => setIsDark(!isDark)}
-            >
-              {isDark ? <Sun className="h-4 w-4 text-warning" /> : <Moon className="h-4 w-4 text-primary" />}
-              {!collapsed && <span className="ml-2 text-xs">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Toggle {isDark ? 'light' : 'dark'} mode</p>
-          </TooltipContent>
-        </Tooltip>
+          {/* Theme Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-warning/15 transition-colors"
+                )}
+                onClick={() => setIsDark(!isDark)}
+              >
+                {isDark ? <Sun className="h-4 w-4 text-warning" /> : <Moon className="h-4 w-4 text-primary" />}
+                {!collapsed && <span className="ml-2 text-xs">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Toggle {isDark ? 'light' : 'dark'} mode</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
         <Separator className="my-2" />
 
