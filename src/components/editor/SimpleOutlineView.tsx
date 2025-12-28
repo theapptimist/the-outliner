@@ -13,6 +13,7 @@ interface SimpleOutlineViewProps {
   onMove: (nodeId: string, targetId: string, position: DropPosition) => void;
   onIndent: (id: string) => void;
   onOutdent: (id: string) => void;
+  onVisualIndent?: (id: string, delta: number) => void;
   onAddNode: (afterId?: string | null) => void;
   onAddBodyNode: (afterId?: string | null) => string | undefined;
   onAddBodyNodeWithSpacer?: (afterId?: string | null) => string | undefined;
@@ -36,6 +37,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onUpdateLabel,
     onIndent,
     onOutdent,
+    onVisualIndent,
     onAddNode,
     onAddBodyNode,
     onAddBodyNodeWithSpacer,
@@ -250,8 +252,20 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       e.preventDefault();
       setEditingId(null);
       onDelete(node.id);
+    } else if (e.key === ']' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+]: Visual indent (Block Tab) for body nodes
+      e.preventDefault();
+      if (node.type === 'body' && onVisualIndent) {
+        onVisualIndent(node.id, 1);
+      }
+    } else if (e.key === '[' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+[: Visual outdent (Block Tab) for body nodes
+      e.preventDefault();
+      if (node.type === 'body' && onVisualIndent) {
+        onVisualIndent(node.id, -1);
+      }
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onIndent, onOutdent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
 
   // Global keyboard handler
   useEffect(() => {
@@ -319,12 +333,32 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             void result;
           }
           break;
+        case ']':
+          // Ctrl+]: Visual indent (Block Tab) for body nodes
+          if ((e.ctrlKey || e.metaKey) && selectedId) {
+            const node = nodes.find(n => n.id === selectedId);
+            if (node?.type === 'body' && onVisualIndent) {
+              e.preventDefault();
+              onVisualIndent(selectedId, 1);
+            }
+          }
+          break;
+        case '[':
+          // Ctrl+[: Visual outdent (Block Tab) for body nodes
+          if ((e.ctrlKey || e.metaKey) && selectedId) {
+            const node = nodes.find(n => n.id === selectedId);
+            if (node?.type === 'body' && onVisualIndent) {
+              e.preventDefault();
+              onVisualIndent(selectedId, -1);
+            }
+          }
+          break;
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [editingId, selectedId, nodes, onNavigateUp, onNavigateDown, onAddNode, onAddChildNode, onIndent, onOutdent, onDelete, handleStartEdit, onMergeIntoParent]);
+  }, [editingId, selectedId, nodes, onNavigateUp, onNavigateDown, onAddNode, onAddChildNode, onIndent, onOutdent, onVisualIndent, onDelete, handleStartEdit, onMergeIntoParent]);
 
   // Callback ref to store input references
   const setInputRef = useCallback((id: string) => (el: HTMLTextAreaElement | null) => {
@@ -347,7 +381,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         const prefix = isBody ? '' : getOutlinePrefix(outlineStyle, node.depth, indices);
 
         // Body nodes are logically children, but should visually align under the parent's text.
-        const visualDepth = isBody ? Math.max(0, node.depth - 1) : node.depth;
+        // Also add visualIndent for Block Tab feature
+        const visualDepth = isBody 
+          ? Math.max(0, node.depth - 1) + (node.visualIndent || 0)
+          : node.depth;
         
         return (
           <div
