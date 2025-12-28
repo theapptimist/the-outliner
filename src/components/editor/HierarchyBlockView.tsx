@@ -276,11 +276,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     setTree(prev => updateNode(prev, nodeId, { label }));
   }, []);
 
-  // Shift+Esc: Merge node into previous sibling (or parent if no sibling) with line break
-  const handleMergeIntoParent = useCallback((nodeId: string, currentValue?: string) => {
+  // Merge node into previous sibling (or parent if no sibling) with line break
+  const handleMergeIntoParent = useCallback((nodeId: string, currentValue?: string, showToast: boolean = true) => {
     const node = findNode(tree, nodeId);
     if (!node) {
-      toast({ title: 'Merge failed', description: 'Could not find the selected line.' });
+      if (showToast) toast({ title: 'Merge failed', description: 'Could not find the selected line.' });
       return null;
     }
 
@@ -288,7 +288,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
     const flatIndex = flatNodes.findIndex(n => n.id === nodeId);
     if (flatIndex < 0) {
-      toast({ title: 'Merge failed', description: 'Could not locate the line in the outline.' });
+      if (showToast) toast({ title: 'Merge failed', description: 'Could not locate the line in the outline.' });
       return null;
     }
 
@@ -317,7 +317,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     }
 
     if (!targetNode) {
-      toast({ title: 'Nothing to merge into', description: 'This line has no previous line or parent to merge into.' });
+      // No toast for silent failures (like backspace at first line)
       return null;
     }
 
@@ -332,7 +332,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
     setSelectedId(targetNode.id);
 
-    toast({ title: 'Merged', description: 'Merged into the line above.' });
+    if (showToast) {
+      toast({ title: 'Merged', description: 'Merged into the line above.' });
+    }
 
     return { targetId: targetNode.id, targetLabel: newLabel };
   }, [tree, flatNodes]);

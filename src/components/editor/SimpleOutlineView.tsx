@@ -26,7 +26,8 @@ interface SimpleOutlineViewProps {
   onNavigateDown: () => void;
   onMergeIntoParent: (
     id: string,
-    currentValue?: string
+    currentValue?: string,
+    showToast?: boolean
   ) => { targetId: string; targetLabel: string } | null;
   autoDescend?: boolean;
 }
@@ -288,23 +289,29 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       const cursorPos = input.selectionStart ?? 0;
       
       if (cursorPos === 0 && input.selectionEnd === 0) {
-        // At beginning of line with content - merge into previous line
-        e.preventDefault();
-        const result = onMergeIntoParent(node.id, editValue);
+        // At beginning of line with content - try to merge into previous line
+        // Don't prevent default yet - only if merge succeeds
+        const result = onMergeIntoParent(node.id, editValue, false); // false = no toast for backspace merge
         if (result) {
+          e.preventDefault();
+          // Calculate merge point: where the original target label ended (before the newline we added)
+          const originalTargetLength = result.targetLabel.length - editValue.length - 1; // -1 for newline
           setEditingId(result.targetId);
           setEditValue(result.targetLabel);
-          // Position cursor at the merge point (end of original content)
-          const mergePoint = result.targetLabel.length - editValue.length - 1; // -1 for newline
+          // Position cursor at the merge point
           requestAnimationFrame(() => {
             const newInput = inputRefs.current.get(result.targetId);
             if (newInput) {
               newInput.focus();
-              newInput.selectionStart = newInput.selectionEnd = Math.max(0, mergePoint);
+              const pos = Math.max(0, originalTargetLength);
+              newInput.selectionStart = newInput.selectionEnd = pos;
             }
           });
         }
+        // If merge returns null, don't prevent default - backspace just won't do anything special
+        // at position 0 of the first line (which is expected behavior)
       }
+      // Otherwise let backspace work normally (delete character before cursor)
     } else if (e.key === ']' && (e.ctrlKey || e.metaKey)) {
       // Ctrl+]: Visual indent (Block Tab) for body nodes
       e.preventDefault();
