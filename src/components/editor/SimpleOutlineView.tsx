@@ -279,10 +279,29 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       }
       // Keep editing the same node - don't call setEditingId(null)
     } else if (e.key === 'Backspace' && editValue === '') {
-      // Empty line - delete it
+      // Empty line - delete it and move cursor to previous line
       e.preventDefault();
-      setEditingId(null);
+      
+      // Find the previous node to move cursor to
+      const currentIndex = nodes.findIndex(n => n.id === node.id);
+      const prevNode = currentIndex > 0 ? nodes[currentIndex - 1] : null;
+      
       onDelete(node.id);
+      
+      if (prevNode) {
+        setEditingId(prevNode.id);
+        setEditValue(prevNode.label);
+        // Position cursor at end of previous line
+        requestAnimationFrame(() => {
+          const prevInput = inputRefs.current.get(prevNode.id);
+          if (prevInput) {
+            prevInput.focus();
+            prevInput.selectionStart = prevInput.selectionEnd = prevNode.label.length;
+          }
+        });
+      } else {
+        setEditingId(null);
+      }
     } else if (e.key === 'Backspace') {
       // Check if cursor is at the beginning of the line
       const input = e.currentTarget;
@@ -325,7 +344,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         onVisualIndent(node.id, -1);
       }
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes]);
 
   // Global keyboard handler
   useEffect(() => {
