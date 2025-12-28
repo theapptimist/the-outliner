@@ -475,7 +475,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           <div
             key={node.id}
             className={cn(
-              'grid py-1.5 px-2 cursor-text group'
+              'grid items-baseline py-1.5 px-2 cursor-text group'
             )}
             style={{ 
               paddingLeft: `${visualDepth * 24 + 8}px`,
