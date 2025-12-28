@@ -475,8 +475,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           <div
             key={node.id}
             className={cn(
-              'flex items-start gap-2 py-1.5 px-2 rounded cursor-text group',
-              selectedId === node.id && 'bg-secondary'
+              'flex items-start gap-2 py-1.5 px-2 cursor-text group'
             )}
             style={{ paddingLeft: `${visualDepth * 24 + 8}px` }}
             onClick={() => {
@@ -531,7 +530,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       })}
       
       {nodes.length === 0 && (
-        <div className="text-sm text-muted-foreground px-4 py-2">
+        <div className="text-sm text-muted-foreground/50 px-4 py-2 italic">
           Press Enter to add an item
         </div>
       )}
