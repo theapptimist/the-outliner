@@ -448,7 +448,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   return (
     <div 
       ref={setContainerRef}
-      className="p-4 focus:outline-none" 
+      className="py-2 focus:outline-none" 
       tabIndex={0}
     >
       {nodes.map((node) => {
