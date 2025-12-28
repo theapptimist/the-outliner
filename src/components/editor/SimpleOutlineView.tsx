@@ -124,10 +124,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   }, []);
 
   // Auto-focus on initial mount if autoFocusId is provided
+  const autoFocusHandledRef = useRef(false);
   useEffect(() => {
-    if (autoFocusId && nodes.length > 0) {
+    if (autoFocusId && nodes.length > 0 && !autoFocusHandledRef.current) {
       const node = nodes.find(n => n.id === autoFocusId);
       if (node) {
+        autoFocusHandledRef.current = true;
         handleStartEdit(autoFocusId, node.label);
         onAutoFocusHandled?.();
       }
