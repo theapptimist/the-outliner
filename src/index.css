@@ -6,6 +6,77 @@
 
 @layer base {
   :root {
+    --background: 0 0% 100%;
+    --foreground: 220 16% 12%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 220 16% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 16% 12%;
+
+    --primary: 200 100% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 220 16% 20%;
+
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 270 70% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 150 70% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 40 90% 50%;
+    --warning-foreground: 220 16% 12%;
+
+    --border: 220 14% 88%;
+    --input: 220 14% 88%;
+    --ring: 200 100% 45%;
+
+    --radius: 0.5rem;
+
+    /* Node type colors */
+    --node-default: 220 10% 40%;
+    --node-container: 200 80% 45%;
+    --node-data: 150 60% 40%;
+    --node-action: 280 70% 50%;
+    --node-reference: 40 80% 45%;
+
+    /* Hierarchy visuals */
+    --indent-guide: 220 14% 85%;
+    --indent-guide-active: 200 60% 50%;
+    --selection: 200 100% 45%;
+    --drop-target: 200 100% 45%;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px hsl(220 16% 80% / 0.3);
+    --shadow-md: 0 4px 12px hsl(220 16% 80% / 0.4);
+    --shadow-lg: 0 8px 24px hsl(220 16% 80% / 0.5);
+    --shadow-glow: 0 0 20px hsl(200 100% 45% / 0.15);
+
+    /* Transitions */
+    --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 16% 20%;
+    --sidebar-primary: 200 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 94%;
+    --sidebar-accent-foreground: 220 16% 12%;
+    --sidebar-border: 220 14% 88%;
+    --sidebar-ring: 200 100% 45%;
+  }
+
+  .dark {
     --background: 220 16% 8%;
     --foreground: 220 10% 92%;
 
@@ -40,8 +111,6 @@
     --input: 220 14% 18%;
     --ring: 200 100% 60%;
 
-    --radius: 0.5rem;
-
     /* Node type colors */
     --node-default: 220 10% 70%;
     --node-container: 200 80% 55%;
@@ -61,11 +130,6 @@
     --shadow-lg: 0 8px 24px hsl(220 16% 4% / 0.7);
     --shadow-glow: 0 0 20px hsl(200 100% 60% / 0.15);
 
-    /* Transitions */
-    --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-
     --sidebar-background: 220 16% 8%;
     --sidebar-foreground: 220 10% 85%;
     --sidebar-primary: 200 100% 60%;
@@ -74,11 +138,6 @@
     --sidebar-accent-foreground: 220 10% 92%;
     --sidebar-border: 220 14% 18%;
     --sidebar-ring: 200 100% 60%;
-  }
-
-  .dark {
-    --background: 220 16% 8%;
-    --foreground: 220 10% 92%;
   }
 }
 
