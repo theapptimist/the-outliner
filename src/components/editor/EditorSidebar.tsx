@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -7,6 +7,8 @@ import {
   Layers,
   Undo2,
   Redo2,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -46,6 +48,17 @@ export function EditorSidebar({
   canRedo,
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isDark, setIsDark] = useState(() => 
+    document.documentElement.classList.contains('dark')
+  );
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
 
   return (
     <div 
@@ -195,6 +208,26 @@ export function EditorSidebar({
             </TooltipContent>
           </Tooltip>
         </div>
+
+        {/* Theme Toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2"
+              )}
+              onClick={() => setIsDark(!isDark)}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {!collapsed && <span className="ml-2 text-xs">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Toggle {isDark ? 'light' : 'dark'} mode</p>
+          </TooltipContent>
+        </Tooltip>
 
         <Separator className="my-2" />
 
