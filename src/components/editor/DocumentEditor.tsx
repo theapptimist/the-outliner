@@ -8,7 +8,6 @@ import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
 import { PaginatedDocument } from './PageContainer';
 import { useDocument } from '@/hooks/useDocument';
 import { useEditorContext } from './EditorContext';
-import './editor-styles.css';
 
 export function DocumentEditor() {
   const { document, addHierarchyBlock, updateContent } = useDocument();
