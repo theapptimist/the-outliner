@@ -11,6 +11,8 @@ interface EditorContextValue {
   setEditor: (editor: Editor | null) => void;
   onInsertHierarchy: () => void;
   setInsertHierarchyHandler: (handler: () => void) => void;
+  onFindReplace: (withReplace: boolean) => void;
+  setFindReplaceHandler: (handler: (withReplace: boolean) => void) => void;
   registerUndoRedo: (
     undo: () => void,
     redo: () => void,
@@ -28,6 +30,8 @@ const EditorContext = createContext<EditorContextValue>({
   setEditor: () => {},
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
+  onFindReplace: () => {},
+  setFindReplaceHandler: () => {},
   registerUndoRedo: () => {},
 });
 
@@ -55,9 +59,14 @@ export function EditorProvider({
 }: EditorProviderProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
+  const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
 
   const setInsertHierarchyHandler = useCallback((handler: () => void) => {
     setInsertHierarchyHandlerState(() => handler);
+  }, []);
+
+  const setFindReplaceHandler = useCallback((handler: (withReplace: boolean) => void) => {
+    setFindReplaceHandlerState(() => handler);
   }, []);
 
   const registerUndoRedo = (
@@ -80,6 +89,8 @@ export function EditorProvider({
         setEditor,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
+        onFindReplace: findReplaceHandler,
+        setFindReplaceHandler,
         registerUndoRedo,
       }}
     >
