@@ -457,7 +457,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 placeholder="Type here..."
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 className={cn(
-                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
+                  "flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6 caret-foreground",
                   levelStyle.underline && "underline"
                 )}
                 onClick={(e) => e.stopPropagation()}
