@@ -491,7 +491,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             
             {/* Prefix/numbering - body nodes get empty spacer for alignment */}
             <span className={cn(
-              "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap pt-px",
+              "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap",
               prefix ? "text-muted-foreground" : ""
             )}>
               {prefix || ''}
