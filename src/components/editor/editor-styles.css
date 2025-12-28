@@ -150,3 +150,9 @@
   box-shadow: none !important;
 }
 
+/* Make hierarchy blocks break out of prose padding and use full width */
+.ProseMirror .hierarchy-block {
+  margin-left: -2rem;
+  margin-right: -2rem;
+}
+
