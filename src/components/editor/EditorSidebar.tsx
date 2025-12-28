@@ -159,6 +159,138 @@ export function EditorSidebar({
 
       {/* Tools section */}
       <div className="relative flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
+        {/* Outline - NOW AT TOP */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-warning uppercase tracking-wider px-1">
+            Outline
+          </span>
+        )}
+        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onInsertHierarchy}
+                disabled={!editor}
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-warning/15 hover:text-warning transition-colors"
+                )}
+              >
+                <GitBranch className="h-4 w-4 text-warning" />
+                {!collapsed && <span className="ml-2 text-xs">Insert Outline</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Insert hierarchical outline block</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* Outline Style */}
+        {collapsed ? (
+          <div className="flex justify-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-accent/15 hover:text-accent transition-colors">
+                  <Layers className="h-4 w-4 text-accent" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Outline Style</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        ) : (
+          <div className="space-y-1 mt-2">
+            <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
+              Style
+            </span>
+            <OutlineStylePicker
+              value={outlineStyle}
+              onChange={onOutlineStyleChange}
+              mixedConfig={mixedConfig}
+              onMixedConfigChange={onMixedConfigChange}
+            />
+          </div>
+        )}
+
+        {/* Options */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1 mt-2 block">
+            Options
+          </span>
+        )}
+        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+          {/* Auto-Descend */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={autoDescend ? "secondary" : "ghost"}
+                size="sm"
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-success/15 transition-colors",
+                  autoDescend && "bg-success/15 text-success hover:bg-success/25 border border-success/30"
+                )}
+                onClick={() => onAutoDescendChange(!autoDescend)}
+              >
+                <ArrowDownRight className={cn("h-4 w-4", autoDescend && "text-success")} />
+                {!collapsed && <span className="ml-2 text-xs">Auto-Descend</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Enter creates child (1 → a → i)</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Reveal Codes */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={showRevealCodes ? "secondary" : "ghost"}
+                size="sm"
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-accent/15 transition-colors",
+                  showRevealCodes && "bg-accent/15 text-accent hover:bg-accent/25 border border-accent/30"
+                )}
+                onClick={() => onShowRevealCodesChange(!showRevealCodes)}
+              >
+                <Code2 className={cn("h-4 w-4", showRevealCodes && "text-accent")} />
+                {!collapsed && <span className="ml-2 text-xs">Reveal Codes</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>WordPerfect-style codes (Alt+F3)</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Theme Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-warning/15 transition-colors"
+                )}
+                onClick={() => setIsDark(!isDark)}
+              >
+                {isDark ? <Sun className="h-4 w-4 text-warning" /> : <Moon className="h-4 w-4 text-primary" />}
+                {!collapsed && <span className="ml-2 text-xs">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Toggle {isDark ? 'light' : 'dark'} mode</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <Separator className="my-2" />
+
         {/* Undo/Redo */}
         <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}>
           <Tooltip>
@@ -331,142 +463,6 @@ export function EditorSidebar({
             collapsed={collapsed}
             color="success"
           />
-        </div>
-
-        <Separator className="my-2" />
-
-        {/* Outline */}
-        {!collapsed && (
-          <span className="text-[10px] font-medium text-warning uppercase tracking-wider px-1">
-            Outline
-          </span>
-        )}
-        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onInsertHierarchy}
-                disabled={!editor}
-                className={cn(
-                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-warning/15 hover:text-warning transition-colors"
-                )}
-              >
-                <GitBranch className="h-4 w-4 text-warning" />
-                {!collapsed && <span className="ml-2 text-xs">Insert Outline</span>}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Insert hierarchical outline block</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-
-        <Separator className="my-2" />
-
-        {/* Outline Style */}
-        {collapsed ? (
-          <div className="flex justify-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-accent/15 hover:text-accent transition-colors">
-                  <Layers className="h-4 w-4 text-accent" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>Outline Style</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
-              Style
-            </span>
-            <OutlineStylePicker
-              value={outlineStyle}
-              onChange={onOutlineStyleChange}
-              mixedConfig={mixedConfig}
-              onMixedConfigChange={onMixedConfigChange}
-            />
-          </div>
-        )}
-
-        <Separator className="my-2" />
-
-        {/* Options */}
-        {!collapsed && (
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1">
-            Options
-          </span>
-        )}
-        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
-          {/* Auto-Descend */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={autoDescend ? "secondary" : "ghost"}
-                size="sm"
-                className={cn(
-                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-success/15 transition-colors",
-                  autoDescend && "bg-success/15 text-success hover:bg-success/25 border border-success/30"
-                )}
-                onClick={() => onAutoDescendChange(!autoDescend)}
-              >
-                <ArrowDownRight className={cn("h-4 w-4", autoDescend && "text-success")} />
-                {!collapsed && <span className="ml-2 text-xs">Auto-Descend</span>}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Enter creates child (1 → a → i)</p>
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Reveal Codes */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={showRevealCodes ? "secondary" : "ghost"}
-                size="sm"
-                className={cn(
-                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-accent/15 transition-colors",
-                  showRevealCodes && "bg-accent/15 text-accent hover:bg-accent/25 border border-accent/30"
-                )}
-                onClick={() => onShowRevealCodesChange(!showRevealCodes)}
-              >
-                <Code2 className={cn("h-4 w-4", showRevealCodes && "text-accent")} />
-                {!collapsed && <span className="ml-2 text-xs">Reveal Codes</span>}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>WordPerfect-style codes (Alt+F3)</p>
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Theme Toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-warning/15 transition-colors"
-                )}
-                onClick={() => setIsDark(!isDark)}
-              >
-                {isDark ? <Sun className="h-4 w-4 text-warning" /> : <Moon className="h-4 w-4 text-primary" />}
-                {!collapsed && <span className="ml-2 text-xs">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Toggle {isDark ? 'light' : 'dark'} mode</p>
-            </TooltipContent>
-          </Tooltip>
         </div>
 
         <Separator className="my-2" />
