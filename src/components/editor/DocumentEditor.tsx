@@ -40,7 +40,7 @@ export function DocumentEditor() {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] px-8 py-6',
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-6',
       },
       handleKeyDown: (view, event) => {
         if (event.key === '/' && !slashMenuOpen) {
@@ -125,7 +125,7 @@ export function DocumentEditor() {
   return (
     <div className="flex flex-col h-full bg-background relative">
       <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full">
           <EditorContent editor={editor} />
         </div>
       </div>
