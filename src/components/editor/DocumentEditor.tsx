@@ -41,7 +41,7 @@ export function DocumentEditor() {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-zinc dark:prose-invert max-w-none focus:outline-none min-h-[800px]',
+        class: 'focus:outline-none min-h-[800px]',
       },
       handleKeyDown: (view, event) => {
         if (event.key === '/' && !slashMenuOpen) {
