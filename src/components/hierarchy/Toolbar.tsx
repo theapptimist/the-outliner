@@ -9,6 +9,7 @@ import {
   Maximize2,
   Minimize2,
   FolderPlus,
+  ArrowDownRight,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/tooltip';
 import { OutlineStylePicker } from '@/components/editor/OutlineStylePicker';
 import { OutlineStyle } from '@/lib/outlineStyles';
+import { cn } from '@/lib/utils';
 
 interface ToolbarProps {
   hasSelection: boolean;
@@ -29,6 +31,8 @@ interface ToolbarProps {
   onOutdent: () => void;
   onCollapseAll: () => void;
   onExpandAll: () => void;
+  autoDescend: boolean;
+  onToggleAutoDescend: () => void;
 }
 
 interface ToolbarButtonProps {
@@ -84,6 +88,8 @@ export function Toolbar({
   onOutdent,
   onCollapseAll,
   onExpandAll,
+  autoDescend,
+  onToggleAutoDescend,
 }: ToolbarProps) {
   return (
     <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-card/50">
@@ -134,6 +140,31 @@ export function Toolbar({
       <Separator orientation="vertical" className="h-5 mx-1" />
       
       <OutlineStylePicker value={outlineStyle} onChange={onOutlineStyleChange} />
+      
+      <Separator orientation="vertical" className="h-5 mx-1" />
+      
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={autoDescend ? "secondary" : "ghost"}
+            size="sm"
+            onClick={onToggleAutoDescend}
+            className={cn(
+              "h-8 px-2 gap-1.5",
+              autoDescend && "bg-primary/10 text-primary hover:bg-primary/20"
+            )}
+          >
+            <ArrowDownRight size={16} />
+            <span className="text-xs">Auto</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <div className="text-center">
+            <div>Auto-Descend Mode</div>
+            <div className="text-muted-foreground text-xs">Enter creates child nodes (1 → a → i)</div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
       
       <div className="flex-1" />
       

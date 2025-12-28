@@ -14,6 +14,7 @@ export function HierarchyEditor() {
   const [projection, setProjection] = useState<ProjectionType>('tree');
   const [showInspector, setShowInspector] = useState(true);
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
+  const [autoDescend, setAutoDescend] = useState(false);
 
   const {
     tree,
@@ -101,6 +102,8 @@ export function HierarchyEditor() {
             onOutdent={() => selectedId && handleOutdent(selectedId)}
             onCollapseAll={collapseAll}
             onExpandAll={expandAll}
+            autoDescend={autoDescend}
+            onToggleAutoDescend={() => setAutoDescend(!autoDescend)}
           />
           
           <ProjectionTabs active={projection} onChange={setProjection} />
@@ -122,6 +125,7 @@ export function HierarchyEditor() {
                 onNavigateDown={navigateDown}
                 onAddNode={handleAddNode}
                 onAddChildNode={handleAddChildNode}
+                autoDescend={autoDescend}
               />
             )}
             {projection === 'outline' && (
@@ -161,7 +165,7 @@ export function HierarchyEditor() {
           <kbd className="px-1.5 py-0.5 bg-muted rounded font-mono">Tab</kbd> Indent
         </span>
         <span>
-          <kbd className="px-1.5 py-0.5 bg-muted rounded font-mono">Enter</kbd> Add
+          <kbd className="px-1.5 py-0.5 bg-muted rounded font-mono">Enter</kbd> {autoDescend ? 'Descend' : 'Add'}
         </span>
         <span>
           <kbd className="px-1.5 py-0.5 bg-muted rounded font-mono">F2</kbd> Rename

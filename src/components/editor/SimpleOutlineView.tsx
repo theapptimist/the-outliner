@@ -17,7 +17,7 @@ interface SimpleOutlineViewProps {
   onAddNode: (afterId?: string | null) => void;
   onAddBodyNode: (afterId?: string | null) => string | undefined;
   onAddBodyNodeWithSpacer?: (afterId?: string | null) => string | undefined;
-  onAddChildNode: () => void;
+  onAddChildNode: (parentId?: string) => void;
   onDelete: (id: string) => void;
   onNavigateUp: () => void;
   onNavigateDown: () => void;
@@ -25,6 +25,7 @@ interface SimpleOutlineViewProps {
     id: string,
     currentValue?: string
   ) => { targetId: string; targetLabel: string } | null;
+  autoDescend?: boolean;
 }
 
 export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
@@ -46,6 +47,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onNavigateUp,
     onNavigateDown,
     onMergeIntoParent,
+    autoDescend = false,
   },
   forwardedRef
 ) {
@@ -193,9 +195,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       handleEndEdit(node.id);
-      // Mark that we want to focus the node created after this one
-      pendingFocusAfterIdRef.current = node.id;
-      onAddNode(node.id);
+      if (autoDescend) {
+        // Auto-descend: create child node
+        onAddChildNode(node.id);
+      } else {
+        // Normal: create sibling node after this one
+        pendingFocusAfterIdRef.current = node.id;
+        onAddNode(node.id);
+      }
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
       // Ctrl+Enter: create spacer + body node (two nodes, focus the second)
       e.preventDefault();
@@ -265,7 +272,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         onVisualIndent(node.id, -1);
       }
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend]);
 
   // Global keyboard handler
   useEffect(() => {
