@@ -292,6 +292,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
                   "h-6 w-6 p-0",
                   autoDescend && "bg-primary/10 text-primary hover:bg-primary/20"
                 )}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setAutoDescend(!autoDescend)}
               >
                 <ArrowDownRight className="h-3 w-3" />
