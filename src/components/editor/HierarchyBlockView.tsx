@@ -447,43 +447,41 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     <NodeViewWrapper 
       className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
     >
-      {/* Minimal toolbar - main controls are in sidebar */}
-      <div className="flex items-center justify-end px-2 py-1 border-b border-border/30 bg-muted/20">
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            asChild
-            title="Open in Hierarchy Editor"
-          >
-            <Link to="/hierarchy">
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            title={isCollapsed ? 'Expand' : 'Collapse'}
-          >
-            {isCollapsed ? (
-              <Maximize2 className="h-3 w-3" />
-            ) : (
-              <Minimize2 className="h-3 w-3" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-            onClick={() => deleteBlockNode()}
-            title="Delete outline"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
+      {/* Floating toolbar - appears on hover */}
+      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+          asChild
+          title="Open in Hierarchy Editor"
+        >
+          <Link to="/hierarchy">
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Expand' : 'Collapse'}
+        >
+          {isCollapsed ? (
+            <Maximize2 className="h-3 w-3" />
+          ) : (
+            <Minimize2 className="h-3 w-3" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm text-destructive hover:text-destructive"
+          onClick={() => deleteBlockNode()}
+          title="Delete outline"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
       </div>
       
       {/* Outline view */}
