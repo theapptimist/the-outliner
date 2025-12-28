@@ -20,7 +20,7 @@ import {
 } from '@/lib/nodeOperations';
 import { SimpleOutlineView } from './SimpleOutlineView';
 import { RevealCodes } from './RevealCodes';
-import { useEditorContext } from './EditorContext';
+import { FindReplaceMatch, FindReplaceProvider, useEditorContext } from './EditorContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -34,7 +34,15 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const blockId = node.attrs.blockId as string;
   
   // Get settings from context
-  const { outlineStyle, mixedConfig, autoDescend, showRevealCodes, registerUndoRedo } = useEditorContext();
+  const {
+    outlineStyle,
+    mixedConfig,
+    autoDescend,
+    showRevealCodes,
+    registerUndoRedo,
+    registerFindReplaceProvider,
+    unregisterFindReplaceProvider,
+  } = useEditorContext();
   
   // Local hierarchy state for this block - start with one empty node
   const [{ tree: initialTree, firstNodeId }] = useState(() => {
@@ -42,9 +50,14 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     return { tree: [node], firstNodeId: node.id };
   });
   const [tree, setTreeState] = useState<HierarchyNode[]>(initialTree);
+  const treeRef = useRef<HierarchyNode[]>(initialTree);
   const [selectedId, setSelectedId] = useState<string | null>(firstNodeId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [autoFocusId, setAutoFocusId] = useState<string | null>(firstNodeId);
+
+  useEffect(() => {
+    treeRef.current = tree;
+  }, [tree]);
 
   // Undo/Redo history
   const historyRef = useRef<HierarchyNode[][]>([initialTree]);
@@ -104,6 +117,124 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     const canRedo = historyIndexRef.current < historyRef.current.length - 1;
     registerUndoRedo(undo, redo, canUndo, canRedo);
   }, [undo, redo, registerUndoRedo, tree]);
+
+  // Register this outline as a Find/Replace search provider
+  useEffect(() => {
+    const providerId = `hierarchy:${blockId}`;
+
+    const replaceAllOccurrences = (
+      text: string,
+      needle: string,
+      replacement: string,
+      cs: boolean
+    ): { next: string; count: number } => {
+      if (!needle) return { next: text, count: 0 };
+
+      const hay = cs ? text : text.toLowerCase();
+      const ndl = cs ? needle : needle.toLowerCase();
+
+      let idx = 0;
+      let count = 0;
+      let out = '';
+
+      while (true) {
+        const at = hay.indexOf(ndl, idx);
+        if (at === -1) {
+          out += text.slice(idx);
+          break;
+        }
+        out += text.slice(idx, at) + replacement;
+        idx = at + needle.length;
+        count += 1;
+      }
+
+      return { next: out, count };
+    };
+
+    const provider: FindReplaceProvider = {
+      id: providerId,
+      label: 'Outline',
+      find: (term, cs) => {
+        const matches: FindReplaceMatch[] = [];
+        const flat = flattenTree(treeRef.current);
+        const needle = cs ? term : term.toLowerCase();
+
+        flat.forEach(n => {
+          const label = n.label ?? '';
+          const hay = cs ? label : label.toLowerCase();
+          let idx = 0;
+
+          while (true) {
+            const at = hay.indexOf(needle, idx);
+            if (at === -1) break;
+            matches.push({
+              kind: 'hierarchy',
+              providerId,
+              nodeId: n.id,
+              start: at,
+              end: at + term.length,
+            });
+            idx = at + Math.max(1, term.length);
+          }
+        });
+
+        return matches;
+      },
+      focus: (m) => {
+        if (m.kind !== 'hierarchy') return;
+        setIsCollapsed(false);
+        setSelectedId(m.nodeId);
+        setAutoFocusId(m.nodeId);
+
+        // Expand collapsed ancestors to reveal match
+        setTree(prev => {
+          let next = prev;
+          let cur = findNode(next, m.nodeId);
+          while (cur?.parentId) {
+            const parent = findNode(next, cur.parentId);
+            if (parent?.collapsed) {
+              next = toggleCollapse(next, parent.id);
+            }
+            cur = parent ?? null;
+          }
+          return next;
+        });
+      },
+      replace: (m, replacement) => {
+        if (m.kind !== 'hierarchy') return;
+        setTree(prev => {
+          const target = findNode(prev, m.nodeId);
+          if (!target) return prev;
+          const label = target.label ?? '';
+          const nextLabel = label.slice(0, m.start) + replacement + label.slice(m.end);
+          return updateNode(prev, m.nodeId, { label: nextLabel });
+        });
+      },
+      replaceAll: (term, replacement, cs) => {
+        let total = 0;
+        setTree(prev => {
+          let next = prev;
+          const flat = flattenTree(prev);
+
+          flat.forEach(n => {
+            const label = n.label ?? '';
+            const { next: nextLabel, count } = replaceAllOccurrences(label, term, replacement, cs);
+            if (count > 0) {
+              total += count;
+              next = updateNode(next, n.id, { label: nextLabel });
+            }
+          });
+
+          return next;
+        });
+
+        return total;
+      },
+    };
+
+    registerFindReplaceProvider(provider);
+    return () => unregisterFindReplaceProvider(providerId);
+  }, [blockId, registerFindReplaceProvider, unregisterFindReplaceProvider, setTree, setSelectedId]);
 
   // Global keyboard handler (undo/redo only - reveal codes handled in Editor.tsx)
   useEffect(() => {
