@@ -475,7 +475,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           <div
             key={node.id}
             className={cn(
-              'flex items-baseline gap-2 py-1.5 px-2 cursor-text group'
+              'flex items-start gap-2 py-1.5 px-2 cursor-text group'
             )}
             style={{ paddingLeft: `${visualDepth * 24 + 8}px` }}
             onClick={() => {
@@ -488,7 +488,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             
             {/* Prefix/numbering - body nodes get empty spacer for alignment */}
             {prefix ? (
-              <span className="text-muted-foreground font-mono text-sm leading-6 min-w-[3rem] flex-shrink-0 text-right pr-1 whitespace-nowrap">
+              <span className="text-muted-foreground font-mono text-sm leading-6 min-w-[3rem] flex-shrink-0 text-right pr-1 whitespace-nowrap pt-[3px]">
                 {prefix}
               </span>
             ) : isBody ? (
