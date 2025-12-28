@@ -22,35 +22,39 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
   const [matches, setMatches] = useState<{ from: number; to: number }[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // Find all matches in the document
+  // Find all matches in the document using simple text position mapping
   const findMatches = useCallback(() => {
-    if (!editor || !searchTerm) {
+    if (!editor || !searchTerm.trim()) {
       setMatches([]);
       return;
     }
 
     const doc = editor.state.doc;
-    const searchRegex = new RegExp(
-      searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-      caseSensitive ? 'g' : 'gi'
-    );
-
+    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const foundMatches: { from: number; to: number }[] = [];
 
+    // Build a map of text positions
+    const textPositions: { pos: number; text: string }[] = [];
     doc.descendants((node, pos) => {
       if (node.isText && node.text) {
-        let match;
-        while ((match = searchRegex.exec(node.text)) !== null) {
-          foundMatches.push({
-            from: pos + match.index,
-            to: pos + match.index + match[0].length,
-          });
-        }
+        textPositions.push({ pos, text: node.text });
+      }
+    });
+
+    // Search in each text node
+    textPositions.forEach(({ pos, text }) => {
+      const regex = new RegExp(escapedTerm, caseSensitive ? 'g' : 'gi');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        foundMatches.push({
+          from: pos + match.index,
+          to: pos + match.index + match[0].length,
+        });
       }
     });
 
     setMatches(foundMatches);
-    if (foundMatches.length > 0 && currentMatchIndex >= foundMatches.length) {
+    if (currentMatchIndex >= foundMatches.length) {
       setCurrentMatchIndex(0);
     }
   }, [editor, searchTerm, caseSensitive, currentMatchIndex]);
