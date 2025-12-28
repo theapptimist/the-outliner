@@ -446,12 +446,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className={cn(
-                'flex-1 text-sm whitespace-pre-wrap',
-                node.label ? 'text-foreground' : 'text-muted-foreground/50',
-                levelStyle.underline && 'underline'
-              )}>
-                {node.label || 'Type here...'}{levelStyle.suffix && node.label ? levelStyle.suffix : ''}
+              <span className="flex-1 text-sm whitespace-pre-wrap">
+                <span className={cn(
+                  node.label ? 'text-foreground' : 'text-muted-foreground/50',
+                  levelStyle.underline && 'underline'
+                )}>
+                  {node.label || 'Type here...'}
+                </span>
+                {levelStyle.suffix && node.label && (
+                  <span className="text-foreground">{levelStyle.suffix}</span>
+                )}
               </span>
             )}
           </div>
