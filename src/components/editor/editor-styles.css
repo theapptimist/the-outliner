@@ -66,12 +66,15 @@
 
 .ProseMirror li {
   margin-bottom: 0.25rem;
+  line-height: 1.7;
 }
 
-/* TipTap wraps list item content in a <p>; make it inline so the marker aligns and avoids first-line jump */
+/* TipTap wraps list item content in a <p>; force a stable inline layout to prevent first-character baseline jump */
 .ProseMirror li > p {
-  display: inline;
+  display: inline-block;
   margin: 0;
+  line-height: inherit;
+  vertical-align: baseline;
 }
 
 .ProseMirror ul {
