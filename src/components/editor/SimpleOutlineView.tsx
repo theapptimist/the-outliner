@@ -475,9 +475,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           <div
             key={node.id}
             className={cn(
-              'flex items-start gap-2 py-1.5 px-2 cursor-text group'
+              'grid py-1.5 px-2 cursor-text group'
             )}
-            style={{ paddingLeft: `${visualDepth * 24 + 8}px` }}
+            style={{ 
+              paddingLeft: `${visualDepth * 24 + 8}px`,
+              gridTemplateColumns: '3.5rem 1fr'
+            }}
             onClick={() => {
               onSelect(node.id);
               if (editingId !== node.id) {
@@ -487,13 +490,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           >
             
             {/* Prefix/numbering - body nodes get empty spacer for alignment */}
-            {prefix ? (
-              <span className="text-muted-foreground font-mono text-sm leading-6 min-w-[3rem] flex-shrink-0 text-right pr-1 whitespace-nowrap">
-                {prefix}
-              </span>
-            ) : isBody ? (
-              <span className="min-w-[3rem] flex-shrink-0" />
-            ) : null}
+            <span className={cn(
+              "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap",
+              prefix ? "text-muted-foreground" : ""
+            )}>
+              {prefix || ''}
+            </span>
             
             {/* Label - always in edit mode when selected */}
             {editingId === node.id ? (
@@ -507,13 +509,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 style={{ caretColor: 'hsl(var(--primary))' }}
                 className={cn(
-                  "flex-1 bg-transparent border-none outline-none text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
+                  "bg-transparent border-none outline-none text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
                   levelStyle.underline && editValue && "underline decoration-foreground"
                 )}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="flex-1 text-sm font-mono whitespace-pre-wrap leading-6">
+              <span className="text-sm font-mono whitespace-pre-wrap leading-6">
                 <span className={cn(
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
                   levelStyle.underline && node.label && 'underline'
