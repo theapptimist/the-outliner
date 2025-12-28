@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { ProjectionType } from '@/types/node';
 import { useHierarchy } from '@/hooks/useHierarchy';
 import { TreeView } from './TreeView';
@@ -9,6 +10,8 @@ import { Toolbar } from './Toolbar';
 import { ProjectionTabs } from './ProjectionTabs';
 import { cn } from '@/lib/utils';
 import { OutlineStyle } from '@/lib/outlineStyles';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 export function HierarchyEditor() {
   const [projection, setProjection] = useState<ProjectionType>('tree');
@@ -72,6 +75,11 @@ export function HierarchyEditor() {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" asChild className="h-8 w-8 p-0">
+            <Link to="/">
+              <ArrowLeft size={16} />
+            </Link>
+          </Button>
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
             <span className="text-primary font-bold text-sm">H</span>
           </div>
