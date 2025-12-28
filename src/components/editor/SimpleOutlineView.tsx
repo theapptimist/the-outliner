@@ -278,9 +278,33 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       }
       // Keep editing the same node - don't call setEditingId(null)
     } else if (e.key === 'Backspace' && editValue === '') {
+      // Empty line - delete it
       e.preventDefault();
       setEditingId(null);
       onDelete(node.id);
+    } else if (e.key === 'Backspace') {
+      // Check if cursor is at the beginning of the line
+      const input = e.currentTarget;
+      const cursorPos = input.selectionStart ?? 0;
+      
+      if (cursorPos === 0 && input.selectionEnd === 0) {
+        // At beginning of line with content - merge into previous line
+        e.preventDefault();
+        const result = onMergeIntoParent(node.id, editValue);
+        if (result) {
+          setEditingId(result.targetId);
+          setEditValue(result.targetLabel);
+          // Position cursor at the merge point (end of original content)
+          const mergePoint = result.targetLabel.length - editValue.length - 1; // -1 for newline
+          requestAnimationFrame(() => {
+            const newInput = inputRefs.current.get(result.targetId);
+            if (newInput) {
+              newInput.focus();
+              newInput.selectionStart = newInput.selectionEnd = Math.max(0, mergePoint);
+            }
+          });
+        }
+      }
     } else if (e.key === ']' && (e.ctrlKey || e.metaKey)) {
       // Ctrl+]: Visual indent (Block Tab) for body nodes
       e.preventDefault();
