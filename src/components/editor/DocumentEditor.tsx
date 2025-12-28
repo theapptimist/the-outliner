@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useState, useCallback, useEffect } from 'react';
 import { SlashCommandMenu } from './SlashCommandMenu';
+import { FindReplace } from './FindReplace';
 import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
 import { useDocument } from '@/hooks/useDocument';
 import { useEditorContext } from './EditorContext';
@@ -10,9 +11,11 @@ import './editor-styles.css';
 
 export function DocumentEditor() {
   const { document, addHierarchyBlock, updateContent } = useDocument();
-  const { setEditor, setInsertHierarchyHandler } = useEditorContext();
+  const { setEditor, setInsertHierarchyHandler, setFindReplaceHandler } = useEditorContext();
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = useState({ top: 0, left: 0 });
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -63,6 +66,33 @@ export function DocumentEditor() {
     return () => setEditor(null);
   }, [editor, setEditor]);
 
+  // Keyboard shortcuts for find/replace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowReplace(false);
+        setFindReplaceOpen(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+        e.preventDefault();
+        setShowReplace(true);
+        setFindReplaceOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Register find/replace handler in context
+  useEffect(() => {
+    setFindReplaceHandler((withReplace: boolean) => {
+      setShowReplace(withReplace);
+      setFindReplaceOpen(true);
+    });
+  }, [setFindReplaceHandler]);
+
   // Close slash menu when clicking outside
   useEffect(() => {
     if (!slashMenuOpen) return;
@@ -93,12 +123,19 @@ export function DocumentEditor() {
   }, [handleInsertHierarchy, setInsertHierarchyHandler]);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background relative">
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto">
           <EditorContent editor={editor} />
         </div>
       </div>
+
+      <FindReplace
+        editor={editor}
+        isOpen={findReplaceOpen}
+        onClose={() => setFindReplaceOpen(false)}
+        showReplace={showReplace}
+      />
 
       <SlashCommandMenu
         editor={editor}

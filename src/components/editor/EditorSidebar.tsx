@@ -21,6 +21,7 @@ import {
   Quote,
   Minus,
   GitBranch,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -109,7 +110,7 @@ export function EditorSidebar({
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
-  const { editor, onInsertHierarchy } = useEditorContext();
+  const { editor, onInsertHierarchy, onFindReplace } = useEditorContext();
 
   useEffect(() => {
     if (isDark) {
@@ -291,7 +292,31 @@ export function EditorSidebar({
 
         <Separator className="my-2" />
 
-        {/* Undo/Redo */}
+        {/* Find & Replace */}
+        <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onFindReplace(false)}
+                disabled={!editor}
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-primary/15 hover:text-primary transition-colors"
+                )}
+              >
+                <Search className="h-4 w-4 text-primary" />
+                {!collapsed && <span className="ml-2 text-xs">Find & Replace</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Find & Replace (Ctrl+F)</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <Separator className="my-2" />
         <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}>
           <Tooltip>
             <TooltipTrigger asChild>
