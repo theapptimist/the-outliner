@@ -479,7 +479,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             )}
             style={{ 
               paddingLeft: `${visualDepth * 24 + 8}px`,
-              gridTemplateColumns: '4rem 1fr'
+              gridTemplateColumns: '3.5rem 1fr'
             }}
             onClick={() => {
               onSelect(node.id);
@@ -509,7 +509,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 style={{ caretColor: 'hsl(var(--primary))' }}
                 className={cn(
-                  "bg-transparent border-none outline-none text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
+                  "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
                   levelStyle.underline && editValue && "underline decoration-foreground"
                 )}
                 onClick={(e) => e.stopPropagation()}
