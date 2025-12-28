@@ -4,20 +4,23 @@
   outline: none;
 }
 
-.ProseMirror p.is-editor-empty:first-child::before {
-  color: hsl(var(--muted-foreground));
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
+/* Placeholder (avoid float-based layout shifts, especially in lists) */
+.ProseMirror p.is-editor-empty:first-child,
+.ProseMirror h1.is-empty,
+.ProseMirror h2.is-empty,
+.ProseMirror h3.is-empty {
+  position: relative;
 }
 
+.ProseMirror p.is-editor-empty:first-child::before,
 .ProseMirror h1.is-empty::before,
 .ProseMirror h2.is-empty::before,
 .ProseMirror h3.is-empty::before {
   color: hsl(var(--muted-foreground));
   content: attr(data-placeholder);
-  float: left;
+  position: absolute;
+  left: 0;
+  top: 0;
   height: 0;
   pointer-events: none;
 }
