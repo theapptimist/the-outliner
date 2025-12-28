@@ -479,7 +479,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             )}
             style={{ 
               paddingLeft: `${visualDepth * 24 + 8}px`,
-              gridTemplateColumns: '3.5rem 1fr'
+              gridTemplateColumns: '4rem 1fr'
             }}
             onClick={() => {
               onSelect(node.id);
