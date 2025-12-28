@@ -448,8 +448,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
     >
       {/* Minimal toolbar - main controls are in sidebar */}
-      <div className="flex items-center justify-between px-2 py-1 border-b border-border/30 bg-muted/20">
-        <span className="text-xs text-muted-foreground font-medium">Outline</span>
+      <div className="flex items-center justify-end px-2 py-1 border-b border-border/30 bg-muted/20">
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
