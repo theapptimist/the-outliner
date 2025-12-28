@@ -239,6 +239,7 @@ export function flattenTree(
       label: node.label,
       properties: node.properties,
       collapsed: node.collapsed,
+      visualIndent: node.visualIndent,
       depth,
       hasChildren: node.children.length > 0,
       isLastChild,
