@@ -17,6 +17,7 @@ interface TreeViewProps {
   onNavigateDown: () => void;
   onAddNode: () => void;
   onAddChildNode: () => void;
+  autoDescend?: boolean;
 }
 
 export function TreeView({
@@ -33,6 +34,7 @@ export function TreeView({
   onNavigateDown,
   onAddNode,
   onAddChildNode,
+  autoDescend = false,
 }: TreeViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -117,6 +119,8 @@ export function TreeView({
           e.preventDefault();
           if (e.shiftKey) {
             onAddChildNode();
+          } else if (autoDescend && selectedId) {
+            onAddChildNode();
           } else {
             onAddNode();
           }
@@ -153,6 +157,7 @@ export function TreeView({
     onAddNode,
     onAddChildNode,
     handleStartEdit,
+    autoDescend,
   ]);
 
   return (

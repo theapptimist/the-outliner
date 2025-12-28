@@ -322,9 +322,10 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               setSelectedId(typingNode.id);
               return typingNode.id;
             }}
-            onAddChildNode={() => {
-              if (selectedId) {
-                addChildNode(selectedId, 'default', '');
+            onAddChildNode={(parentId) => {
+              const anchorId = parentId ?? selectedId;
+              if (anchorId) {
+                addChildNode(anchorId, 'default', '');
               }
             }}
             onDelete={removeNode}
