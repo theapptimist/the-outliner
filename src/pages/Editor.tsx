@@ -98,7 +98,7 @@ export default function Editor() {
         
         <div className="flex-1 flex flex-col overflow-hidden">
           <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-            <h1 className="text-lg font-semibold text-foreground">Document Editor</h1>
+            <h1 className="text-lg font-semibold text-foreground">The Outliner</h1>
             <p className="text-sm text-muted-foreground">Type "/" for commands</p>
           </header>
           <main className="flex-1 overflow-hidden">
