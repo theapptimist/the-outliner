@@ -1,5 +1,5 @@
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Link } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
@@ -22,7 +22,7 @@ import { SimpleOutlineView } from './SimpleOutlineView';
 import { OutlineStylePicker } from './OutlineStylePicker';
 import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
-import { Trash2, Minimize2, Maximize2, ExternalLink, ArrowDownRight } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink, ArrowDownRight, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -67,7 +67,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     const node = createNode(null, 'default', '');
     return { tree: [node], firstNodeId: node.id };
   });
-  const [tree, setTree] = useState<HierarchyNode[]>(initialTree);
+  const [tree, setTreeState] = useState<HierarchyNode[]>(initialTree);
   const [selectedId, setSelectedId] = useState<string | null>(firstNodeId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
@@ -75,10 +75,81 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [autoDescend, setAutoDescend] = useState(false);
   const [autoFocusId, setAutoFocusId] = useState<string | null>(firstNodeId);
 
+  // Undo/Redo history
+  const historyRef = useRef<HierarchyNode[][]>([initialTree]);
+  const historyIndexRef = useRef(0);
+  const isUndoRedoRef = useRef(false);
+
+  const setTree = useCallback((updater: HierarchyNode[] | ((prev: HierarchyNode[]) => HierarchyNode[])) => {
+    setTreeState(prev => {
+      const nextState = typeof updater === 'function' ? updater(prev) : updater;
+      
+      // Don't add to history if this is an undo/redo operation
+      if (isUndoRedoRef.current) {
+        isUndoRedoRef.current = false;
+        return nextState;
+      }
+      
+      // Truncate any future history if we're not at the end
+      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+      
+      // Add new state to history
+      historyRef.current.push(nextState);
+      
+      // Limit history size to 50
+      if (historyRef.current.length > 50) {
+        historyRef.current = historyRef.current.slice(-50);
+      }
+      
+      historyIndexRef.current = historyRef.current.length - 1;
+      
+      return nextState;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current -= 1;
+      isUndoRedoRef.current = true;
+      setTreeState(historyRef.current[historyIndexRef.current]);
+      return true;
+    }
+    return false;
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current += 1;
+      isUndoRedoRef.current = true;
+      setTreeState(historyRef.current[historyIndexRef.current]);
+      return true;
+    }
+    return false;
+  }, []);
+
   // Save mixed config to localStorage whenever it changes
   useEffect(() => {
     saveMixedConfig(mixedConfig);
   }, [mixedConfig]);
+
+  // Global undo/redo keyboard handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   const flatNodes = flattenTree(tree);
 
