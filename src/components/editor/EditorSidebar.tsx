@@ -299,7 +299,7 @@ export function EditorSidebar({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onFindReplace(false)}
+                onClick={() => onFindReplace(true)}
                 disabled={!editor}
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",

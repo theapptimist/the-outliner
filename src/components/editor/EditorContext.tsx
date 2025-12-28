@@ -2,17 +2,41 @@ import { createContext, useContext, ReactNode, useState, useCallback } from 'rea
 import { Editor } from '@tiptap/react';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 
+export type FindReplaceMatch =
+  | { kind: 'tiptap'; from: number; to: number }
+  | { kind: 'hierarchy'; providerId: string; nodeId: string; start: number; end: number };
+
+export interface FindReplaceProvider {
+  id: string;
+  label: string;
+  find: (term: string, caseSensitive: boolean) => FindReplaceMatch[];
+  focus: (match: FindReplaceMatch) => void;
+  replace: (match: FindReplaceMatch, replacement: string) => void;
+  replaceAll: (term: string, replacement: string, caseSensitive: boolean) => number;
+}
+
 interface EditorContextValue {
   outlineStyle: OutlineStyle;
   mixedConfig: MixedStyleConfig;
   autoDescend: boolean;
   showRevealCodes: boolean;
+
+  // TipTap editor (optional)
   editor: Editor | null;
   setEditor: (editor: Editor | null) => void;
+
+  // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
   setInsertHierarchyHandler: (handler: () => void) => void;
   onFindReplace: (withReplace: boolean) => void;
   setFindReplaceHandler: (handler: (withReplace: boolean) => void) => void;
+
+  // Search scopes
+  findReplaceProviders: FindReplaceProvider[];
+  registerFindReplaceProvider: (provider: FindReplaceProvider) => void;
+  unregisterFindReplaceProvider: (providerId: string) => void;
+
+  // Undo/redo (currently from the active outline block)
   registerUndoRedo: (
     undo: () => void,
     redo: () => void,
@@ -26,12 +50,19 @@ const EditorContext = createContext<EditorContextValue>({
   mixedConfig: DEFAULT_MIXED_CONFIG,
   autoDescend: false,
   showRevealCodes: false,
+
   editor: null,
   setEditor: () => {},
+
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
   onFindReplace: () => {},
   setFindReplaceHandler: () => {},
+
+  findReplaceProviders: [],
+  registerFindReplaceProvider: () => {},
+  unregisterFindReplaceProvider: () => {},
+
   registerUndoRedo: () => {},
 });
 
@@ -60,6 +91,7 @@ export function EditorProvider({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
+  const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
 
   const setInsertHierarchyHandler = useCallback((handler: () => void) => {
     setInsertHierarchyHandlerState(() => handler);
@@ -67,6 +99,18 @@ export function EditorProvider({
 
   const setFindReplaceHandler = useCallback((handler: (withReplace: boolean) => void) => {
     setFindReplaceHandlerState(() => handler);
+  }, []);
+
+  const registerFindReplaceProvider = useCallback((provider: FindReplaceProvider) => {
+    setFindReplaceProviders(prev => {
+      const next = prev.filter(p => p.id !== provider.id);
+      next.push(provider);
+      return next;
+    });
+  }, []);
+
+  const unregisterFindReplaceProvider = useCallback((providerId: string) => {
+    setFindReplaceProviders(prev => prev.filter(p => p.id !== providerId));
   }, []);
 
   const registerUndoRedo = (
@@ -91,6 +135,9 @@ export function EditorProvider({
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,
         setFindReplaceHandler,
+        findReplaceProviders,
+        registerFindReplaceProvider,
+        unregisterFindReplaceProvider,
         registerUndoRedo,
       }}
     >

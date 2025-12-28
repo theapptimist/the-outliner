@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Replace, X, ChevronUp, ChevronDown, CaseSensitive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Toggle } from '@/components/ui/toggle';
-import { cn } from '@/lib/utils';
 import { Editor } from '@tiptap/react';
+import { FindReplaceMatch, useEditorContext } from './EditorContext';
 
 interface FindReplaceProps {
   editor: Editor | null;
@@ -14,25 +13,27 @@ interface FindReplaceProps {
   showReplace?: boolean;
 }
 
+function isTipTapMatch(m: FindReplaceMatch): m is Extract<FindReplaceMatch, { kind: 'tiptap' }> {
+  return m.kind === 'tiptap';
+}
+
 export function FindReplace({ editor, isOpen, onClose, showReplace = false }: FindReplaceProps) {
+  const { findReplaceProviders } = useEditorContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [replaceTerm, setReplaceTerm] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [showReplaceField, setShowReplaceField] = useState(showReplace);
-  const [matches, setMatches] = useState<{ from: number; to: number }[]>([]);
+  const [matches, setMatches] = useState<FindReplaceMatch[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // Find all matches in the document (string search per text node)
-  const findMatches = useCallback(() => {
+  // Find all matches in TipTap doc (if any)
+  const findTipTapMatches = useCallback((): FindReplaceMatch[] => {
     const needleRaw = searchTerm.trim();
-    if (!editor || !needleRaw) {
-      setMatches([]);
-      return;
-    }
+    if (!editor || !needleRaw) return [];
 
     const doc = editor.state.doc;
     const needle = caseSensitive ? needleRaw : needleRaw.toLowerCase();
-    const foundMatches: { from: number; to: number }[] = [];
+    const found: FindReplaceMatch[] = [];
 
     doc.descendants((node, pos) => {
       if (!node.isText || !node.text) return;
@@ -43,97 +44,120 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
       while (true) {
         const at = haystack.indexOf(needle, idx);
         if (at === -1) break;
-
-        foundMatches.push({
-          from: pos + at,
-          to: pos + at + needleRaw.length,
-        });
-
+        found.push({ kind: 'tiptap', from: pos + at, to: pos + at + needleRaw.length });
         idx = at + Math.max(1, needleRaw.length);
       }
     });
 
-    setMatches(foundMatches);
-    if (currentMatchIndex >= foundMatches.length) {
-      setCurrentMatchIndex(0);
+    return found;
+  }, [editor, searchTerm, caseSensitive]);
+
+  const findAllMatches = useCallback(() => {
+    const needleRaw = searchTerm.trim();
+    if (!needleRaw) {
+      setMatches([]);
+      return;
     }
-  }, [editor, searchTerm, caseSensitive, currentMatchIndex]);
+
+    const providerMatches = findReplaceProviders.flatMap(p => p.find(needleRaw, caseSensitive));
+    const tiptapMatches = findTipTapMatches();
+
+    // Prefer hierarchy matches first since this is an outliner.
+    const all = [...providerMatches, ...tiptapMatches];
+
+    setMatches(all);
+    setCurrentMatchIndex(prev => (all.length === 0 ? 0 : Math.min(prev, all.length - 1)));
+  }, [searchTerm, caseSensitive, findReplaceProviders, findTipTapMatches]);
 
   // Update matches when search term changes
   useEffect(() => {
-    findMatches();
-  }, [findMatches]);
+    findAllMatches();
+  }, [findAllMatches]);
 
-  // Highlight current match
+  const activeMatch = useMemo(() => matches[currentMatchIndex], [matches, currentMatchIndex]);
+
+  // Focus current match
   useEffect(() => {
-    if (!editor || matches.length === 0) return;
+    if (!isOpen || !activeMatch) return;
 
-    const match = matches[currentMatchIndex];
-    if (match) {
-      editor.chain().focus().setTextSelection(match).run();
-      
-      // Scroll to the match
-      const { node } = editor.view.domAtPos(match.from);
-      if (node instanceof Element || node.parentElement) {
-        const element = node instanceof Element ? node : node.parentElement;
-        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    if (activeMatch.kind === 'hierarchy') {
+      const provider = findReplaceProviders.find(p => p.id === activeMatch.providerId);
+      provider?.focus(activeMatch);
+      return;
     }
-  }, [editor, matches, currentMatchIndex]);
+
+    if (!editor) return;
+    editor.chain().focus().setTextSelection({ from: activeMatch.from, to: activeMatch.to }).run();
+
+    const { node } = editor.view.domAtPos(activeMatch.from);
+    const element = node instanceof Element ? node : node.parentElement;
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [isOpen, activeMatch, editor, findReplaceProviders]);
 
   const goToNextMatch = () => {
     if (matches.length === 0) return;
-    setCurrentMatchIndex((prev) => (prev + 1) % matches.length);
+    setCurrentMatchIndex(prev => (prev + 1) % matches.length);
   };
 
   const goToPrevMatch = () => {
     if (matches.length === 0) return;
-    setCurrentMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
+    setCurrentMatchIndex(prev => (prev - 1 + matches.length) % matches.length);
   };
 
   const replaceCurrentMatch = () => {
-    if (!editor || matches.length === 0) return;
+    if (!activeMatch) return;
 
-    const match = matches[currentMatchIndex];
-    if (match) {
-      editor
-        .chain()
-        .focus()
-        .setTextSelection(match)
-        .deleteSelection()
-        .insertContent(replaceTerm)
-        .run();
-
-      // Refind matches after replacement
-      setTimeout(() => {
-        findMatches();
-      }, 10);
+    if (activeMatch.kind === 'hierarchy') {
+      const provider = findReplaceProviders.find(p => p.id === activeMatch.providerId);
+      provider?.replace(activeMatch, replaceTerm);
+      // refresh matches after replacement
+      setTimeout(findAllMatches, 0);
+      return;
     }
+
+    if (!editor) return;
+
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({ from: activeMatch.from, to: activeMatch.to })
+      .deleteSelection()
+      .insertContent(replaceTerm)
+      .run();
+
+    setTimeout(findAllMatches, 0);
   };
 
   const replaceAllMatches = () => {
-    if (!editor || matches.length === 0) return;
+    const needleRaw = searchTerm.trim();
+    if (!needleRaw) return;
 
-    // Replace from end to start to maintain positions
-    const sortedMatches = [...matches].sort((a, b) => b.from - a.from);
-
-    editor.chain().focus();
-
-    sortedMatches.forEach((match) => {
-      editor
-        .chain()
-        .setTextSelection(match)
-        .deleteSelection()
-        .insertContent(replaceTerm)
-        .run();
+    // Replace in hierarchy providers
+    let replacedCount = 0;
+    findReplaceProviders.forEach(p => {
+      replacedCount += p.replaceAll(needleRaw, replaceTerm, caseSensitive);
     });
 
-    // Clear matches after replace all
-    setMatches([]);
-    setSearchTerm('');
+    // Replace in tiptap by positions (end -> start)
+    if (editor) {
+      const tiptapMatches = matches.filter(isTipTapMatch).sort((a, b) => b.from - a.from);
+      tiptapMatches.forEach(m => {
+        editor
+          .chain()
+          .setTextSelection({ from: m.from, to: m.to })
+          .deleteSelection()
+          .insertContent(replaceTerm)
+          .run();
+      });
+    }
+
+    // Refresh
+    setTimeout(() => {
+      findAllMatches();
+    }, 0);
   };
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts within dialog
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -148,11 +172,8 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
         goToPrevMatch();
       } else if (e.key === 'F3') {
         e.preventDefault();
-        if (e.shiftKey) {
-          goToPrevMatch();
-        } else {
-          goToNextMatch();
-        }
+        if (e.shiftKey) goToPrevMatch();
+        else goToNextMatch();
       }
     };
 
@@ -160,23 +181,26 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, matches.length]);
 
+  // Sync showReplace prop
+  useEffect(() => {
+    setShowReplaceField(showReplace);
+  }, [showReplace]);
+
   if (!isOpen) return null;
 
   return (
     <div className="absolute top-0 right-4 z-50 animate-fade-in">
       <div className="bg-card border border-border rounded-lg shadow-lg p-3 min-w-[320px]">
-        {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Find & Replace</span>
+            <span className="text-sm font-medium">Find &amp; Replace</span>
           </div>
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Search Field */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
@@ -193,6 +217,7 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
                 </span>
               )}
             </div>
+
             <Toggle
               pressed={caseSensitive}
               onPressedChange={setCaseSensitive}
@@ -202,6 +227,7 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
             >
               <CaseSensitive className="h-4 w-4" />
             </Toggle>
+
             <Button
               variant="ghost"
               size="sm"
@@ -222,7 +248,6 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
             </Button>
           </div>
 
-          {/* Replace Field Toggle */}
           <Button
             variant="ghost"
             size="sm"
@@ -233,7 +258,6 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
             {showReplaceField ? 'Hide Replace' : 'Show Replace'}
           </Button>
 
-          {/* Replace Field */}
           {showReplaceField && (
             <div className="space-y-2 pt-1 border-t border-border/50">
               <Input
@@ -266,7 +290,6 @@ export function FindReplace({ editor, isOpen, onClose, showReplace = false }: Fi
           )}
         </div>
 
-        {/* Keyboard hints */}
         <div className="mt-2 pt-2 border-t border-border/50 flex gap-3 text-[10px] text-muted-foreground">
           <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono">Enter</kbd> Next</span>
           <span><kbd className="px-1 py-0.5 rounded bg-muted font-mono">Shift+Enter</kbd> Prev</span>
