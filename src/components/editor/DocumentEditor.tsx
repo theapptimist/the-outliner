@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { FindReplace } from './FindReplace';
 import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
+import { PaginatedDocument } from './PageContainer';
 import { useDocument } from '@/hooks/useDocument';
 import { useEditorContext } from './EditorContext';
 import './editor-styles.css';
@@ -40,7 +41,7 @@ export function DocumentEditor() {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] px-6 py-6',
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[800px]',
       },
       handleKeyDown: (view, event) => {
         if (event.key === '/' && !slashMenuOpen) {
@@ -123,11 +124,11 @@ export function DocumentEditor() {
   }, [handleInsertHierarchy, setInsertHierarchyHandler]);
 
   return (
-    <div className="flex flex-col h-full bg-background relative">
+    <div className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative">
       <div className="flex-1 overflow-auto">
-        <div className="w-full">
+        <PaginatedDocument>
           <EditorContent editor={editor} />
-        </div>
+        </PaginatedDocument>
       </div>
 
       <FindReplace
