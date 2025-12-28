@@ -1,5 +1,6 @@
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
 import { useState, useCallback } from 'react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Link } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
 import { 
@@ -240,19 +241,24 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         </div>
         <div className="flex items-center gap-1">
           <OutlineStylePicker value={outlineStyle} onChange={setOutlineStyle} />
-          <Button
-            variant={autoDescend ? "secondary" : "ghost"}
-            size="sm"
-            className={cn(
-              "h-6 px-1.5 gap-1",
-              autoDescend && "bg-primary/10 text-primary hover:bg-primary/20"
-            )}
-            onClick={() => setAutoDescend(!autoDescend)}
-            title="Auto-Descend Mode: Enter creates child nodes (1 → a → i)"
-          >
-            <ArrowDownRight className="h-3 w-3" />
-            <span className="text-[10px]">Auto</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={autoDescend ? "secondary" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-6 w-6 p-0",
+                  autoDescend && "bg-primary/10 text-primary hover:bg-primary/20"
+                )}
+                onClick={() => setAutoDescend(!autoDescend)}
+              >
+                <ArrowDownRight className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Auto-Descend: Enter creates child (1 → a → i)</p>
+            </TooltipContent>
+          </Tooltip>
           <Button
             variant="ghost"
             size="sm"
