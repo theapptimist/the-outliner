@@ -132,6 +132,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     setTree(prev => toggleCollapse(prev, nodeId));
   }, []);
 
+  // Visual indent for body nodes (Block Tab feature)
+  const handleVisualIndent = useCallback((nodeId: string, delta: number) => {
+    setTree(prev => updateNode(prev, nodeId, { 
+      visualIndent: Math.max(0, (findNode(prev, nodeId)?.visualIndent || 0) + delta)
+    }));
+  }, []);
+
   const navigateUp = useCallback(() => {
     if (!selectedId) {
       if (flatNodes.length > 0) setSelectedId(flatNodes[0].id);
@@ -269,6 +276,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onMove={handleMove}
             onIndent={handleIndent}
             onOutdent={handleOutdent}
+            onVisualIndent={handleVisualIndent}
             onAddNode={(afterId) => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {

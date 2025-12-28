@@ -16,6 +16,8 @@ export interface HierarchyNode {
   children: HierarchyNode[];
   /** Rich text content stored as TipTap JSON */
   content?: any;
+  /** Visual indent level for body nodes (Block Tab feature) */
+  visualIndent?: number;
 }
 
 export interface FlatNode extends Omit<HierarchyNode, 'children'> {
