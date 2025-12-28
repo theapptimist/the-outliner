@@ -475,7 +475,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           <div
             key={node.id}
             className={cn(
-              'grid items-baseline py-1.5 px-2 cursor-text group'
+              'grid items-start py-1.5 px-2 cursor-text group'
             )}
             style={{ 
               paddingLeft: `${visualDepth * 24 + 8}px`,
@@ -491,7 +491,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             
             {/* Prefix/numbering - body nodes get empty spacer for alignment */}
             <span className={cn(
-              "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap",
+              "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap pt-px",
               prefix ? "text-muted-foreground" : ""
             )}>
               {prefix || ''}
