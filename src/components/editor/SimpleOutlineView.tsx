@@ -529,7 +529,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={(e) => handleKeyDown(e, node)}
-                onBlur={() => handleEndEdit(node.id)}
+                onBlur={(e) => {
+                  const next = e.relatedTarget as HTMLElement | null;
+                  // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
+                  if (next?.closest('[data-editor-sidebar]')) {
+                    requestAnimationFrame(() => {
+                      inputRefs.current.get(node.id)?.focus();
+                    });
+                    return;
+                  }
+                  handleEndEdit(node.id);
+                }}
                 placeholder=""
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 style={{ caretColor: 'hsl(var(--primary))' }}

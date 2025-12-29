@@ -121,7 +121,8 @@ export function EditorSidebar({
   }, [isDark]);
 
   return (
-    <div 
+    <div
+      data-editor-sidebar
       className={cn(
         "flex flex-col border-r border-border/30 transition-all duration-300 relative overflow-hidden",
         collapsed ? "w-12" : "w-56"
