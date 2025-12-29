@@ -123,6 +123,20 @@ export function EditorSidebar({
   return (
     <div
       data-editor-sidebar
+      onMouseDownCapture={(e) => {
+        // Prevent sidebar controls from taking focus away from the active textarea.
+        // (Click should still work; it just shouldn't steal focus/caret.)
+        const t = e.target as HTMLElement | null;
+        if (t?.closest('button,[role="button"],a')) {
+          e.preventDefault();
+        }
+      }}
+      onPointerDownCapture={(e) => {
+        const t = e.target as HTMLElement | null;
+        if (t?.closest('button,[role="button"],a')) {
+          e.preventDefault();
+        }
+      }}
       className={cn(
         "flex flex-col border-r border-border/30 transition-all duration-300 relative overflow-hidden",
         collapsed ? "w-12" : "w-56"
