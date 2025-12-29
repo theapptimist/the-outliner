@@ -451,6 +451,20 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const setInputRef = useCallback((id: string) => (el: HTMLTextAreaElement | null) => {
     if (el) {
       inputRefs.current.set(id, el);
+
+      // If this textarea is the active editor, focus immediately when it mounts.
+      if (editingIdRef.current === id) {
+        queueMicrotask(() => {
+          // Guard: element might unmount quickly during state transitions
+          const current = inputRefs.current.get(id);
+          current?.focus();
+          const len = current?.value.length ?? 0;
+          if (current) {
+            current.selectionStart = len;
+            current.selectionEnd = len;
+          }
+        });
+      }
     } else {
       inputRefs.current.delete(id);
     }
