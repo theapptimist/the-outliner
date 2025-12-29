@@ -168,9 +168,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   }, [nodes, handleStartEdit]);
 
   // Focus input when editingId changes
+  // Use setTimeout to ensure DOM is ready after page container renders
   useEffect(() => {
     if (editingId) {
-      requestAnimationFrame(() => {
+      const timeoutId = setTimeout(() => {
         const input = inputRefs.current.get(editingId);
         if (input) {
           input.focus();
@@ -178,7 +179,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           input.selectionStart = len;
           input.selectionEnd = len;
         }
-      });
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
   }, [editingId]);
 
