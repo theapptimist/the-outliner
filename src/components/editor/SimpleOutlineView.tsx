@@ -59,9 +59,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   forwardedRef
 ) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const editingIdRef = useRef<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    editingIdRef.current = editingId;
+  }, [editingId]);
 
   // If a parent passes a ref, we attach it to our focusable container.
   const setContainerRef = useCallback(
@@ -185,6 +190,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   }, [editingId]);
 
   const handleEndEdit = useCallback((id: string) => {
+    // If a blur from a previous textarea fires after we've already moved edit focus,
+    // ignore it (this prevents auto-descend focus from being cancelled).
+    if (editingIdRef.current !== id) return;
+
     onUpdateLabel(id, editValue);
     setEditingId(null);
   }, [editValue, onUpdateLabel]);
