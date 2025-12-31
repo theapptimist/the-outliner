@@ -544,13 +544,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
                 style={{ caretColor: 'hsl(var(--primary))' }}
                 className={cn(
-                  "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap leading-6",
+                  "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0",
                   levelStyle.underline && editValue && "underline decoration-foreground"
                 )}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="text-sm font-mono whitespace-pre-wrap leading-6">
+              <span className="text-sm font-mono whitespace-pre-wrap break-words leading-6 min-w-0">
                 <span className={cn(
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
                   levelStyle.underline && node.label && 'underline'
