@@ -24,6 +24,7 @@ import {
   Search,
   Wrench,
   BookOpen,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -220,6 +221,30 @@ export function EditorSidebar({
               </button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>Defined Terms</TooltipContent>
+          </Tooltip>
+          
+          {/* Always-visible Add Term button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                data-allow-pointer
+                onClick={() => {
+                  setActiveTab('terms');
+                  // Small delay to let tab switch, then open dialog
+                  setTimeout(() => {
+                    const addBtn = document.querySelector('[data-add-term-btn]') as HTMLButtonElement;
+                    addBtn?.click();
+                  }, 50);
+                }}
+                className={cn(
+                  "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+                  "bg-success/15 text-success hover:bg-success/25"
+                )}
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? "right" : "bottom"}>Add Term</TooltipContent>
           </Tooltip>
         </div>
       </div>

@@ -61,6 +61,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       {/* Add Term Button */}
       <div className="px-2 pb-2">
         <Button
+          data-add-term-btn
           variant="outline"
           size="sm"
           onClick={() => setDialogOpen(true)}
