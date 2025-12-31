@@ -22,28 +22,21 @@ interface AddTermDialogProps {
  * Smart extraction patterns for legal/contract language.
  * These patterns extract the defined term from common phrasings.
  */
-const EXTRACTION_PATTERNS = [
-  // "referred to as the 'X'" or "referred to below as the 'X'"
-  /referred\s+to\s+(?:below\s+)?as\s+(?:the\s+)?["'"]([^"'"]+)["'"]/i,
-  // "(the 'X')" or "('X')"
-  /\(\s*(?:the\s+)?["'"]([^"'"]+)["'"]\s*\)/i,
-  // "hereinafter 'X'" or "hereinafter referred to as 'X'"
-  /hereinafter\s+(?:referred\s+to\s+as\s+)?(?:the\s+)?["'"]([^"'"]+)["'"]/i,
-  // "collectively, the 'X'" or "collectively referred to as 'X'"
-  /collectively[,]?\s+(?:referred\s+to\s+as\s+)?(?:the\s+)?["'"]([^"'"]+)["'"]/i,
-  // "each, a 'X'" or "each a 'X'"
-  /each[,]?\s+(?:a\s+)?["'"]([^"'"]+)["'"]/i,
-];
-
+/**
+ * Extract the term from any quoted text in the selection.
+ * Supports double quotes, single quotes, and smart quotes.
+ * The term is the quoted text; the definition is the full selection.
+ */
 function extractTermFromSelection(selection: string): { term: string; definition: string } | null {
-  for (const pattern of EXTRACTION_PATTERNS) {
-    const match = selection.match(pattern);
-    if (match && match[1]) {
-      return {
-        term: match[1].trim(),
-        definition: selection.trim(), // Use the FULL selection as the definition
-      };
-    }
+  // Match any text in quotes (double, single, or smart quotes)
+  const quotePattern = /["'""]([^"'""]+)["'""]/;
+  const match = selection.match(quotePattern);
+  
+  if (match && match[1]) {
+    return {
+      term: match[1].trim(),
+      definition: selection.trim(),
+    };
   }
   return null;
 }
