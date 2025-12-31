@@ -17,9 +17,9 @@ interface DefinedTermsPaneProps {
 
 export function DefinedTermsPane({ collapsed }: DefinedTermsPaneProps) {
   const [terms, setTerms] = useState<DefinedTerm[]>([
-    { id: '1', term: 'Agreement', definition: 'This document and all attached exhibits.' },
-    { id: '2', term: 'Effective Date', definition: 'The date this Agreement is signed by all parties.' },
-    { id: '3', term: 'Party', definition: 'Each person or entity signing this Agreement.' },
+    { id: '1', term: 'Agreement', definition: 'This thing you\'re reading right now, plus the attachments.' },
+    { id: '2', term: 'Effective Date', definition: 'When everyone actually signs it.' },
+    { id: '3', term: 'Party', definition: 'You, them, whoever signed.' },
   ]);
   const [searchQuery, setSearchQuery] = useState('');
 
