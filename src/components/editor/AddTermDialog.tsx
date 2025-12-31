@@ -35,13 +35,13 @@ const EXTRACTION_PATTERNS = [
   /each[,]?\s+(?:a\s+)?["'"]([^"'"]+)["'"]/i,
 ];
 
-function extractTermFromSelection(selection: string): { term: string; context: string } | null {
+function extractTermFromSelection(selection: string): { term: string; definition: string } | null {
   for (const pattern of EXTRACTION_PATTERNS) {
     const match = selection.match(pattern);
     if (match && match[1]) {
       return {
         term: match[1].trim(),
-        context: selection.replace(match[0], '').trim(),
+        definition: selection.trim(), // Use the FULL selection as the definition
       };
     }
   }
@@ -64,7 +64,7 @@ export function AddTermDialog({
         const extracted = extractTermFromSelection(prefillSelection);
         if (extracted) {
           setTerm(extracted.term);
-          setDefinition(extracted.context || '');
+          setDefinition(extracted.definition);
         } else {
           // No pattern matched - use selection as the term
           setTerm(prefillSelection.trim());
