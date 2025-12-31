@@ -22,6 +22,8 @@ import {
   Minus,
   GitBranch,
   Search,
+  Wrench,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -30,7 +32,10 @@ import { OutlineStylePicker } from './OutlineStylePicker';
 import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { useEditorContext } from './EditorContext';
+import { DefinedTermsPane } from './DefinedTermsPane';
 import { cn } from '@/lib/utils';
+
+type SidebarTab = 'tools' | 'terms';
 
 interface EditorSidebarProps {
   outlineStyle: OutlineStyle;
@@ -107,6 +112,7 @@ export function EditorSidebar({
   canRedo,
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<SidebarTab>('tools');
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
@@ -149,19 +155,83 @@ export function EditorSidebar({
       {/* Decorative accent line */}
       <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary via-accent to-success opacity-60" />
 
-      {/* Header with collapse toggle */}
-      <div className="relative flex items-center justify-between p-2 border-b border-border/30">
-        {!collapsed && (
-          <span className="text-xs font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent uppercase tracking-wider">
-            Tools
-          </span>
+      {/* Navigation Strip */}
+      <div className="relative flex items-center border-b border-border/30">
+        {collapsed ? (
+          <div className="flex flex-col w-full py-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveTab('tools')}
+                  className={cn(
+                    "h-8 w-full p-0 transition-colors",
+                    activeTab === 'tools' 
+                      ? "bg-primary/15 text-primary" 
+                      : "hover:bg-primary/10 text-muted-foreground"
+                  )}
+                >
+                  <Wrench className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Tools</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveTab('terms')}
+                  className={cn(
+                    "h-8 w-full p-0 transition-colors",
+                    activeTab === 'terms' 
+                      ? "bg-accent/15 text-accent" 
+                      : "hover:bg-accent/10 text-muted-foreground"
+                  )}
+                >
+                  <BookOpen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Defined Terms</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : (
+          <div className="flex w-full">
+            <button
+              onClick={() => setActiveTab('tools')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors border-b-2",
+                activeTab === 'tools'
+                  ? "border-primary text-primary bg-primary/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
+              )}
+            >
+              <Wrench className="h-3.5 w-3.5" />
+              Tools
+            </button>
+            <button
+              onClick={() => setActiveTab('terms')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors border-b-2",
+                activeTab === 'terms'
+                  ? "border-accent text-accent bg-accent/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
+              )}
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Terms
+            </button>
+          </div>
         )}
+        
+        {/* Collapse button */}
         <Button
           variant="ghost"
           size="sm"
           className={cn(
-            "h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary transition-colors",
-            collapsed && "mx-auto"
+            "h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary transition-colors absolute right-1 top-1/2 -translate-y-1/2",
+            collapsed && "relative right-auto translate-y-0 mx-auto mt-1"
           )}
           onClick={() => setCollapsed(!collapsed)}
         >
@@ -173,8 +243,13 @@ export function EditorSidebar({
         </Button>
       </div>
 
-      {/* Tools section */}
-      <div className="relative flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
+      {/* Conditional Content */}
+      {activeTab === 'terms' ? (
+        <DefinedTermsPane collapsed={collapsed} />
+      ) : (
+        <>
+          {/* Tools section */}
+          <div className="relative flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
         {/* Outline - NOW AT TOP */}
         {!collapsed && (
           <span className="text-[10px] font-medium text-warning uppercase tracking-wider px-1">
@@ -532,6 +607,8 @@ export function EditorSidebar({
             Press <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">?</kbd> for shortcuts
           </p>
         </div>
+      )}
+        </>
       )}
     </div>
   );
