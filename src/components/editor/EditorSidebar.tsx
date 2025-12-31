@@ -131,14 +131,18 @@ export function EditorSidebar({
       data-editor-sidebar
       onMouseDownCapture={(e) => {
         // Prevent sidebar controls from taking focus away from the active textarea.
-        // (Click should still work; it just shouldn't steal focus/caret.)
+        // NOTE: On some browsers (esp. mobile), preventing default on pointer/mouse down
+        // can also cancel subsequent click events. We allow pointer/click for elements
+        // marked with data-allow-pointer (e.g. tab switches).
         const t = e.target as HTMLElement | null;
+        if (t?.closest('[data-allow-pointer]')) return;
         if (t?.closest('button,[role="button"],a')) {
           e.preventDefault();
         }
       }}
       onPointerDownCapture={(e) => {
         const t = e.target as HTMLElement | null;
+        if (t?.closest('[data-allow-pointer]')) return;
         if (t?.closest('button,[role="button"],a')) {
           e.preventDefault();
         }
@@ -186,11 +190,12 @@ export function EditorSidebar({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
+                data-allow-pointer
                 onClick={() => setActiveTab('tools')}
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  activeTab === 'tools' 
-                    ? "bg-primary/15 text-primary" 
+                  activeTab === 'tools'
+                    ? "bg-primary/15 text-primary"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
@@ -202,11 +207,12 @@ export function EditorSidebar({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
+                data-allow-pointer
                 onClick={() => setActiveTab('terms')}
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  activeTab === 'terms' 
-                    ? "bg-accent/15 text-accent" 
+                  activeTab === 'terms'
+                    ? "bg-accent/15 text-accent"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
