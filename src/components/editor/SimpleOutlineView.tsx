@@ -457,11 +457,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         queueMicrotask(() => {
           // Guard: element might unmount quickly during state transitions
           const current = inputRefs.current.get(id);
-          current?.focus();
-          const len = current?.value.length ?? 0;
           if (current) {
+            current.focus();
+            const len = current.value.length ?? 0;
             current.selectionStart = len;
             current.selectionEnd = len;
+            // Auto-resize to fit wrapped content
+            current.style.height = 'auto';
+            current.style.height = `${current.scrollHeight}px`;
           }
         });
       }
@@ -527,7 +530,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               <textarea
                 ref={setInputRef(node.id)}
                 value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
+                onChange={(e) => {
+                  setEditValue(e.target.value);
+                  // Auto-resize textarea to fit content including visual wraps
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${e.target.scrollHeight}px`;
+                }}
                 onKeyDown={(e) => handleKeyDown(e, node)}
                 onBlur={(e) => {
                   const next = e.relatedTarget as HTMLElement | null;
@@ -541,8 +549,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   handleEndEdit(node.id);
                 }}
                 placeholder=""
-                rows={Math.min(12, Math.max(1, editValue.split('\n').length))}
-                style={{ caretColor: 'hsl(var(--primary))' }}
+                rows={1}
+                style={{ 
+                  caretColor: 'hsl(var(--primary))',
+                  overflow: 'hidden'
+                }}
                 className={cn(
                   "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0",
                   levelStyle.underline && editValue && "underline decoration-foreground"
