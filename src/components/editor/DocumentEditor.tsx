@@ -11,7 +11,12 @@ import { useEditorContext } from './EditorContext';
 
 export function DocumentEditor() {
   const { document, addHierarchyBlock, updateContent } = useDocument();
-  const { setEditor, setInsertHierarchyHandler, setFindReplaceHandler } = useEditorContext();
+  const {
+    setEditor,
+    setInsertHierarchyHandler,
+    setFindReplaceHandler,
+    setSelectedText,
+  } = useEditorContext();
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = useState({ top: 0, left: 0 });
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
@@ -65,6 +70,30 @@ export function DocumentEditor() {
     setEditor(editor);
     return () => setEditor(null);
   }, [editor, setEditor]);
+
+  // Track text selection inside TipTap for Defined Terms
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateSelectedText = () => {
+      const { from, to } = editor.state.selection;
+      if (from === to) {
+        setSelectedText('');
+        return;
+      }
+      const text = editor.state.doc.textBetween(from, to, ' ');
+      setSelectedText(text);
+    };
+
+    editor.on('selectionUpdate', updateSelectedText);
+
+    // Initialize once
+    updateSelectedText();
+
+    return () => {
+      editor.off('selectionUpdate', updateSelectedText);
+    };
+  }, [editor, setSelectedText]);
 
   // Keyboard shortcuts for find/replace
   useEffect(() => {

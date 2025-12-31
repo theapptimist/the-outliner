@@ -559,7 +559,6 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     return;
                   }
                   handleEndEdit(node.id);
-                  setSelectedText(''); // Clear selection when leaving edit mode
                 }}
                 placeholder=""
                 rows={1}
