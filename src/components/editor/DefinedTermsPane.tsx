@@ -65,13 +65,13 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
           size="sm"
           onClick={() => setDialogOpen(true)}
           className={cn(
-            "w-full h-8 text-xs border-dashed border-accent/50 text-accent hover:bg-accent/10 hover:border-accent",
-            selectedText && "ring-1 ring-accent/50 border-accent"
+            "w-full h-8 text-xs border-dashed border-accent text-accent bg-accent/10 hover:bg-accent/20 hover:border-accent",
+            selectedText && "ring-2 ring-accent/60 border-accent bg-accent/15"
           )}
         >
           <Plus className="h-3.5 w-3.5 mr-1" />
           Add Term
-          {selectedText && <span className="ml-1 text-[10px] opacity-70">(from selection)</span>}
+          {selectedText && <span className="ml-1 text-[10px] opacity-80">(from selection)</span>}
         </Button>
       </div>
 
