@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } 
 import { FlatNode, DropPosition } from '@/types/node';
 import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfig, DEFAULT_MIXED_CONFIG, getLevelStyle } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
-
+import { useEditorContext } from './EditorContext';
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
   selectedId: string | null;
@@ -63,6 +63,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [editValue, setEditValue] = useState('');
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+  const { setSelectedText } = useEditorContext();
+
+  // Track text selection in textarea
+  const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const selectedText = textarea.value.substring(
+      textarea.selectionStart,
+      textarea.selectionEnd
+    );
+    setSelectedText(selectedText);
+  }, [setSelectedText]);
 
   useEffect(() => {
     editingIdRef.current = editingId;
@@ -537,6 +548,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
                 onKeyDown={(e) => handleKeyDown(e, node)}
+                onSelect={handleSelectionChange}
                 onBlur={(e) => {
                   const next = e.relatedTarget as HTMLElement | null;
                   // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
@@ -547,6 +559,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     return;
                   }
                   handleEndEdit(node.id);
+                  setSelectedText(''); // Clear selection when leaving edit mode
                 }}
                 placeholder=""
                 rows={1}
