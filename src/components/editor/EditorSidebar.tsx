@@ -116,7 +116,7 @@ export function EditorSidebar({
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
-  const { editor, onInsertHierarchy, onFindReplace } = useEditorContext();
+  const { editor, onInsertHierarchy, onFindReplace, selectedText } = useEditorContext();
 
   useEffect(() => {
     if (isDark) {
@@ -226,7 +226,7 @@ export function EditorSidebar({
 
       {/* Conditional Content */}
       {activeTab === 'terms' ? (
-        <DefinedTermsPane collapsed={collapsed} selectedText={useEditorContext().selectedText} />
+        <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
       ) : (
         <>
           {/* Tools section */}
