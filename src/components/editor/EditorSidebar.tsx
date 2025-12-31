@@ -220,7 +220,7 @@ export function EditorSidebar({
 
       {/* Conditional Content */}
       {activeTab === 'terms' ? (
-        <DefinedTermsPane collapsed={collapsed} />
+        <DefinedTermsPane collapsed={collapsed} selectedText={useEditorContext().selectedText} />
       ) : (
         <>
           {/* Tools section */}

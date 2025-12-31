@@ -1,27 +1,34 @@
 import { useState } from 'react';
-import { BookOpen, Plus, Search } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { AddTermDialog } from './AddTermDialog';
+import { TermUsage } from '@/lib/termScanner';
 
 interface DefinedTerm {
   id: string;
   term: string;
   definition: string;
+  usages: TermUsage[];
 }
 
 interface DefinedTermsPaneProps {
   collapsed: boolean;
+  selectedText?: string;
 }
 
-export function DefinedTermsPane({ collapsed }: DefinedTermsPaneProps) {
+export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
   const [terms, setTerms] = useState<DefinedTerm[]>([
-    { id: '1', term: 'Agreement', definition: 'This thing you\'re reading right now, plus the attachments.' },
-    { id: '2', term: 'Effective Date', definition: 'When everyone actually signs it.' },
-    { id: '3', term: 'Party', definition: 'You, them, whoever signed.' },
+    { id: '1', term: 'Agreement', definition: 'This thing you\'re reading right now, plus the attachments.', usages: [] },
+    { id: '2', term: 'Effective Date', definition: 'When everyone actually signs it.', usages: [] },
+    { id: '3', term: 'Party', definition: 'You, them, whoever signed.', usages: [] },
   ]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
 
   const filteredTerms = terms.filter(t =>
     t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,30 +63,96 @@ export function DefinedTermsPane({ collapsed }: DefinedTermsPaneProps) {
         <Button
           variant="outline"
           size="sm"
-          className="w-full h-8 text-xs border-dashed border-accent/50 text-accent hover:bg-accent/10 hover:border-accent"
+          onClick={() => setDialogOpen(true)}
+          className={cn(
+            "w-full h-8 text-xs border-dashed border-accent/50 text-accent hover:bg-accent/10 hover:border-accent",
+            selectedText && "ring-1 ring-accent/50 border-accent"
+          )}
         >
           <Plus className="h-3.5 w-3.5 mr-1" />
           Add Term
+          {selectedText && <span className="ml-1 text-[10px] opacity-70">(from selection)</span>}
         </Button>
       </div>
 
       {/* Terms List */}
       <ScrollArea className="flex-1 px-2">
         <div className="space-y-2 pb-2">
-          {filteredTerms.map((term) => (
-            <div
-              key={term.id}
-              className={cn(
-                "p-2 rounded-md border border-border/50 bg-card/50",
-                "hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer"
-              )}
-            >
-              <div className="font-medium text-xs text-foreground">{term.term}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-                {term.definition}
-              </div>
-            </div>
-          ))}
+          {filteredTerms.map((term) => {
+            const isExpanded = expandedTerms.has(term.id);
+            const hasUsages = term.usages.length > 0;
+            const totalUsages = term.usages.reduce((sum, u) => sum + u.count, 0);
+
+            return (
+              <Collapsible
+                key={term.id}
+                open={isExpanded}
+                onOpenChange={(open) => {
+                  const next = new Set(expandedTerms);
+                  if (open) next.add(term.id);
+                  else next.delete(term.id);
+                  setExpandedTerms(next);
+                }}
+              >
+                <div
+                  className={cn(
+                    "rounded-md border border-border/50 bg-card/50",
+                    "hover:border-accent/50 hover:bg-accent/5 transition-colors"
+                  )}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button className="w-full p-2 text-left">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-xs text-foreground">{term.term}</div>
+                        <div className="flex items-center gap-1">
+                          {totalUsages > 0 && (
+                            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded">
+                              {totalUsages}
+                            </span>
+                          )}
+                          {hasUsages && (
+                            isExpanded ? (
+                              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                        {term.definition}
+                      </div>
+                    </button>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    {hasUsages && (
+                      <div className="px-2 pb-2 pt-1 border-t border-border/30">
+                        <div className="text-[10px] text-muted-foreground mb-1">Found in:</div>
+                        <div className="space-y-1">
+                          {term.usages.map((usage, idx) => (
+                            <button
+                              key={`${usage.nodeId}-${idx}`}
+                              className="w-full text-left text-[10px] px-1.5 py-1 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
+                              onClick={() => {
+                                // TODO: Navigate to usage location
+                                console.log('Navigate to:', usage);
+                              }}
+                            >
+                              <span className="text-foreground">{usage.nodeLabel}</span>
+                              {usage.count > 1 && (
+                                <span className="text-muted-foreground ml-1">×{usage.count}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            );
+          })}
           {filteredTerms.length === 0 && (
             <div className="text-center py-8 text-xs text-muted-foreground">
               {searchQuery ? 'No matching terms' : 'No defined terms yet'}
@@ -94,6 +167,22 @@ export function DefinedTermsPane({ collapsed }: DefinedTermsPaneProps) {
           {terms.length} defined term{terms.length !== 1 ? 's' : ''}
         </p>
       </div>
+
+      {/* Add Term Dialog */}
+      <AddTermDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        prefillSelection={selectedText}
+        onSave={(term, definition) => {
+          const newTerm: DefinedTerm = {
+            id: crypto.randomUUID(),
+            term,
+            definition,
+            usages: [], // Will be populated by scanner later
+          };
+          setTerms(prev => [...prev, newTerm]);
+        }}
+      />
     </div>
   );
 }

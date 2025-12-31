@@ -25,6 +25,10 @@ interface EditorContextValue {
   editor: Editor | null;
   setEditor: (editor: Editor | null) => void;
 
+  // Text selection tracking for defined terms
+  selectedText: string;
+  setSelectedText: (text: string) => void;
+
   // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
   setInsertHierarchyHandler: (handler: () => void) => void;
@@ -53,6 +57,9 @@ const EditorContext = createContext<EditorContextValue>({
 
   editor: null,
   setEditor: () => {},
+
+  selectedText: '',
+  setSelectedText: () => {},
 
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
@@ -89,6 +96,7 @@ export function EditorProvider({
   onUndoRedoChange,
 }: EditorProviderProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [selectedText, setSelectedText] = useState('');
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
@@ -131,6 +139,8 @@ export function EditorProvider({
         showRevealCodes,
         editor,
         setEditor,
+        selectedText,
+        setSelectedText,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,
