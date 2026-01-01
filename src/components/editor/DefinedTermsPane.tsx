@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,11 +26,52 @@ interface DefinedTermsPaneProps {
 }
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
-  const { selectionSource } = useEditorContext();
+  const { selectionSource, insertTextAtCursor } = useEditorContext();
   const [terms, setTerms] = useState<DefinedTerm[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
+
+  // Handle clicking on a term card to insert it at cursor
+  const handleTermClick = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
+    // Only insert if clicking on the main card area (not on expand trigger or usages)
+    if ((e.target as HTMLElement).closest('[data-usage-item]')) return;
+
+    if (insertTextAtCursor) {
+      const result = insertTextAtCursor(term.term);
+      if (result) {
+        // Add this location as a usage
+        setTerms(prev => prev.map(t => {
+          if (t.id !== term.id) return t;
+          
+          // Check if this location is already tracked
+          const existingUsage = t.usages.find(u => u.nodeLabel === result.nodeLabel);
+          if (existingUsage) {
+            // Increment count
+            return {
+              ...t,
+              usages: t.usages.map(u => 
+                u.nodeLabel === result.nodeLabel 
+                  ? { ...u, count: u.count + 1 }
+                  : u
+              )
+            };
+          } else {
+            // Add new usage
+            return {
+              ...t,
+              usages: [...t.usages, {
+                blockId: '', // Unknown from sidebar context
+                nodeId: '', // Unknown from sidebar context
+                nodeLabel: `${result.nodePrefix} ${result.nodeLabel}`.trim(),
+                count: 1
+              }]
+            };
+          }
+        }));
+      }
+    }
+  }, [insertTextAtCursor]);
 
   const filteredTerms = terms.filter(t =>
     t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,24 +128,31 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
             const totalUsages = term.usages.reduce((sum, u) => sum + u.count, 0);
 
             return (
-              <Collapsible
-                key={term.id}
-                open={isExpanded}
-                onOpenChange={(open) => {
-                  const next = new Set(expandedTerms);
-                  if (open) next.add(term.id);
-                  else next.delete(term.id);
-                  setExpandedTerms(next);
+              <div
+                className={cn(
+                  "rounded-md border border-border/50 bg-card/50",
+                  "hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer"
+                )}
+                onClick={(e) => handleTermClick(term, e)}
+                onMouseDownCapture={(e) => {
+                  // Prevent focus theft from editor textarea
+                  e.preventDefault();
                 }}
               >
-                <div
-                  className={cn(
-                    "rounded-md border border-border/50 bg-card/50",
-                    "hover:border-accent/50 hover:bg-accent/5 transition-colors"
-                  )}
+                <Collapsible
+                  open={isExpanded}
+                  onOpenChange={(open) => {
+                    const next = new Set(expandedTerms);
+                    if (open) next.add(term.id);
+                    else next.delete(term.id);
+                    setExpandedTerms(next);
+                  }}
                 >
                   <CollapsibleTrigger asChild>
-                    <button className="w-full p-2 text-left">
+                    <button 
+                      className="w-full p-2 text-left"
+                      onMouseDownCapture={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="font-medium text-xs text-foreground">{term.term}</div>
                         <div className="flex items-center gap-1">
@@ -143,8 +191,10 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                           {term.usages.map((usage, idx) => (
                             <button
                               key={`${usage.nodeId}-${idx}`}
+                              data-usage-item
                               className="w-full text-left text-[10px] px-1.5 py-1 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 // TODO: Navigate to usage location
                                 console.log('Navigate to:', usage);
                               }}
@@ -159,8 +209,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                       </div>
                     )}
                   </CollapsibleContent>
-                </div>
-              </Collapsible>
+                </Collapsible>
+              </div>
             );
           })}
           {filteredTerms.length === 0 && (

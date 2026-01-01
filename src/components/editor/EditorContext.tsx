@@ -21,6 +21,9 @@ export interface SelectionSource {
   nodeLabel: string;
 }
 
+// Callback type for inserting text at cursor and returning location info
+export type InsertTextAtCursorFn = (text: string) => { nodePrefix: string; nodeLabel: string } | null;
+
 interface EditorContextValue {
   outlineStyle: OutlineStyle;
   mixedConfig: MixedStyleConfig;
@@ -42,6 +45,10 @@ interface EditorContextValue {
   // Node clipboard for copy/paste
   nodeClipboard: HierarchyNode[] | null;
   setNodeClipboard: (nodes: HierarchyNode[] | null) => void;
+
+  // Insert text at cursor position in active outline (for term insertion)
+  insertTextAtCursor: InsertTextAtCursorFn | null;
+  setInsertTextAtCursor: (fn: InsertTextAtCursorFn | null) => void;
 
   // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
@@ -80,6 +87,10 @@ const EditorContext = createContext<EditorContextValue>({
 
   nodeClipboard: null,
   setNodeClipboard: () => {},
+
+  insertTextAtCursor: null,
+  setInsertTextAtCursor: () => {},
+
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
   onFindReplace: () => {},
@@ -118,6 +129,7 @@ export function EditorProvider({
   const [selectedText, setSelectedText] = useState('');
   const [selectionSource, setSelectionSource] = useState<SelectionSource | null>(null);
   const [nodeClipboard, setNodeClipboard] = useState<HierarchyNode[] | null>(null);
+  const [insertTextAtCursorFn, setInsertTextAtCursorFn] = useState<InsertTextAtCursorFn | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
@@ -128,6 +140,10 @@ export function EditorProvider({
 
   const setFindReplaceHandler = useCallback((handler: (withReplace: boolean) => void) => {
     setFindReplaceHandlerState(() => handler);
+  }, []);
+
+  const setInsertTextAtCursor = useCallback((fn: InsertTextAtCursorFn | null) => {
+    setInsertTextAtCursorFn(() => fn);
   }, []);
 
   const registerFindReplaceProvider = useCallback((provider: FindReplaceProvider) => {
@@ -166,6 +182,8 @@ export function EditorProvider({
         setSelectionSource,
         nodeClipboard,
         setNodeClipboard,
+        insertTextAtCursor: insertTextAtCursorFn,
+        setInsertTextAtCursor,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,
