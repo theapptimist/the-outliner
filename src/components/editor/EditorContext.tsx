@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
+import { HierarchyNode } from '@/types/node';
 
 export type FindReplaceMatch =
   | { kind: 'tiptap'; from: number; to: number }
@@ -38,6 +39,10 @@ interface EditorContextValue {
   selectionSource: SelectionSource | null;
   setSelectionSource: (source: SelectionSource | null) => void;
 
+  // Node clipboard for copy/paste
+  nodeClipboard: HierarchyNode[] | null;
+  setNodeClipboard: (nodes: HierarchyNode[] | null) => void;
+
   // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
   setInsertHierarchyHandler: (handler: () => void) => void;
@@ -73,6 +78,8 @@ const EditorContext = createContext<EditorContextValue>({
   selectionSource: null,
   setSelectionSource: () => {},
 
+  nodeClipboard: null,
+  setNodeClipboard: () => {},
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
   onFindReplace: () => {},
@@ -110,6 +117,7 @@ export function EditorProvider({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [selectionSource, setSelectionSource] = useState<SelectionSource | null>(null);
+  const [nodeClipboard, setNodeClipboard] = useState<HierarchyNode[] | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
@@ -156,6 +164,8 @@ export function EditorProvider({
         setSelectedText,
         selectionSource,
         setSelectionSource,
+        nodeClipboard,
+        setNodeClipboard,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,
