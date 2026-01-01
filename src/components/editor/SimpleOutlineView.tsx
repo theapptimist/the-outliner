@@ -502,6 +502,21 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             : getOutlinePrefix(outlineStyle, node.depth, indices)
         );
         
+        // Build full hierarchical prefix for source attribution (e.g., "1.a." or "1a")
+        const fullPrefix = isBody ? '' : (() => {
+          if (outlineStyle === 'legal') {
+            return indices.slice(0, node.depth + 1).join('.') + '.';
+          }
+          // For mixed/other styles, build path from each level
+          return indices.slice(0, node.depth + 1).map((idx, d) => {
+            const levelPrefix = outlineStyle === 'mixed'
+              ? getOutlinePrefixCustom(d, indices, mixedConfig)
+              : getOutlinePrefix(outlineStyle, d, indices.slice(0, d + 1).map((_, i) => indices[i]));
+            // Remove trailing punctuation for compact display
+            return levelPrefix.replace(/[.\s]+$/, '').replace(/^\(|\)$/g, '');
+          }).join('') + '.';
+        })();
+        
         // Get level styling for mixed mode
         const levelStyle = outlineStyle === 'mixed' && !isBody
           ? getLevelStyle(node.depth, mixedConfig)
@@ -551,7 +566,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
                 onKeyDown={(e) => handleKeyDown(e, node)}
-                onSelect={(e) => handleSelectionChange(e, prefix, node.label)}
+                onSelect={(e) => handleSelectionChange(e, fullPrefix, node.label)}
                 onBlur={(e) => {
                   const next = e.relatedTarget as HTMLElement | null;
                   // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
