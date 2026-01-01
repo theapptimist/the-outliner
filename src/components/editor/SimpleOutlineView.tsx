@@ -68,7 +68,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [editValue, setEditValue] = useState('');
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard } = useEditorContext();
+  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor } = useEditorContext();
 
   // Track text selection in textarea and include source context
   const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {
@@ -216,6 +216,57 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onUpdateLabel(id, editValue);
     setEditingId(null);
   }, [editValue, onUpdateLabel]);
+
+  // Register insert-at-cursor function for term insertion from sidebar
+  useEffect(() => {
+    const insertFn = (text: string) => {
+      const currentEditingId = editingIdRef.current;
+      if (!currentEditingId) return null;
+
+      const textarea = inputRefs.current.get(currentEditingId);
+      if (!textarea) return null;
+
+      const node = nodes.find(n => n.id === currentEditingId);
+      if (!node) return null;
+
+      // Insert text at cursor position
+      const start = textarea.selectionStart ?? 0;
+      const end = textarea.selectionEnd ?? 0;
+      const currentVal = textarea.value;
+      const newVal = currentVal.slice(0, start) + text + currentVal.slice(end);
+      
+      // Update state (this will trigger the onChange handler)
+      setEditValue(newVal);
+      
+      // Update cursor position after React re-renders
+      requestAnimationFrame(() => {
+        const el = inputRefs.current.get(currentEditingId);
+        if (el) {
+          const newPos = start + text.length;
+          el.selectionStart = newPos;
+          el.selectionEnd = newPos;
+          el.focus();
+        }
+      });
+
+      // Calculate prefix for this node
+      const isBody = node.type === 'body';
+      const indices = nodeIndices.get(node.id) || [1];
+      const prefix = isBody ? '' : (
+        outlineStyle === 'mixed' 
+          ? getOutlinePrefixCustom(node.depth, indices, mixedConfig)
+          : getOutlinePrefix(outlineStyle, node.depth, indices)
+      );
+
+      return { nodePrefix: prefix, nodeLabel: newVal };
+    };
+
+    setInsertTextAtCursor(insertFn);
+
+    return () => {
+      setInsertTextAtCursor(null);
+    };
+  }, [nodes, nodeIndices, outlineStyle, mixedConfig, setInsertTextAtCursor]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>, node: FlatNode) => {
     // Prevent key-repeat (holding Enter) from creating many empty nodes.
