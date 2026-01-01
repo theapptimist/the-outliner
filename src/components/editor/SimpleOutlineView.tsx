@@ -4,6 +4,8 @@ import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfi
 import { cn } from '@/lib/utils';
 import { useEditorContext } from './EditorContext';
 import { toast } from '@/hooks/use-toast';
+import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
+import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
   selectedId: string | null;
@@ -32,6 +34,7 @@ interface SimpleOutlineViewProps {
   ) => { targetId: string; targetLabel: string } | null;
   onCopyNode?: (id: string) => HierarchyNode | null;
   onPasteNodes?: (afterId: string, nodes: HierarchyNode[]) => string | undefined;
+  onPasteHierarchy?: (afterId: string, items: Array<{ label: string; depth: number }>) => void;
   autoDescend?: boolean;
 }
 
@@ -59,6 +62,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onMergeIntoParent,
     onCopyNode,
     onPasteNodes,
+    onPasteHierarchy,
     autoDescend = false,
   },
   forwardedRef
@@ -69,6 +73,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor } = useEditorContext();
+
+  // Smart paste dialog state
+  const [smartPasteDialogOpen, setSmartPasteDialogOpen] = useState(false);
+  const [smartPasteData, setSmartPasteData] = useState<SmartPasteResult | null>(null);
+  const smartPasteNodeIdRef = useRef<string | null>(null);
 
   // Track text selection in textarea and include source context
   const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {
@@ -450,6 +459,71 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     }
   }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard]);
 
+  // Handle paste event to detect outline patterns
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>, nodeId: string) => {
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+
+    // Analyze the pasted text for outline patterns
+    const analysis = analyzeOutlineText(text);
+    
+    if (analysis.hasOutlinePatterns) {
+      // Show dialog to let user choose how to handle it
+      e.preventDefault();
+      smartPasteNodeIdRef.current = nodeId;
+      setSmartPasteData(analysis);
+      setSmartPasteDialogOpen(true);
+    }
+    // Otherwise let normal paste happen
+  }, []);
+
+  // Handle smart paste action from dialog
+  const handleSmartPasteAction = useCallback((action: SmartPasteAction, data?: string | Array<{ label: string; depth: number }>) => {
+    const nodeId = smartPasteNodeIdRef.current;
+    if (!nodeId) return;
+
+    const textarea = inputRefs.current.get(nodeId);
+    
+    if (action === 'cancel') {
+      // Refocus the textarea
+      textarea?.focus();
+      return;
+    }
+
+    if (action === 'strip' || action === 'raw') {
+      // Insert text at cursor position
+      const textToInsert = data as string;
+      if (textarea) {
+        const start = textarea.selectionStart ?? 0;
+        const end = textarea.selectionEnd ?? 0;
+        const currentVal = textarea.value;
+        const newVal = currentVal.slice(0, start) + textToInsert + currentVal.slice(end);
+        setEditValue(newVal);
+        
+        requestAnimationFrame(() => {
+          const el = inputRefs.current.get(nodeId);
+          if (el) {
+            const newPos = start + textToInsert.length;
+            el.selectionStart = newPos;
+            el.selectionEnd = newPos;
+            el.focus();
+            // Resize textarea
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+          }
+        });
+      }
+    } else if (action === 'hierarchy' && onPasteHierarchy) {
+      // Create hierarchy nodes
+      const items = data as Array<{ label: string; depth: number }>;
+      onPasteHierarchy(nodeId, items);
+      toast({ title: 'Imported', description: `${items.length} outline item(s)` });
+    }
+
+    setSmartPasteData(null);
+    smartPasteNodeIdRef.current = null;
+  }, [onPasteHierarchy]);
+
   // Global keyboard handler
   useEffect(() => {
     if (!containerRef.current) return;
@@ -654,6 +728,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
                 onKeyDown={(e) => handleKeyDown(e, node)}
+                onPaste={(e) => handlePaste(e, node.id)}
                 onSelect={(e) => handleSelectionChange(e, fullPrefix, node.label)}
                 onFocus={(e) => {
                   // Ensure proper height when textarea receives focus (fixes wrapped text disappearing)
@@ -707,6 +782,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           Press Enter to add an item
         </div>
       )}
+
+      {/* Smart Paste Dialog */}
+      <SmartPasteDialog
+        open={smartPasteDialogOpen}
+        onOpenChange={setSmartPasteDialogOpen}
+        pasteData={smartPasteData}
+        onAction={handleSmartPasteAction}
+      />
     </div>
   );
 });
