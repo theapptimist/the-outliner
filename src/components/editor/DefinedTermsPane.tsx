@@ -27,11 +27,7 @@ interface DefinedTermsPaneProps {
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
   const { selectionSource } = useEditorContext();
-  const [terms, setTerms] = useState<DefinedTerm[]>([
-    { id: '1', term: 'Agreement', definition: 'This thing you\'re reading right now, plus the attachments.', usages: [] },
-    { id: '2', term: 'Effective Date', definition: 'When everyone actually signs it.', usages: [] },
-    { id: '3', term: 'Party', definition: 'You, them, whoever signed.', usages: [] },
-  ]);
+  const [terms, setTerms] = useState<DefinedTerm[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
