@@ -93,10 +93,10 @@ export function AddTermDialog({
         <DialogHeader>
           <DialogTitle>Add Defined Term</DialogTitle>
           {capturedSource && (
-            <div className="flex items-center gap-1.5 text-xs text-primary/80 mt-1">
-              <MapPin className="h-3 w-3" />
-              <span className="font-mono">{capturedSource.nodePrefix}</span>
-              <span className="truncate max-w-[200px]">{capturedSource.nodeLabel}</span>
+            <div className="flex items-center gap-2 text-sm text-primary mt-2 bg-primary/10 px-3 py-2 rounded-md">
+              <MapPin className="h-4 w-4 flex-shrink-0" />
+              <span className="font-mono font-semibold">{capturedSource.nodePrefix}</span>
+              <span className="truncate">{capturedSource.nodeLabel}</span>
             </div>
           )}
         </DialogHeader>
