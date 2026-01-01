@@ -507,6 +507,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             // Auto-resize to fit wrapped content
             current.style.height = 'auto';
             current.style.height = `${current.scrollHeight}px`;
+            
+            // Double-check height after next frame when content is fully rendered
+            requestAnimationFrame(() => {
+              const el = inputRefs.current.get(id);
+              if (el) {
+                el.style.height = 'auto';
+                el.style.height = `${el.scrollHeight}px`;
+              }
+            });
           }
         });
       }
@@ -595,6 +604,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 }}
                 onKeyDown={(e) => handleKeyDown(e, node)}
                 onSelect={(e) => handleSelectionChange(e, fullPrefix, node.label)}
+                onFocus={(e) => {
+                  // Ensure proper height when textarea receives focus (fixes wrapped text disappearing)
+                  requestAnimationFrame(() => {
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  });
+                }}
                 onBlur={(e) => {
                   const next = e.relatedTarget as HTMLElement | null;
                   // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
