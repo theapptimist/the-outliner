@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from 'react';
-import { FlatNode, DropPosition } from '@/types/node';
+import { FlatNode, DropPosition, HierarchyNode } from '@/types/node';
 import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfig, DEFAULT_MIXED_CONFIG, getLevelStyle } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
 import { useEditorContext } from './EditorContext';
+import { toast } from '@/hooks/use-toast';
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
   selectedId: string | null;
@@ -29,6 +30,8 @@ interface SimpleOutlineViewProps {
     currentValue?: string,
     showToast?: boolean
   ) => { targetId: string; targetLabel: string } | null;
+  onCopyNode?: (id: string) => HierarchyNode | null;
+  onPasteNodes?: (afterId: string, nodes: HierarchyNode[]) => string | undefined;
   autoDescend?: boolean;
 }
 
@@ -54,6 +57,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onNavigateUp,
     onNavigateDown,
     onMergeIntoParent,
+    onCopyNode,
+    onPasteNodes,
     autoDescend = false,
   },
   forwardedRef
@@ -63,7 +68,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [editValue, setEditValue] = useState('');
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText, setSelectionSource, outlineStyle: ctxOutlineStyle, mixedConfig: ctxMixedConfig } = useEditorContext();
+  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard } = useEditorContext();
 
   // Track text selection in textarea and include source context
   const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {
@@ -368,8 +373,31 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       if (node.type === 'body' && onVisualIndent) {
         onVisualIndent(node.id, -1);
       }
+    } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+C: Copy node if no text selection
+      const textarea = e.currentTarget;
+      const hasTextSelection = textarea.selectionStart !== textarea.selectionEnd;
+      if (!hasTextSelection && onCopyNode) {
+        e.preventDefault();
+        const copied = onCopyNode(node.id);
+        if (copied) {
+          setNodeClipboard([copied]);
+          toast({ title: 'Copied', description: `"${copied.label.slice(0, 30)}${copied.label.length > 30 ? '...' : ''}"` });
+        }
+      }
+      // If there's text selection, let default copy behavior work
+    } else if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+      // Ctrl+V: Paste nodes if clipboard has nodes and no text in system clipboard
+      if (nodeClipboard && nodeClipboard.length > 0 && onPasteNodes) {
+        e.preventDefault();
+        const newId = onPasteNodes(node.id, nodeClipboard);
+        if (newId) {
+          toast({ title: 'Pasted', description: `${nodeClipboard.length} item(s)` });
+        }
+      }
+      // Otherwise let default paste behavior work for text
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard]);
 
   // Global keyboard handler
   useEffect(() => {

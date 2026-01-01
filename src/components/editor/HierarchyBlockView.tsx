@@ -4,7 +4,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Link } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
 import { 
-  createNode, 
+  createNode,
+  cloneTree,
   findNode, 
   insertNode, 
   deleteNode,
@@ -443,6 +444,46 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     return { targetId: targetNode.id, targetLabel: newLabel };
   }, [tree, flatNodes]);
 
+  // Copy node and its children as a cloned subtree
+  const handleCopyNode = useCallback((nodeId: string): HierarchyNode | null => {
+    const node = findNode(tree, nodeId);
+    if (!node) return null;
+    return cloneTree(node);
+  }, [tree]);
+
+  // Paste nodes after the given node
+  const handlePasteNodes = useCallback((afterId: string, nodesToPaste: HierarchyNode[]): string | undefined => {
+    if (nodesToPaste.length === 0) return undefined;
+
+    const afterNode = findNode(tree, afterId);
+    if (!afterNode) return undefined;
+
+    const parentId = afterNode.parentId;
+    const siblings = getSiblings(tree, afterId);
+    const afterIndex = getNodeIndex(siblings, afterId);
+
+    let lastInsertedId: string | undefined;
+
+    setTree(prev => {
+      let next = prev;
+      nodesToPaste.forEach((node, i) => {
+        // Clone again to get fresh IDs for each paste
+        const cloned = cloneTree(node);
+        cloned.parentId = parentId;
+        next = insertNode(next, cloned, parentId, afterIndex + 1 + i);
+        lastInsertedId = cloned.id;
+      });
+      return next;
+    });
+
+    if (lastInsertedId) {
+      setSelectedId(lastInsertedId);
+      setAutoFocusId(lastInsertedId);
+    }
+
+    return lastInsertedId;
+  }, [tree]);
+
   return (
     <NodeViewWrapper 
       className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
@@ -557,6 +598,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onNavigateUp={navigateUp}
             onNavigateDown={navigateDown}
             onMergeIntoParent={handleMergeIntoParent}
+            onCopyNode={handleCopyNode}
+            onPasteNodes={handlePasteNodes}
             autoDescend={autoDescend}
           />
         </div>
