@@ -126,10 +126,10 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                         {term.definition}
                       </div>
                       {term.sourceLocation && (
-                        <div className="flex items-center gap-1 mt-1.5 text-[10px] text-primary/70">
-                          <MapPin className="h-2.5 w-2.5" />
-                          <span className="font-mono">{term.sourceLocation.prefix}</span>
-                          <span className="truncate max-w-[120px]">{term.sourceLocation.label}</span>
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-primary">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span className="font-mono font-medium">{term.sourceLocation.prefix}</span>
+                          <span className="truncate max-w-[140px]">{term.sourceLocation.label}</span>
                         </div>
                       )}
                     </button>
