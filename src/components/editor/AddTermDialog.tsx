@@ -10,12 +10,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { MapPin } from 'lucide-react';
+import { SelectionSource } from './EditorContext';
 
 interface AddTermDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   prefillSelection?: string;
-  onSave: (term: string, definition: string) => void;
+  selectionSource?: SelectionSource | null;
+  onSave: (term: string, definition: string, source?: SelectionSource | null) => void;
 }
 
 /**
@@ -45,14 +48,19 @@ export function AddTermDialog({
   open,
   onOpenChange,
   prefillSelection,
+  selectionSource,
   onSave,
 }: AddTermDialogProps) {
   const [term, setTerm] = useState('');
   const [definition, setDefinition] = useState('');
+  const [capturedSource, setCapturedSource] = useState<SelectionSource | null>(null);
 
   // Reset and prefill when dialog opens
   useEffect(() => {
     if (open) {
+      // Capture the source location at the moment the dialog opens
+      setCapturedSource(selectionSource || null);
+      
       if (prefillSelection) {
         const extracted = extractTermFromSelection(prefillSelection);
         if (extracted) {
@@ -68,11 +76,11 @@ export function AddTermDialog({
         setDefinition('');
       }
     }
-  }, [open, prefillSelection]);
+  }, [open, prefillSelection, selectionSource]);
 
   const handleSave = () => {
     if (term.trim() && definition.trim()) {
-      onSave(term.trim(), definition.trim());
+      onSave(term.trim(), definition.trim(), capturedSource);
       onOpenChange(false);
     }
   };
@@ -84,6 +92,13 @@ export function AddTermDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Defined Term</DialogTitle>
+          {capturedSource && (
+            <div className="flex items-center gap-1.5 text-xs text-primary/80 mt-1">
+              <MapPin className="h-3 w-3" />
+              <span className="font-mono">{capturedSource.nodePrefix}</span>
+              <span className="truncate max-w-[200px]">{capturedSource.nodeLabel}</span>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="space-y-4 py-4">

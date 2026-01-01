@@ -63,17 +63,20 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [editValue, setEditValue] = useState('');
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText } = useEditorContext();
+  const { setSelectedText, setSelectionSource, outlineStyle: ctxOutlineStyle, mixedConfig: ctxMixedConfig } = useEditorContext();
 
-  // Track text selection in textarea
-  const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+  // Track text selection in textarea and include source context
+  const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {
     const textarea = e.currentTarget;
     const selectedText = textarea.value.substring(
       textarea.selectionStart,
       textarea.selectionEnd
     );
     setSelectedText(selectedText);
-  }, [setSelectedText]);
+    if (selectedText) {
+      setSelectionSource({ nodePrefix, nodeLabel });
+    }
+  }, [setSelectedText, setSelectionSource]);
 
   useEffect(() => {
     editingIdRef.current = editingId;
@@ -548,7 +551,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
                 onKeyDown={(e) => handleKeyDown(e, node)}
-                onSelect={handleSelectionChange}
+                onSelect={(e) => handleSelectionChange(e, prefix, node.label)}
                 onBlur={(e) => {
                   const next = e.relatedTarget as HTMLElement | null;
                   // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
