@@ -484,6 +484,59 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     return lastInsertedId;
   }, [tree]);
 
+  // Paste hierarchy items from smart paste
+  const handlePasteHierarchy = useCallback((afterId: string, items: Array<{ label: string; depth: number }>) => {
+    if (items.length === 0) return;
+
+    const afterNode = findNode(tree, afterId);
+    if (!afterNode) return;
+
+    // Build hierarchy nodes from the parsed items
+    // We need to track parent IDs at each depth level
+    const parentStack: (string | null)[] = [afterNode.parentId];
+    let lastInsertedId: string | undefined;
+    let insertIndex = getNodeIndex(getSiblings(tree, afterId), afterId) + 1;
+
+    setTree(prev => {
+      let next = prev;
+      
+      for (const item of items) {
+        // Adjust parent stack based on depth
+        while (parentStack.length > item.depth + 1) {
+          parentStack.pop();
+        }
+        while (parentStack.length < item.depth + 1) {
+          // Use the last inserted node as parent for deeper levels
+          parentStack.push(lastInsertedId || parentStack[parentStack.length - 1] || null);
+        }
+
+        const parentId = parentStack[item.depth] ?? null;
+        const newNode = createNode(parentId, 'default', item.label);
+        
+        if (item.depth === 0) {
+          // Top level: insert after the anchor
+          next = insertNode(next, newNode, afterNode.parentId, insertIndex++);
+        } else {
+          // Nested: add as child of the current parent at this depth
+          const parent = findNode(next, parentId!);
+          next = insertNode(next, newNode, parentId, parent?.children.length ?? 0);
+        }
+        
+        lastInsertedId = newNode.id;
+        
+        // Update parent stack for potential children
+        parentStack[item.depth + 1] = newNode.id;
+      }
+      
+      return next;
+    });
+
+    if (lastInsertedId) {
+      setSelectedId(lastInsertedId);
+      setAutoFocusId(lastInsertedId);
+    }
+  }, [tree]);
+
   return (
     <NodeViewWrapper 
       className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
@@ -600,6 +653,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onMergeIntoParent={handleMergeIntoParent}
             onCopyNode={handleCopyNode}
             onPasteNodes={handlePasteNodes}
+            onPasteHierarchy={handlePasteHierarchy}
             autoDescend={autoDescend}
           />
         </div>
