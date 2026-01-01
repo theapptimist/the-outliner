@@ -15,6 +15,11 @@ export interface FindReplaceProvider {
   replaceAll: (term: string, replacement: string, caseSensitive: boolean) => number;
 }
 
+export interface SelectionSource {
+  nodePrefix: string;
+  nodeLabel: string;
+}
+
 interface EditorContextValue {
   outlineStyle: OutlineStyle;
   mixedConfig: MixedStyleConfig;
@@ -28,6 +33,10 @@ interface EditorContextValue {
   // Text selection tracking for defined terms
   selectedText: string;
   setSelectedText: (text: string) => void;
+  
+  // Source location of the selected text (outline context)
+  selectionSource: SelectionSource | null;
+  setSelectionSource: (source: SelectionSource | null) => void;
 
   // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
@@ -60,6 +69,9 @@ const EditorContext = createContext<EditorContextValue>({
 
   selectedText: '',
   setSelectedText: () => {},
+  
+  selectionSource: null,
+  setSelectionSource: () => {},
 
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
@@ -97,6 +109,7 @@ export function EditorProvider({
 }: EditorProviderProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [selectedText, setSelectedText] = useState('');
+  const [selectionSource, setSelectionSource] = useState<SelectionSource | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
@@ -141,6 +154,8 @@ export function EditorProvider({
         setEditor,
         selectedText,
         setSelectedText,
+        selectionSource,
+        setSelectionSource,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,

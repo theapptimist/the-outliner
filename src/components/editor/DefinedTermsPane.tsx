@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, ChevronDown, ChevronRight, Plus, Search } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,11 +7,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { AddTermDialog } from './AddTermDialog';
 import { TermUsage } from '@/lib/termScanner';
+import { useEditorContext, SelectionSource } from './EditorContext';
 
 interface DefinedTerm {
   id: string;
   term: string;
   definition: string;
+  sourceLocation?: {
+    prefix: string;
+    label: string;
+  };
   usages: TermUsage[];
 }
 
@@ -21,6 +26,7 @@ interface DefinedTermsPaneProps {
 }
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
+  const { selectionSource } = useEditorContext();
   const [terms, setTerms] = useState<DefinedTerm[]>([
     { id: '1', term: 'Agreement', definition: 'This thing you\'re reading right now, plus the attachments.', usages: [] },
     { id: '2', term: 'Effective Date', definition: 'When everyone actually signs it.', usages: [] },
@@ -123,6 +129,13 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                       <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
                         {term.definition}
                       </div>
+                      {term.sourceLocation && (
+                        <div className="flex items-center gap-1 mt-1.5 text-[10px] text-primary/70">
+                          <MapPin className="h-2.5 w-2.5" />
+                          <span className="font-mono">{term.sourceLocation.prefix}</span>
+                          <span className="truncate max-w-[120px]">{term.sourceLocation.label}</span>
+                        </div>
+                      )}
                     </button>
                   </CollapsibleTrigger>
                   
@@ -174,11 +187,13 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         prefillSelection={selectedText}
-        onSave={(term, definition) => {
+        selectionSource={selectionSource}
+        onSave={(term, definition, source) => {
           const newTerm: DefinedTerm = {
             id: crypto.randomUUID(),
             term,
             definition,
+            sourceLocation: source ? { prefix: source.nodePrefix, label: source.nodeLabel } : undefined,
             usages: [], // Will be populated by scanner later
           };
           setTerms(prev => [...prev, newTerm]);
