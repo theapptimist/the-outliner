@@ -228,18 +228,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     prevNodesLengthRef.current = nodes.length;
   }, [nodes, handleStartEdit]);
 
-  // Focus input when editingId changes
-  // Use setTimeout to ensure DOM is ready after page container renders
+  // Focus input when editingId changes (only for programmatic cases like F2, Enter)
+  // Skip if already focused (user clicked directly on textarea)
   useEffect(() => {
     if (!editingId) return;
 
     const timeoutId = setTimeout(() => {
       const input = inputRefs.current.get(editingId);
-      if (input) {
+      // Only focus if not already focused - avoids resetting cursor from mouse clicks
+      if (input && document.activeElement !== input) {
         input.focus();
-        // IMPORTANT: Do NOT force the cursor to the end here.
-        // Cursor placement is handled on entry via justStartedEditingRef in the ref callback,
-        // and subsequent clicks should be able to position the caret anywhere.
       }
     }, 0);
 
@@ -816,90 +814,102 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               {prefix || ''}
             </span>
             
-            {/* Always-mounted textarea - readOnly when not editing */}
-            <textarea
-              ref={getInputRefCallback(node.id)}
-              value={editingId === node.id ? editValue : node.label}
-              readOnly={editingId !== node.id}
-              onChange={(e) => {
-                if (editingId !== node.id) return;
-                setEditValue(e.target.value);
-                // Auto-resize textarea to fit content including visual wraps
-                e.target.style.height = 'auto';
-                e.target.style.height = `${e.target.scrollHeight}px`;
-              }}
-              onKeyDown={(e) => {
-                if (editingId !== node.id) return;
-                handleKeyDown(e, node);
-              }}
-              onPaste={(e) => {
-                if (editingId !== node.id) return;
-                handlePaste(e, node.id);
-              }}
-              onSelect={(e) => {
-                if (editingId !== node.id) return;
-                handleSelectionChange(e, fullPrefix, node.label);
-              }}
-              onMouseDown={(e) => {
-                // Always stop propagation so container doesn't interfere
-                e.stopPropagation();
-              }}
-              onClick={(e) => e.stopPropagation()}
-              onFocus={(e) => {
-                // Track this as the last focused node for term insertion
-                lastFocusedNodeIdRef.current = node.id;
-                
-                // Enter edit mode if not already editing this node
-                if (editingId !== node.id) {
-                  setEditingId(node.id);
-                  setEditValue(node.label);
-                  // NOTE: We do NOT set cursor position here - browser already placed it from the click
-                }
-                
-                lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
-                lastEditValueRef.current = e.target.value;
-
-                // Ensure proper height when textarea receives focus
-                requestAnimationFrame(() => {
+            {/* Content column: textarea + suffix inline */}
+            <div className="flex items-start min-w-0">
+              <textarea
+                ref={getInputRefCallback(node.id)}
+                value={editingId === node.id ? editValue : node.label}
+                readOnly={editingId !== node.id}
+                onChange={(e) => {
+                  if (editingId !== node.id) return;
+                  setEditValue(e.target.value);
+                  // Auto-resize textarea to fit content including visual wraps
                   e.target.style.height = 'auto';
                   e.target.style.height = `${e.target.scrollHeight}px`;
-                });
-              }}
-              onBlur={(e) => {
-                // Save final cursor position before blur
-                lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
-                lastEditValueRef.current = e.target.value;
+                }}
+                onKeyDown={(e) => {
+                  if (editingId !== node.id) return;
+                  handleKeyDown(e, node);
+                }}
+                onPaste={(e) => {
+                  if (editingId !== node.id) return;
+                  handlePaste(e, node.id);
+                }}
+                onSelect={(e) => {
+                  if (editingId !== node.id) return;
+                  handleSelectionChange(e, fullPrefix, node.label);
+                }}
+                onMouseDown={(e) => {
+                  // Always stop propagation so container doesn't interfere
+                  e.stopPropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onFocus={(e) => {
+                  // Track this as the last focused node for term insertion
+                  lastFocusedNodeIdRef.current = node.id;
+                  
+                  // Capture cursor position BEFORE state change (browser placed it from the click)
+                  const cursorStart = e.target.selectionStart;
+                  const cursorEnd = e.target.selectionEnd;
+                  
+                  // Enter edit mode if not already editing this node
+                  if (editingId !== node.id) {
+                    setEditingId(node.id);
+                    setEditValue(node.label);
+                    
+                    // Restore cursor position after React re-renders
+                    const textarea = e.target;
+                    requestAnimationFrame(() => {
+                      textarea.selectionStart = cursorStart;
+                      textarea.selectionEnd = cursorEnd;
+                    });
+                  }
+                  
+                  lastCursorPositionRef.current = { start: cursorStart, end: cursorEnd };
+                  lastEditValueRef.current = e.target.value;
 
-                const next = e.relatedTarget as HTMLElement | null;
-                // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
-                if (next?.closest('[data-editor-sidebar]')) {
+                  // Ensure proper height when textarea receives focus
                   requestAnimationFrame(() => {
-                    inputRefs.current.get(node.id)?.focus();
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${e.target.scrollHeight}px`;
                   });
-                  return;
-                }
-                
-                if (editingId === node.id) {
-                  handleEndEdit(node.id);
-                }
-              }}
-              placeholder=""
-              rows={1}
-              style={{ 
-                caretColor: editingId === node.id ? 'hsl(var(--primary))' : 'transparent',
-                overflow: 'hidden'
-              }}
-              className={cn(
-                "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0 select-text cursor-text",
-                editingId !== node.id && "cursor-text",
-                levelStyle.underline && (editingId === node.id ? editValue : node.label) && "underline decoration-foreground",
-                !node.label && editingId !== node.id && "text-muted-foreground/50"
+                }}
+                onBlur={(e) => {
+                  // Save final cursor position before blur
+                  lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+                  lastEditValueRef.current = e.target.value;
+
+                  const next = e.relatedTarget as HTMLElement | null;
+                  // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
+                  if (next?.closest('[data-editor-sidebar]')) {
+                    requestAnimationFrame(() => {
+                      inputRefs.current.get(node.id)?.focus();
+                    });
+                    return;
+                  }
+                  
+                  if (editingId === node.id) {
+                    handleEndEdit(node.id);
+                  }
+                }}
+                placeholder=""
+                rows={1}
+                style={{ 
+                  caretColor: editingId === node.id ? 'hsl(var(--primary))' : 'transparent',
+                  overflow: 'hidden'
+                }}
+                className={cn(
+                  "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0 select-text cursor-text flex-1",
+                  editingId !== node.id && "cursor-text",
+                  levelStyle.underline && (editingId === node.id ? editValue : node.label) && "underline decoration-foreground",
+                  !node.label && editingId !== node.id && "text-muted-foreground/50"
+                )}
+              />
+              {/* Suffix for mixed styles - inline with text */}
+              {levelStyle.suffix && (editingId === node.id || node.label) && (
+                <span className="text-foreground text-sm font-mono leading-6 flex-shrink-0">{levelStyle.suffix}</span>
               )}
-            />
-            {/* Suffix for mixed styles */}
-            {levelStyle.suffix && node.label && editingId !== node.id && (
-              <span className="text-foreground text-sm font-mono col-start-2">{levelStyle.suffix}</span>
-            )}
+            </div>
           </div>
         );
       })}
