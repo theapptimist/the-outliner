@@ -1,16 +1,18 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { FindReplace } from './FindReplace';
 import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
 import { PaginatedDocument } from './PageContainer';
-import { useDocument } from '@/hooks/useDocument';
 import { useEditorContext } from './EditorContext';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 
 export function DocumentEditor() {
-  const { document, addHierarchyBlock, updateContent } = useDocument();
+  // Persist TipTap document content to localStorage so blockIds survive refresh
+  const [savedContent, setSavedContent] = useSessionStorage<any>('document-content', null);
+  const initialContentRef = useRef(savedContent);
   const {
     setEditor,
     setInsertHierarchyHandler,
@@ -39,9 +41,9 @@ export function DocumentEditor() {
       }),
       HierarchyBlockExtension,
     ],
-    content: document.content,
+    content: initialContentRef.current,
     onUpdate: ({ editor }) => {
-      updateContent(editor.getJSON());
+      setSavedContent(editor.getJSON());
     },
     editorProps: {
       attributes: {
@@ -141,10 +143,11 @@ export function DocumentEditor() {
       editor.chain().focus().deleteRange({ from: from - 1, to: from }).run();
     }
     
-    const blockId = addHierarchyBlock();
+    // Generate a new blockId for this hierarchy block
+    const blockId = crypto.randomUUID();
     (editor.chain().focus() as any).insertHierarchyBlock(blockId).run();
     setSlashMenuOpen(false);
-  }, [editor, addHierarchyBlock]);
+  }, [editor]);
 
   // Register insert hierarchy handler
   useEffect(() => {
