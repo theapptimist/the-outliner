@@ -157,9 +157,13 @@ export function DocumentEditor() {
   return (
     <div
       className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative"
-      onMouseDownCapture={(e) => {
+      onMouseDown={(e) => {
         if (!editor) return;
         const t = e.target as HTMLElement | null;
+
+        // Let ProseMirror handle clicks inside the editor so caret placement and typing work normally.
+        if (t?.closest('.ProseMirror')) return;
+
         // Don't steal focus when interacting with floating UI or hierarchy blocks (outlines).
         if (
           t?.closest('[data-floating-ui]') ||
@@ -168,6 +172,7 @@ export function DocumentEditor() {
         ) {
           return;
         }
+
         editor.chain().focus().run();
       }}
     >
