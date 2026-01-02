@@ -729,6 +729,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               gridTemplateColumns: '3.5rem 1fr'
             }}
             onMouseDown={(e) => {
+              // If already editing this node, let the textarea handle its own clicks
+              if (editingId === node.id) {
+                return;
+              }
+              
               // Track mouse position to detect drag (text selection)
               const startX = e.clientX;
               const startY = e.clientY;
@@ -745,9 +750,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 
                 // Single click - trigger selection and edit
                 onSelect(node.id);
-                if (editingId !== node.id) {
-                  handleStartEdit(node.id, node.label);
-                }
+                handleStartEdit(node.id, node.label);
               };
               
               document.addEventListener('mouseup', handleMouseUp);
