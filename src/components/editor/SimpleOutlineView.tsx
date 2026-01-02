@@ -906,7 +906,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 )}
               />
               {/* Suffix for mixed styles - inline with text */}
-              {levelStyle.suffix && (editingId === node.id ? editValue : node.label) && (
+              {levelStyle.suffix && (editingId === node.id || node.label) && (
                 <span className="text-foreground text-sm font-mono leading-6 flex-shrink-0">{levelStyle.suffix}</span>
               )}
             </div>
