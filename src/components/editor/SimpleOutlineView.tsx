@@ -886,6 +886,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   }
                 }}
                 placeholder=""
+                cols={1}
                 rows={1}
                 style={{ 
                   caretColor: editingId === node.id ? 'hsl(var(--primary))' : 'transparent',
