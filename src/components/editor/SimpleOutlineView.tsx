@@ -854,23 +854,62 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onKeyDown={(e) => handleKeyDown(e, node)}
                 onPaste={(e) => handlePaste(e, node.id)}
                 onSelect={(e) => handleSelectionChange(e, fullPrefix, node.label)}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  // eslint-disable-next-line no-console
+                  console.log('[OutlineTextarea] mousedown', {
+                    nodeId: node.id,
+                    start: e.currentTarget.selectionStart,
+                    end: e.currentTarget.selectionEnd,
+                  });
+                }}
+                onMouseUp={(e) => {
+                  // eslint-disable-next-line no-console
+                  console.log('[OutlineTextarea] mouseup', {
+                    nodeId: node.id,
+                    start: e.currentTarget.selectionStart,
+                    end: e.currentTarget.selectionEnd,
+                  });
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // eslint-disable-next-line no-console
+                  console.log('[OutlineTextarea] click', {
+                    nodeId: node.id,
+                    start: (e.currentTarget as HTMLTextAreaElement).selectionStart,
+                    end: (e.currentTarget as HTMLTextAreaElement).selectionEnd,
+                  });
+                }}
                 onFocus={(e) => {
                   // Track this as the last focused node for term insertion
                   lastFocusedNodeIdRef.current = node.id;
                   lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
                   lastEditValueRef.current = e.target.value;
-                  
+
+                  // eslint-disable-next-line no-console
+                  console.log('[OutlineTextarea] focus', {
+                    nodeId: node.id,
+                    start: e.target.selectionStart,
+                    end: e.target.selectionEnd,
+                  });
+
                   // Ensure proper height when textarea receives focus (fixes wrapped text disappearing)
                   requestAnimationFrame(() => {
                     e.target.style.height = 'auto';
                     e.target.style.height = `${e.target.scrollHeight}px`;
+                    // eslint-disable-next-line no-console
+                    console.log('[OutlineTextarea] focus rAF', {
+                      nodeId: node.id,
+                      start: e.target.selectionStart,
+                      end: e.target.selectionEnd,
+                    });
                   });
                 }}
                 onBlur={(e) => {
                   // Save final cursor position before blur
                   lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
                   lastEditValueRef.current = e.target.value;
-                  
+
                   const next = e.relatedTarget as HTMLElement | null;
                   // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
                   if (next?.closest('[data-editor-sidebar]')) {
@@ -891,11 +930,6 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0 select-text",
                   levelStyle.underline && editValue && "underline decoration-foreground"
                 )}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  // Prevent the textarea from losing focus due to parent interactions
-                }}
-                onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <span 
