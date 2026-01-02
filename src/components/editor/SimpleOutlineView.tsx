@@ -70,9 +70,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [editingId, setEditingId] = useState<string | null>(null);
   const editingIdRef = useRef<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+  const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor } = useEditorContext();
+  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode } = useEditorContext();
 
   // Track last focused position for term insertion when clicking sidebar
   const lastFocusedNodeIdRef = useRef<string | null>(null);
@@ -310,6 +312,31 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       setInsertTextAtCursor(null);
     };
   }, [nodes, nodeIndices, outlineStyle, mixedConfig, setInsertTextAtCursor]);
+
+  // Register scroll-to-node function for term usage navigation
+  useEffect(() => {
+    const scrollFn = (nodeId: string) => {
+      const nodeEl = nodeRefs.current.get(nodeId);
+      if (nodeEl) {
+        // Scroll node into view
+        nodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Trigger highlight animation
+        setHighlightedNodeId(nodeId);
+        
+        // Clear highlight after animation completes
+        setTimeout(() => {
+          setHighlightedNodeId(null);
+        }, 1500);
+      }
+    };
+
+    setScrollToNode(scrollFn);
+
+    return () => {
+      setScrollToNode(null);
+    };
+  }, [setScrollToNode]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>, node: FlatNode) => {
     // Prevent key-repeat (holding Enter) from creating many empty nodes.
@@ -740,8 +767,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         return (
           <div
             key={node.id}
+            ref={(el) => {
+              if (el) {
+                nodeRefs.current.set(node.id, el);
+              } else {
+                nodeRefs.current.delete(node.id);
+              }
+            }}
             className={cn(
-              'grid items-start py-1.5 px-2 cursor-text group'
+              'grid items-start py-1.5 px-2 cursor-text group transition-all duration-300',
+              highlightedNodeId === node.id && 'bg-accent/30 ring-2 ring-accent/50 rounded-md'
             )}
             style={{ 
               paddingLeft: `${visualDepth * 24 + 8}px`,

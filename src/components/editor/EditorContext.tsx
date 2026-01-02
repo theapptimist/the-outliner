@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode, useState, useCallback } from 'rea
 import { Editor } from '@tiptap/react';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { HierarchyNode } from '@/types/node';
+import { DefinedTerm } from './DefinedTermsPane';
 
 export type FindReplaceMatch =
   | { kind: 'tiptap'; from: number; to: number }
@@ -23,6 +24,9 @@ export interface SelectionSource {
 
 // Callback type for inserting text at cursor and returning location info
 export type InsertTextAtCursorFn = (text: string) => { nodePrefix: string; nodeLabel: string } | null;
+
+// Callback type for scrolling to and highlighting a node
+export type ScrollToNodeFn = (nodeId: string) => void;
 
 interface EditorContextValue {
   outlineStyle: OutlineStyle;
@@ -49,6 +53,14 @@ interface EditorContextValue {
   // Insert text at cursor position in active outline (for term insertion)
   insertTextAtCursor: InsertTextAtCursorFn | null;
   setInsertTextAtCursor: (fn: InsertTextAtCursorFn | null) => void;
+
+  // Scroll to and highlight a node
+  scrollToNode: ScrollToNodeFn | null;
+  setScrollToNode: (fn: ScrollToNodeFn | null) => void;
+
+  // Term inspection state (for the right panel)
+  inspectedTerm: DefinedTerm | null;
+  setInspectedTerm: (term: DefinedTerm | null) => void;
 
   // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
@@ -91,6 +103,12 @@ const EditorContext = createContext<EditorContextValue>({
   insertTextAtCursor: null,
   setInsertTextAtCursor: () => {},
 
+  scrollToNode: null,
+  setScrollToNode: () => {},
+
+  inspectedTerm: null,
+  setInspectedTerm: () => {},
+
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
   onFindReplace: () => {},
@@ -130,6 +148,8 @@ export function EditorProvider({
   const [selectionSource, setSelectionSource] = useState<SelectionSource | null>(null);
   const [nodeClipboard, setNodeClipboard] = useState<HierarchyNode[] | null>(null);
   const [insertTextAtCursorFn, setInsertTextAtCursorFn] = useState<InsertTextAtCursorFn | null>(null);
+  const [scrollToNodeFn, setScrollToNodeFn] = useState<ScrollToNodeFn | null>(null);
+  const [inspectedTerm, setInspectedTerm] = useState<DefinedTerm | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
@@ -144,6 +164,10 @@ export function EditorProvider({
 
   const setInsertTextAtCursor = useCallback((fn: InsertTextAtCursorFn | null) => {
     setInsertTextAtCursorFn(() => fn);
+  }, []);
+
+  const setScrollToNode = useCallback((fn: ScrollToNodeFn | null) => {
+    setScrollToNodeFn(() => fn);
   }, []);
 
   const registerFindReplaceProvider = useCallback((provider: FindReplaceProvider) => {
@@ -184,6 +208,10 @@ export function EditorProvider({
         setNodeClipboard,
         insertTextAtCursor: insertTextAtCursorFn,
         setInsertTextAtCursor,
+        scrollToNode: scrollToNodeFn,
+        setScrollToNode,
+        inspectedTerm,
+        setInspectedTerm,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,
