@@ -700,6 +700,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               paddingLeft: `${visualDepth * 24 + 8}px`,
               gridTemplateColumns: '3.5rem 1fr'
             }}
+            onMouseDown={(e) => {
+              // Only trigger selection/edit on single click, not during text selection drag
+              if (editingId === node.id) {
+                // Already editing - don't interfere with text selection
+                return;
+              }
+            }}
             onClick={() => {
               onSelect(node.id);
               if (editingId !== node.id) {
@@ -758,11 +765,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0 select-text",
                   levelStyle.underline && editValue && "underline decoration-foreground"
                 )}
-                onMouseDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  // Prevent the textarea from losing focus due to parent interactions
+                }}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="text-sm font-mono whitespace-pre-wrap break-words leading-6 min-w-0">
+              <span 
+                className="text-sm font-mono whitespace-pre-wrap break-words leading-6 min-w-0 select-text"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
                 <span className={cn(
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
                   levelStyle.underline && node.label && 'underline'
