@@ -64,12 +64,10 @@ function EditorContent({
   document,
   onTitleChange,
   hasUnsavedChanges,
-  fileMenuProps,
 }: {
   document: DocumentState;
   onTitleChange: (title: string) => void;
   hasUnsavedChanges: boolean;
-  fileMenuProps: React.ComponentProps<typeof FileMenu>;
 }) {
   const { inspectedTerm, setInspectedTerm } = useEditorContext();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -114,7 +112,6 @@ function EditorContent({
           <div className="flex flex-col h-full overflow-hidden">
             <header className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
               <div className="flex items-center gap-2">
-                <FileMenu {...fileMenuProps} />
                 {isEditingTitle ? (
                   <Input
                     value={titleValue}
@@ -352,13 +349,13 @@ export default function Editor() {
           onRedo={() => redoRef.current()}
           canUndo={canUndo}
           canRedo={canRedo}
+          fileMenuProps={fileMenuProps}
         />
         
         <EditorContent
           document={document}
           onTitleChange={handleTitleChange}
           hasUnsavedChanges={hasUnsavedChanges}
-          fileMenuProps={fileMenuProps}
         />
 
         <OpenDocumentDialog
