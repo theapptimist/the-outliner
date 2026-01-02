@@ -804,7 +804,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               const handleMouseUp = (upEvent: MouseEvent) => {
                 document.removeEventListener('mouseup', handleMouseUp);
 
-                // If the user selected text *inside this node*, don't enter edit mode.
+                // If the user selected text *inside this node*, don't treat it as a click.
                 const sel = window.getSelection?.();
                 if (sel && !sel.isCollapsed) {
                   const anchor = sel.anchorNode;
@@ -814,17 +814,20 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   }
                 }
 
-                // If mouse moved significantly, it's likely a drag action - don't trigger edit.
+                // If mouse moved significantly, it's likely a drag action - don't select.
                 const dx = Math.abs(upEvent.clientX - startX);
                 const dy = Math.abs(upEvent.clientY - startY);
                 if (dx > 5 || dy > 5) return;
 
-                // Single click - trigger selection and edit
+                // Single click: select only (editing is via double-click)
                 onSelect(node.id);
-                handleStartEdit(node.id, node.label);
               };
 
               document.addEventListener('mouseup', handleMouseUp);
+            }}
+            onDoubleClick={() => {
+              onSelect(node.id);
+              handleStartEdit(node.id, node.label);
             }}
             onClick={(e) => {
               // Prevent default click behavior - we handle it in mousedown/mouseup
@@ -856,53 +859,18 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onSelect={(e) => handleSelectionChange(e, fullPrefix, node.label)}
                 onMouseDown={(e) => {
                   e.stopPropagation();
-                  // eslint-disable-next-line no-console
-                  console.log('[OutlineTextarea] mousedown', {
-                    nodeId: node.id,
-                    start: e.currentTarget.selectionStart,
-                    end: e.currentTarget.selectionEnd,
-                  });
                 }}
-                onMouseUp={(e) => {
-                  // eslint-disable-next-line no-console
-                  console.log('[OutlineTextarea] mouseup', {
-                    nodeId: node.id,
-                    start: e.currentTarget.selectionStart,
-                    end: e.currentTarget.selectionEnd,
-                  });
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // eslint-disable-next-line no-console
-                  console.log('[OutlineTextarea] click', {
-                    nodeId: node.id,
-                    start: (e.currentTarget as HTMLTextAreaElement).selectionStart,
-                    end: (e.currentTarget as HTMLTextAreaElement).selectionEnd,
-                  });
-                }}
+                onClick={(e) => e.stopPropagation()}
                 onFocus={(e) => {
                   // Track this as the last focused node for term insertion
                   lastFocusedNodeIdRef.current = node.id;
                   lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
                   lastEditValueRef.current = e.target.value;
 
-                  // eslint-disable-next-line no-console
-                  console.log('[OutlineTextarea] focus', {
-                    nodeId: node.id,
-                    start: e.target.selectionStart,
-                    end: e.target.selectionEnd,
-                  });
-
                   // Ensure proper height when textarea receives focus (fixes wrapped text disappearing)
                   requestAnimationFrame(() => {
                     e.target.style.height = 'auto';
                     e.target.style.height = `${e.target.scrollHeight}px`;
-                    // eslint-disable-next-line no-console
-                    console.log('[OutlineTextarea] focus rAF', {
-                      nodeId: node.id,
-                      start: e.target.selectionStart,
-                      end: e.target.selectionEnd,
-                    });
                   });
                 }}
                 onBlur={(e) => {
