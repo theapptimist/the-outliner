@@ -803,8 +803,20 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               const handleMouseUp = (upEvent: MouseEvent) => {
                 document.removeEventListener('mouseup', handleMouseUp);
 
-                // If the user selected text *inside this node*, don't enter edit mode.
+                // DEBUG: click/selection tracing (remove once fixed)
                 const sel = window.getSelection?.();
+                // eslint-disable-next-line no-console
+                console.log('[SimpleOutlineView] mouseup', {
+                  nodeId: node.id,
+                  dx: Math.abs(upEvent.clientX - startX),
+                  dy: Math.abs(upEvent.clientY - startY),
+                  hasSelection: !!sel && !sel.isCollapsed,
+                  selectionText: sel?.toString?.(),
+                  anchorInNode: !!(sel?.anchorNode && containerEl.contains(sel.anchorNode)),
+                  focusInNode: !!(sel?.focusNode && containerEl.contains(sel.focusNode)),
+                });
+
+                // If the user selected text *inside this node*, don't enter edit mode.
                 if (sel && !sel.isCollapsed) {
                   const anchor = sel.anchorNode;
                   const focus = sel.focusNode;
