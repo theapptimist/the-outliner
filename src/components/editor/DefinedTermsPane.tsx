@@ -8,8 +8,9 @@ import { cn } from '@/lib/utils';
 import { AddTermDialog } from './AddTermDialog';
 import { TermUsage } from '@/lib/termScanner';
 import { useEditorContext, SelectionSource } from './EditorContext';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 
-interface DefinedTerm {
+export interface DefinedTerm {
   id: string;
   term: string;
   definition: string;
@@ -27,7 +28,7 @@ interface DefinedTermsPaneProps {
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
   const { selectionSource, insertTextAtCursor } = useEditorContext();
-  const [terms, setTerms] = useState<DefinedTerm[]>([]);
+  const [terms, setTerms] = useSessionStorage<DefinedTerm[]>('defined-terms', []);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
