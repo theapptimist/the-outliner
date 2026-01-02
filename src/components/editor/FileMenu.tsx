@@ -127,6 +127,7 @@ export function FileMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
+            data-allow-pointer
             className={cn(
               "h-7 w-7 p-0 rounded-md flex items-center justify-center hover:bg-muted/50 text-muted-foreground cursor-pointer transition-colors",
               hasUnsavedChanges && "text-warning"
