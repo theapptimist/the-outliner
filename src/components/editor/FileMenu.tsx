@@ -1,16 +1,24 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
-  Menubar,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarSeparator,
-  MenubarShortcut,
-  MenubarSub,
-  MenubarSubContent,
-  MenubarSubTrigger,
-  MenubarTrigger,
-} from '@/components/ui/menubar';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  DropdownMenuShortcut,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   FilePlus,
   FolderOpen,
@@ -20,15 +28,20 @@ import {
   Trash2,
   Clock,
   FileText,
+  Pencil,
 } from 'lucide-react';
-import { DocumentMetadata, getRecentDocuments } from '@/lib/documentStorage';
+import { getRecentDocuments } from '@/lib/documentStorage';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface FileMenuProps {
+  documentTitle: string;
+  hasUnsavedChanges: boolean;
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
   onSaveAs: () => void;
+  onRename: (title: string) => void;
   onExport: () => void;
   onImport: () => void;
   onDelete: () => void;
@@ -38,10 +51,13 @@ interface FileMenuProps {
 }
 
 export function FileMenu({
+  documentTitle,
+  hasUnsavedChanges,
   onNew,
   onOpen,
   onSave,
   onSaveAs,
+  onRename,
   onExport,
   onImport,
   onDelete,
@@ -50,6 +66,8 @@ export function FileMenu({
   iconOnly = false,
 }: FileMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState(documentTitle);
   const recentDocs = getRecentDocuments();
 
   const handleImportClick = () => {
@@ -63,6 +81,18 @@ export function FileMenu({
     e.target.value = '';
   };
 
+  const handleRenameSubmit = () => {
+    if (newTitle.trim()) {
+      onRename(newTitle.trim());
+    }
+    setRenameOpen(false);
+  };
+
+  const openRenameDialog = () => {
+    setNewTitle(documentTitle);
+    setRenameOpen(true);
+  };
+
   return (
     <>
       <input
@@ -72,82 +102,119 @@ export function FileMenu({
         accept=".json"
         onChange={handleFileChange}
       />
-      <Menubar className="border-none bg-transparent h-auto p-0">
-        <MenubarMenu>
-          <MenubarTrigger className={iconOnly 
-            ? "h-7 w-7 p-0 rounded-md flex items-center justify-center hover:bg-muted/50 text-muted-foreground cursor-pointer" 
-            : "font-medium px-3 py-1.5 cursor-pointer"
-          }>
-            {iconOnly ? <FileText className="h-4 w-4" /> : "File"}
-          </MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem onClick={onNew}>
-              <FilePlus className="mr-2 h-4 w-4" />
-              New
-              <MenubarShortcut>⌘N</MenubarShortcut>
-            </MenubarItem>
-            
-            <MenubarItem onClick={onOpen}>
-              <FolderOpen className="mr-2 h-4 w-4" />
-              Open...
-              <MenubarShortcut>⌘O</MenubarShortcut>
-            </MenubarItem>
+      
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Rename Document</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Document title"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameSubmit();
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
+            <Button onClick={handleRenameSubmit}>Rename</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            {recentDocs.length > 0 && (
-              <MenubarSub>
-                <MenubarSubTrigger>
-                  <Clock className="mr-2 h-4 w-4" />
-                  Open Recent
-                </MenubarSubTrigger>
-                <MenubarSubContent>
-                  {recentDocs.map((doc) => (
-                    <MenubarItem key={doc.id} onClick={() => onOpenRecent(doc.id)}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      <span className="flex-1 truncate max-w-[200px]">{doc.title}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                      </span>
-                    </MenubarItem>
-                  ))}
-                </MenubarSubContent>
-              </MenubarSub>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className={cn(
+              "h-7 w-7 p-0 rounded-md flex items-center justify-center hover:bg-muted/50 text-muted-foreground cursor-pointer transition-colors",
+              hasUnsavedChanges && "text-warning"
             )}
+          >
+            <FileText className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
+          {/* Document title header */}
+          <div className="px-2 py-1.5 border-b border-border mb-1">
+            <p className="text-sm font-medium truncate flex items-center gap-1">
+              {documentTitle}
+              {hasUnsavedChanges && <span className="text-warning">•</span>}
+            </p>
+          </div>
 
-            <MenubarSeparator />
+          <DropdownMenuItem onClick={onNew}>
+            <FilePlus className="mr-2 h-4 w-4" />
+            New
+            <DropdownMenuShortcut>⌘N</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem onClick={onOpen}>
+            <FolderOpen className="mr-2 h-4 w-4" />
+            Open...
+            <DropdownMenuShortcut>⌘O</DropdownMenuShortcut>
+          </DropdownMenuItem>
 
-            <MenubarItem onClick={onSave} disabled={!hasDocument}>
-              <Save className="mr-2 h-4 w-4" />
-              Save
-              <MenubarShortcut>⌘S</MenubarShortcut>
-            </MenubarItem>
+          {recentDocs.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Clock className="mr-2 h-4 w-4" />
+                Open Recent
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {recentDocs.map((doc) => (
+                  <DropdownMenuItem key={doc.id} onClick={() => onOpenRecent(doc.id)}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span className="flex-1 truncate max-w-[200px]">{doc.title}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
 
-            <MenubarItem onClick={onSaveAs}>
-              <Save className="mr-2 h-4 w-4" />
-              Save As...
-              <MenubarShortcut>⇧⌘S</MenubarShortcut>
-            </MenubarItem>
+          <DropdownMenuSeparator />
 
-            <MenubarSeparator />
+          <DropdownMenuItem onClick={onSave} disabled={!hasDocument}>
+            <Save className="mr-2 h-4 w-4" />
+            Save
+            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+          </DropdownMenuItem>
 
-            <MenubarItem onClick={onExport} disabled={!hasDocument}>
-              <FileDown className="mr-2 h-4 w-4" />
-              Export...
-            </MenubarItem>
+          <DropdownMenuItem onClick={onSaveAs}>
+            <Save className="mr-2 h-4 w-4" />
+            Save As...
+            <DropdownMenuShortcut>⇧⌘S</DropdownMenuShortcut>
+          </DropdownMenuItem>
 
-            <MenubarItem onClick={handleImportClick}>
-              <FileUp className="mr-2 h-4 w-4" />
-              Import...
-            </MenubarItem>
+          <DropdownMenuItem onClick={openRenameDialog}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Rename...
+          </DropdownMenuItem>
 
-            <MenubarSeparator />
+          <DropdownMenuSeparator />
 
-            <MenubarItem onClick={onDelete} disabled={!hasDocument} className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete Document
-            </MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
-      </Menubar>
+          <DropdownMenuItem onClick={onExport} disabled={!hasDocument}>
+            <FileDown className="mr-2 h-4 w-4" />
+            Export...
+          </DropdownMenuItem>
+
+          <DropdownMenuItem onClick={handleImportClick}>
+            <FileUp className="mr-2 h-4 w-4" />
+            Import...
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem onClick={onDelete} disabled={!hasDocument} className="text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Document
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
