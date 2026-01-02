@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Trash2, Minimize2, Maximize2, ExternalLink } from 'lucide-react';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
@@ -45,16 +46,18 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     unregisterFindReplaceProvider,
   } = useEditorContext();
   
-  // Local hierarchy state for this block - start with one empty node
-  const [{ tree: initialTree, firstNodeId }] = useState(() => {
+  // Local hierarchy state for this block - persist to session storage
+  const [{ initialTree, firstNodeId }] = useState(() => {
     const node = createNode(null, 'default', '');
-    return { tree: [node], firstNodeId: node.id };
+    return { initialTree: [node], firstNodeId: node.id };
   });
-  const [tree, setTreeState] = useState<HierarchyNode[]>(initialTree);
-  const treeRef = useRef<HierarchyNode[]>(initialTree);
-  const [selectedId, setSelectedId] = useState<string | null>(firstNodeId);
+  
+  // Use session storage for tree persistence keyed by blockId
+  const [tree, setTreeState] = useSessionStorage<HierarchyNode[]>(`outline-tree:${blockId}`, initialTree);
+  const treeRef = useRef<HierarchyNode[]>(tree);
+  const [selectedId, setSelectedId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [autoFocusId, setAutoFocusId] = useState<string | null>(firstNodeId);
+  const [autoFocusId, setAutoFocusId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
 
   useEffect(() => {
     treeRef.current = tree;
