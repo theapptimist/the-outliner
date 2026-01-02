@@ -805,114 +805,137 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             
             {/* Label + suffix container - keeps them in same grid cell */}
             <div className="flex items-start min-w-0">
-              <textarea
-                ref={getInputRefCallback(node.id)}
-                value={editingId === node.id ? editValue : node.label}
-                readOnly={editingId !== node.id}
-                onChange={(e) => {
-                  if (editingId !== node.id) return;
-                  setEditValue(e.target.value);
-                  // Auto-resize textarea to fit content including visual wraps
-                  e.target.style.height = 'auto';
-                  e.target.style.height = `${e.target.scrollHeight}px`;
-                }}
-                onKeyDown={(e) => {
-                  if (editingId !== node.id) return;
-                  handleKeyDown(e, node);
-                }}
-                onPaste={(e) => {
-                  if (editingId !== node.id) return;
-                  handlePaste(e, node.id);
-                }}
-                onSelect={(e) => {
-                  if (editingId !== node.id) return;
-                  handleSelectionChange(e, fullPrefix, node.label);
-                }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                }}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => {
-                  // Track this as the last focused node for term insertion
-                  lastFocusedNodeIdRef.current = node.id;
-                  
-                  // If not already editing this node, enter edit mode
-                  if (editingId !== node.id) {
-                    onSelect(node.id);
-                    setEditingId(node.id);
-                    setEditValue(node.label);
-                    
-                    // For programmatic focus (from handleStartEdit), move cursor to end
-                    if (editIntentRef.current === 'program' && justStartedEditingRef.current === node.id) {
-                      requestAnimationFrame(() => {
-                        const el = inputRefs.current.get(node.id);
-                        if (el) {
-                          const len = el.value.length;
-                          el.selectionStart = len;
-                          el.selectionEnd = len;
+              {(() => {
+                const displayValue =
+                  editingId === node.id
+                    ? editValue
+                    : levelStyle.suffix && node.label
+                      ? `${node.label}${levelStyle.suffix}`
+                      : node.label;
+
+                const shouldUnderline =
+                  levelStyle.underline && (editingId === node.id ? editValue : node.label);
+
+                return (
+                  <>
+                    <textarea
+                      ref={getInputRefCallback(node.id)}
+                      value={displayValue}
+                      readOnly={editingId !== node.id}
+                      onChange={(e) => {
+                        if (editingId !== node.id) return;
+                        setEditValue(e.target.value);
+                        // Auto-resize textarea to fit content including visual wraps
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${e.target.scrollHeight}px`;
+                      }}
+                      onKeyDown={(e) => {
+                        if (editingId !== node.id) return;
+                        handleKeyDown(e, node);
+                      }}
+                      onPaste={(e) => {
+                        if (editingId !== node.id) return;
+                        handlePaste(e, node.id);
+                      }}
+                      onSelect={(e) => {
+                        if (editingId !== node.id) return;
+                        handleSelectionChange(e, fullPrefix, node.label);
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onFocus={(e) => {
+                        // Track this as the last focused node for term insertion
+                        lastFocusedNodeIdRef.current = node.id;
+
+                        // If not already editing this node, enter edit mode
+                        if (editingId !== node.id) {
+                          onSelect(node.id);
+                          setEditingId(node.id);
+                          setEditValue(node.label);
+
+                          // For programmatic focus (from handleStartEdit), move cursor to end
+                          if (
+                            editIntentRef.current === 'program' &&
+                            justStartedEditingRef.current === node.id
+                          ) {
+                            requestAnimationFrame(() => {
+                              const el = inputRefs.current.get(node.id);
+                              if (el) {
+                                const len = el.value.length;
+                                el.selectionStart = len;
+                                el.selectionEnd = len;
+                              }
+                              justStartedEditingRef.current = null;
+                              editIntentRef.current = null;
+                            });
+                          }
+                          // For mouse focus, browser already placed cursor correctly - don't move it
                         }
-                        justStartedEditingRef.current = null;
-                        editIntentRef.current = null;
-                      });
-                    }
-                    // For mouse focus, browser already placed cursor correctly - don't move it
-                  }
-                  
-                  lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
-                  lastEditValueRef.current = e.target.value;
 
-                  // Ensure proper height when textarea receives focus
-                  requestAnimationFrame(() => {
-                    e.target.style.height = 'auto';
-                    e.target.style.height = `${e.target.scrollHeight}px`;
-                  });
-                }}
-                onBlur={(e) => {
-                  // Save final cursor position before blur
-                  lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
-                  lastEditValueRef.current = e.target.value;
+                        lastCursorPositionRef.current = {
+                          start: e.target.selectionStart,
+                          end: e.target.selectionEnd,
+                        };
+                        lastEditValueRef.current = e.target.value;
 
-                  const next = e.relatedTarget as HTMLElement | null;
-                  // Clicking sidebar toggles should not kick you out of editing
-                  if (next?.closest('[data-editor-sidebar]')) {
-                    requestAnimationFrame(() => {
-                      inputRefs.current.get(node.id)?.focus();
-                    });
-                    return;
-                  }
-                  
-                  if (editingId === node.id) {
-                    handleEndEdit(node.id);
-                  }
-                }}
-                placeholder=""
-                cols={1}
-                rows={1}
-                style={{ 
-                  caretColor: editingId === node.id ? 'hsl(var(--primary))' : 'transparent',
-                  overflow: 'hidden',
-                  width: editingId === node.id ? undefined : 'fit-content',
-                  maxWidth: '100%',
-                  flex: editingId === node.id ? '1 1 0%' : '0 0 auto'
-                }}
-                className={cn(
-                  "min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
-                  editingId !== node.id && "pointer-events-auto flex-none",
-                  levelStyle.underline && (editingId === node.id ? editValue : node.label) && "underline decoration-foreground",
-                  !node.label && editingId !== node.id && "text-muted-foreground/50"
-                )}
-              />
-              {/* Suffix for mixed mode - always inline with label */}
-              {levelStyle.suffix && (editingId === node.id ? editValue : node.label) && (
-                <span
-                  className={cn(
-                    "text-foreground text-sm font-mono leading-6",
-                    levelStyle.underline && "underline decoration-foreground"
-                  )}
-                >
-                  {levelStyle.suffix}
-                </span>
-              )}
+                        // Ensure proper height when textarea receives focus
+                        requestAnimationFrame(() => {
+                          e.target.style.height = 'auto';
+                          e.target.style.height = `${e.target.scrollHeight}px`;
+                        });
+                      }}
+                      onBlur={(e) => {
+                        // Save final cursor position before blur
+                        lastCursorPositionRef.current = {
+                          start: e.target.selectionStart,
+                          end: e.target.selectionEnd,
+                        };
+                        lastEditValueRef.current = e.target.value;
+
+                        const next = e.relatedTarget as HTMLElement | null;
+                        // Clicking sidebar toggles should not kick you out of editing
+                        if (next?.closest('[data-editor-sidebar]')) {
+                          requestAnimationFrame(() => {
+                            inputRefs.current.get(node.id)?.focus();
+                          });
+                          return;
+                        }
+
+                        if (editingId === node.id) {
+                          handleEndEdit(node.id);
+                        }
+                      }}
+                      placeholder=""
+                      rows={1}
+                      style={{
+                        caretColor:
+                          editingId === node.id
+                            ? 'hsl(var(--primary))'
+                            : 'transparent',
+                      }}
+                      className={cn(
+                        "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
+                        shouldUnderline && "underline decoration-foreground",
+                        !node.label && editingId !== node.id && "text-muted-foreground/50"
+                      )}
+                    />
+
+                    {/* While editing, keep suffix visible but not part of the editable value */}
+                    {levelStyle.suffix && editingId === node.id && editValue && (
+                      <span
+                        className={cn(
+                          "text-foreground text-sm font-mono leading-6 select-none",
+                          shouldUnderline && "underline decoration-foreground"
+                        )}
+                      >
+                        {levelStyle.suffix}
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         );
