@@ -228,18 +228,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     prevNodesLengthRef.current = nodes.length;
   }, [nodes, handleStartEdit]);
 
-  // Focus input when editingId changes
-  // Use setTimeout to ensure DOM is ready after page container renders
+  // Focus input when editingId changes (only for programmatic cases like F2, Enter)
+  // Skip if already focused (user clicked directly on textarea)
   useEffect(() => {
     if (!editingId) return;
 
     const timeoutId = setTimeout(() => {
       const input = inputRefs.current.get(editingId);
-      if (input) {
+      // Only focus if not already focused - avoids resetting cursor from mouse clicks
+      if (input && document.activeElement !== input) {
         input.focus();
-        // IMPORTANT: Do NOT force the cursor to the end here.
-        // Cursor placement is handled on entry via justStartedEditingRef in the ref callback,
-        // and subsequent clicks should be able to position the caret anywhere.
       }
     }, 0);
 
