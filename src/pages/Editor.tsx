@@ -64,8 +64,21 @@ function EditorContent({
   return (
     <div className="flex-1 flex overflow-hidden">
       <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* Left Panel - Term Usages (conditionally rendered, between sidebar and editor) */}
+        {inspectedTerm && (
+          <>
+            <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
+              <TermUsagesPane 
+                term={inspectedTerm} 
+                onClose={() => setInspectedTerm(null)} 
+              />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+          </>
+        )}
+        
         {/* Main Editor Panel */}
-        <ResizablePanel defaultSize={inspectedTerm ? 70 : 100} minSize={40}>
+        <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
           <div className="flex flex-col h-full overflow-hidden">
             <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
               <h1 className="text-lg font-semibold text-foreground">The Outliner</h1>
@@ -76,19 +89,6 @@ function EditorContent({
             </main>
           </div>
         </ResizablePanel>
-        
-        {/* Right Panel - Term Usages (conditionally rendered) */}
-        {inspectedTerm && (
-          <>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-              <TermUsagesPane 
-                term={inspectedTerm} 
-                onClose={() => setInspectedTerm(null)} 
-              />
-            </ResizablePanel>
-          </>
-        )}
       </ResizablePanelGroup>
     </div>
   );
