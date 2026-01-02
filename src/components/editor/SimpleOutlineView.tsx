@@ -829,7 +829,6 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             ) : (
               <span 
                 className="text-sm font-mono whitespace-pre-wrap break-words leading-6 min-w-0 select-text"
-                onMouseDown={(e) => e.stopPropagation()}
               >
                 <span className={cn(
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
