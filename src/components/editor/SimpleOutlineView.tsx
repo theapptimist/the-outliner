@@ -132,6 +132,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const justStartedEditingRef = useRef<string | null>(null);
   // For mouse-initiated edits, we preserve click coordinates to place caret where the user clicked.
   const pendingMouseCaretRef = useRef<{ id: string; x: number; y: number } | null>(null);
+  // Guard against an immediate blur right after entering edit mode via mouse click.
+  const lastEditStartRef = useRef<{ id: string; mode: 'mouse' | 'program'; ts: number } | null>(null);
 
   // Calculate indices for each node at each depth (skip body nodes)
   const nodeIndices = useMemo(() => {
@@ -176,15 +178,21 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       currentLabel: string,
       options?: { placeCursor?: 'none' | 'end'; mouse?: { x: number; y: number } }
     ) => {
+      const now = Date.now();
+
       // Only force cursor to end for keyboard/programmatic entries
       if (options?.placeCursor === 'end') {
+        lastEditStartRef.current = { id, mode: 'program', ts: now };
         justStartedEditingRef.current = id;
         pendingMouseCaretRef.current = null;
       }
 
       // For mouse-initiated entries, preserve click coordinates so the caret lands where the user clicked.
-      if (options?.placeCursor === 'none' && options?.mouse) {
-        pendingMouseCaretRef.current = { id, x: options.mouse.x, y: options.mouse.y };
+      if (options?.placeCursor === 'none') {
+        lastEditStartRef.current = { id, mode: 'mouse', ts: now };
+        if (options?.mouse) {
+          pendingMouseCaretRef.current = { id, x: options.mouse.x, y: options.mouse.y };
+        }
       }
 
       setEditingId(id);
@@ -918,6 +926,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   // Save final cursor position before blur
                   lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
                   lastEditValueRef.current = e.target.value;
+
+                  // If we just entered edit mode via mouse, ignore an immediate blur (common when the
+                  // original click focuses another element after we mount/focus the textarea).
+                  const started = lastEditStartRef.current;
+                  if (started?.id === node.id && started.mode === 'mouse' && Date.now() - started.ts < 250) {
+                    requestAnimationFrame(() => {
+                      inputRefs.current.get(node.id)?.focus();
+                    });
+                    return;
+                  }
 
                   const next = e.relatedTarget as HTMLElement | null;
                   // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
