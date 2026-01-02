@@ -54,7 +54,7 @@ export function TermUsagesPane({ term, onClose }: TermUsagesPaneProps) {
   const totalUsages = usages.reduce((sum, u) => sum + u.count, 0);
 
   return (
-    <div className="flex flex-col h-full bg-card border-l border-border">
+    <div className="flex flex-col h-full bg-card border-r border-border">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2 min-w-0">
