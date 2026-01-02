@@ -158,21 +158,17 @@ export function DocumentEditor() {
     <div
       className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative"
       onMouseDownCapture={(e) => {
-        // DEBUG: click/focus tracing (remove once fixed)
-        // eslint-disable-next-line no-console
-        console.log('[DocumentEditor] mousedown capture', {
-          target: (e.target as HTMLElement | null)?.tagName,
-          classes: (e.target as HTMLElement | null)?.className,
-        });
-
-        // Ensure clicking on the page focuses TipTap (helps when other UI prevented focus).
         if (!editor) return;
         const t = e.target as HTMLElement | null;
-        // Don't steal focus when interacting with floating UI.
-        if (t?.closest('[data-floating-ui]') || t?.closest('[data-radix-popper-content-wrapper]')) return;
+        // Don't steal focus when interacting with floating UI or hierarchy blocks (outlines).
+        if (
+          t?.closest('[data-floating-ui]') ||
+          t?.closest('[data-radix-popper-content-wrapper]') ||
+          t?.closest('[data-type="hierarchy-block"]')
+        ) {
+          return;
+        }
         editor.chain().focus().run();
-        // eslint-disable-next-line no-console
-        console.log('[DocumentEditor] focus() called');
       }}
     >
       <div className="flex-1 overflow-auto">
