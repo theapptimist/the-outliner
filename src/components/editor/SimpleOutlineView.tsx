@@ -220,18 +220,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   // Focus input when editingId changes
   // Use setTimeout to ensure DOM is ready after page container renders
   useEffect(() => {
-    if (editingId) {
-      const timeoutId = setTimeout(() => {
-        const input = inputRefs.current.get(editingId);
-        if (input) {
-          input.focus();
-          const len = input.value.length;
-          input.selectionStart = len;
-          input.selectionEnd = len;
-        }
-      }, 0);
-      return () => clearTimeout(timeoutId);
-    }
+    if (!editingId) return;
+
+    const timeoutId = setTimeout(() => {
+      const input = inputRefs.current.get(editingId);
+      if (input) {
+        input.focus();
+        // IMPORTANT: Do NOT force the cursor to the end here.
+        // Cursor placement is handled on entry via justStartedEditingRef in the ref callback,
+        // and subsequent clicks should be able to position the caret anywhere.
+      }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [editingId]);
 
   const handleEndEdit = useCallback((id: string) => {
