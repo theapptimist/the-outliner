@@ -74,7 +74,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode } = useEditorContext();
+  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode, editor } = useEditorContext();
 
   // Track last focused position for term insertion when clicking sidebar
   const lastFocusedNodeIdRef = useRef<string | null>(null);
@@ -437,7 +437,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           setEditingId(null);
         }
       } else {
+        // Escape: exit outline and return focus to main TipTap editor
+        e.preventDefault();
         setEditingId(null);
+        if (editor) {
+          editor.chain().focus().run();
+        }
       }
     } else if (e.key === 'Tab') {
       e.preventDefault();
