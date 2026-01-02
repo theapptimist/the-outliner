@@ -892,22 +892,27 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   caretColor: editingId === node.id ? 'hsl(var(--primary))' : 'transparent',
                   overflow: 'hidden',
                   width: editingId === node.id ? undefined : 'fit-content',
-                  maxWidth: '100%'
+                  maxWidth: '100%',
+                  flex: editingId === node.id ? '1 1 0%' : '0 0 auto'
                 }}
                 className={cn(
                   "min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
-                  editingId === node.id && "flex-1",
-                  editingId !== node.id && "pointer-events-auto shrink-0",
+                  editingId !== node.id && "pointer-events-auto flex-none",
                   levelStyle.underline && (editingId === node.id ? editValue : node.label) && "underline decoration-foreground",
                   !node.label && editingId !== node.id && "text-muted-foreground/50"
                 )}
               />
-              {/* Suffix for mixed mode - inline with text */}
-              {levelStyle.suffix && node.label && editingId !== node.id && (
-                <span className="text-foreground text-sm font-mono leading-6">{levelStyle.suffix}</span>
+              {/* Suffix for mixed mode - always inline with label */}
+              {levelStyle.suffix && (editingId === node.id ? editValue : node.label) && (
+                <span
+                  className={cn(
+                    "text-foreground text-sm font-mono leading-6",
+                    levelStyle.underline && "underline decoration-foreground"
+                  )}
+                >
+                  {levelStyle.suffix}
+                </span>
               )}
-              {/* Spacer to fill remaining space */}
-              <div className="flex-1" />
             </div>
           </div>
         );
