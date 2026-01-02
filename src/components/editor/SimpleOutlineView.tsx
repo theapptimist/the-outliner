@@ -168,8 +168,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     return indices;
   }, [nodes]);
 
-  const handleStartEdit = useCallback((id: string, currentLabel: string) => {
-    justStartedEditingRef.current = id;
+  const handleStartEdit = useCallback((id: string, currentLabel: string, options?: { placeCursor?: 'none' | 'end' }) => {
+    // Only force cursor to end for keyboard/programmatic entries
+    if (options?.placeCursor === 'end') {
+      justStartedEditingRef.current = id;
+    }
     setEditingId(id);
     setEditValue(currentLabel);
   }, []);
@@ -181,7 +184,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       const node = nodes.find(n => n.id === autoFocusId);
       if (node) {
         autoFocusHandledRef.current = true;
-        handleStartEdit(autoFocusId, node.label);
+        handleStartEdit(autoFocusId, node.label, { placeCursor: 'end' });
         onAutoFocusHandled?.();
       }
     }
@@ -194,7 +197,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     if (newNodeId) {
       const newNode = nodes.find(n => n.id === newNodeId);
       if (newNode) {
-        handleStartEdit(newNode.id, newNode.label);
+        handleStartEdit(newNode.id, newNode.label, { placeCursor: 'end' });
         pendingNewNodeIdRef.current = null;
         prevNodesLengthRef.current = nodes.length;
         return;
@@ -209,7 +212,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       const newNode = afterIndex >= 0 ? nodes[afterIndex + 1] : null;
 
       if (newNode) {
-        handleStartEdit(newNode.id, newNode.label);
+        handleStartEdit(newNode.id, newNode.label, { placeCursor: 'end' });
       }
       pendingFocusAfterIdRef.current = null;
     }
@@ -819,15 +822,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 const dy = Math.abs(upEvent.clientY - startY);
                 if (dx > 5 || dy > 5) return;
 
-                // Single click: select only (editing is via double-click)
+                // Single click: select and enter edit mode (mouse-initiated, don't force cursor)
                 onSelect(node.id);
+                handleStartEdit(node.id, node.label, { placeCursor: 'none' });
               };
 
               document.addEventListener('mouseup', handleMouseUp);
-            }}
-            onDoubleClick={() => {
-              onSelect(node.id);
-              handleStartEdit(node.id, node.label);
             }}
             onClick={(e) => {
               // Prevent default click behavior - we handle it in mousedown/mouseup
