@@ -74,6 +74,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const containerRef = useRef<HTMLDivElement>(null);
   const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor } = useEditorContext();
 
+  // Track last focused position for term insertion when clicking sidebar
+  const lastFocusedNodeIdRef = useRef<string | null>(null);
+  const lastCursorPositionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+  const lastEditValueRef = useRef<string>('');
+
   // Smart paste dialog state
   const [smartPasteDialogOpen, setSmartPasteDialogOpen] = useState(false);
   const [smartPasteData, setSmartPasteData] = useState<SmartPasteResult | null>(null);
@@ -90,6 +95,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     if (selectedText) {
       setSelectionSource({ nodePrefix, nodeLabel });
     }
+    
+    // Track cursor position for term insertion
+    lastCursorPositionRef.current = { start: textarea.selectionStart, end: textarea.selectionEnd };
+    lastEditValueRef.current = textarea.value;
   }, [setSelectedText, setSelectionSource]);
 
   useEffect(() => {
@@ -229,29 +238,48 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   // Register insert-at-cursor function for term insertion from sidebar
   useEffect(() => {
     const insertFn = (text: string) => {
-      const currentEditingId = editingIdRef.current;
-      if (!currentEditingId) return null;
+      // Try current editing session first
+      let targetNodeId = editingIdRef.current;
+      let textarea = targetNodeId ? inputRefs.current.get(targetNodeId) : null;
+      let cursorStart = textarea?.selectionStart ?? 0;
+      let cursorEnd = textarea?.selectionEnd ?? 0;
+      let currentVal = textarea?.value ?? '';
 
-      const textarea = inputRefs.current.get(currentEditingId);
-      if (!textarea) return null;
+      // Fallback to last focused position if not currently editing
+      if (!textarea && lastFocusedNodeIdRef.current) {
+        targetNodeId = lastFocusedNodeIdRef.current;
+        textarea = inputRefs.current.get(targetNodeId);
+        cursorStart = lastCursorPositionRef.current.start;
+        cursorEnd = lastCursorPositionRef.current.end;
+        currentVal = lastEditValueRef.current;
+        
+        // Re-enter edit mode for this node
+        if (textarea && targetNodeId) {
+          const node = nodes.find(n => n.id === targetNodeId);
+          if (node) {
+            setEditingId(targetNodeId);
+            setEditValue(currentVal);
+          }
+        }
+      }
 
-      const node = nodes.find(n => n.id === currentEditingId);
+      if (!textarea || !targetNodeId) return null;
+
+      const node = nodes.find(n => n.id === targetNodeId);
       if (!node) return null;
 
       // Insert text at cursor position
-      const start = textarea.selectionStart ?? 0;
-      const end = textarea.selectionEnd ?? 0;
-      const currentVal = textarea.value;
-      const newVal = currentVal.slice(0, start) + text + currentVal.slice(end);
+      const newVal = currentVal.slice(0, cursorStart) + text + currentVal.slice(cursorEnd);
       
-      // Update state (this will trigger the onChange handler)
+      // Update state
       setEditValue(newVal);
       
       // Update cursor position after React re-renders
+      const finalNodeId = targetNodeId;
       requestAnimationFrame(() => {
-        const el = inputRefs.current.get(currentEditingId);
+        const el = inputRefs.current.get(finalNodeId);
         if (el) {
-          const newPos = start + text.length;
+          const newPos = cursorStart + text.length;
           el.selectionStart = newPos;
           el.selectionEnd = newPos;
           el.focus();
@@ -753,6 +781,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onPaste={(e) => handlePaste(e, node.id)}
                 onSelect={(e) => handleSelectionChange(e, fullPrefix, node.label)}
                 onFocus={(e) => {
+                  // Track this as the last focused node for term insertion
+                  lastFocusedNodeIdRef.current = node.id;
+                  lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+                  lastEditValueRef.current = e.target.value;
+                  
                   // Ensure proper height when textarea receives focus (fixes wrapped text disappearing)
                   requestAnimationFrame(() => {
                     e.target.style.height = 'auto';
@@ -760,6 +793,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   });
                 }}
                 onBlur={(e) => {
+                  // Save final cursor position before blur
+                  lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+                  lastEditValueRef.current = e.target.value;
+                  
                   const next = e.relatedTarget as HTMLElement | null;
                   // Clicking sidebar toggles (like Auto-Descend) should not kick you out of editing.
                   if (next?.closest('[data-editor-sidebar]')) {
