@@ -128,7 +128,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
   // Stable ref callbacks cache - prevents ref churn on re-renders
   const inputRefCallbacks = useRef(new Map<string, (el: HTMLTextAreaElement | null) => void>());
-  // Track when we just entered edit mode (to force cursor to end only on entry)
+  // Track when we just entered edit mode programmatically (F2, Enter, etc.) to force cursor to end
   const justStartedEditingRef = useRef<string | null>(null);
 
   // Calculate indices for each node at each depth (skip body nodes)
@@ -168,14 +168,22 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     return indices;
   }, [nodes]);
 
-  const handleStartEdit = useCallback((id: string, currentLabel: string, options?: { placeCursor?: 'none' | 'end' }) => {
-    // Only force cursor to end for keyboard/programmatic entries
-    if (options?.placeCursor === 'end') {
-      justStartedEditingRef.current = id;
-    }
-    setEditingId(id);
-    setEditValue(currentLabel);
-  }, []);
+  const handleStartEdit = useCallback(
+    (
+      id: string,
+      currentLabel: string,
+      options?: { placeCursor?: 'end' }
+    ) => {
+      // Only force cursor to end for keyboard/programmatic entries (F2, Enter, etc.)
+      if (options?.placeCursor === 'end') {
+        justStartedEditingRef.current = id;
+      }
+
+      setEditingId(id);
+      setEditValue(currentLabel);
+    },
+    []
+  );
 
   // Auto-focus on initial mount if autoFocusId is provided
   const autoFocusHandledRef = useRef(false);
@@ -220,18 +228,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     prevNodesLengthRef.current = nodes.length;
   }, [nodes, handleStartEdit]);
 
-  // Focus input when editingId changes
-  // Use setTimeout to ensure DOM is ready after page container renders
+  // Focus input when editingId changes (only for programmatic cases like F2, Enter)
+  // Skip if already focused (user clicked directly on textarea)
   useEffect(() => {
     if (!editingId) return;
 
     const timeoutId = setTimeout(() => {
       const input = inputRefs.current.get(editingId);
-      if (input) {
+      // Only focus if not already focused - avoids resetting cursor from mouse clicks
+      if (input && document.activeElement !== input) {
         input.focus();
-        // IMPORTANT: Do NOT force the cursor to the end here.
-        // Cursor placement is handled on entry via justStartedEditingRef in the ref callback,
-        // and subsequent clicks should be able to position the caret anywhere.
       }
     }, 0);
 
@@ -652,7 +658,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           if (selectedId) {
             e.preventDefault();
             const node = nodes.find(n => n.id === selectedId);
-            if (node) handleStartEdit(selectedId, node.label);
+            if (node) handleStartEdit(selectedId, node.label, { placeCursor: 'end' });
           }
           break;
         case 'Escape':
@@ -697,36 +703,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         if (el) {
           inputRefs.current.set(id, el);
 
-          // If this textarea is the active editor, focus immediately when it mounts.
-          if (editingIdRef.current === id) {
-            queueMicrotask(() => {
-              // Guard: element might unmount quickly during state transitions
-              const current = inputRefs.current.get(id);
-              if (current) {
-                current.focus();
-                
-                // Only force cursor to end if we just entered edit mode
-                if (justStartedEditingRef.current === id) {
-                  const len = current.value.length ?? 0;
-                  current.selectionStart = len;
-                  current.selectionEnd = len;
-                  justStartedEditingRef.current = null;
-                }
-                
-                // Auto-resize to fit wrapped content
-                current.style.height = 'auto';
-                current.style.height = `${current.scrollHeight}px`;
-                
-                // Double-check height after next frame when content is fully rendered
-                requestAnimationFrame(() => {
-                  const el = inputRefs.current.get(id);
-                  if (el) {
-                    el.style.height = 'auto';
-                    el.style.height = `${el.scrollHeight}px`;
-                  }
-                });
-              }
-            });
+          // Auto-resize immediately on mount
+          el.style.height = 'auto';
+          el.style.height = `${el.scrollHeight}px`;
+
+          // If this textarea just entered edit mode programmatically, move cursor to end
+          if (justStartedEditingRef.current === id) {
+            const len = el.value.length ?? 0;
+            el.selectionStart = len;
+            el.selectionEnd = len;
+            justStartedEditingRef.current = null;
           }
         } else {
           inputRefs.current.delete(id);
@@ -797,77 +783,92 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               gridTemplateColumns: '3.5rem 1fr'
             }}
             onMouseDown={(e) => {
-              // If already editing this node, let the textarea handle its own clicks
-              if (editingId === node.id) return;
-
-              const containerEl = e.currentTarget as HTMLDivElement;
-              const startX = e.clientX;
-              const startY = e.clientY;
-
-              const handleMouseUp = (upEvent: MouseEvent) => {
-                document.removeEventListener('mouseup', handleMouseUp);
-
-                // If the user selected text *inside this node*, don't treat it as a click.
-                const sel = window.getSelection?.();
-                if (sel && !sel.isCollapsed) {
-                  const anchor = sel.anchorNode;
-                  const focus = sel.focusNode;
-                  if ((anchor && containerEl.contains(anchor)) || (focus && containerEl.contains(focus))) {
-                    return;
-                  }
-                }
-
-                // If mouse moved significantly, it's likely a drag action - don't select.
-                const dx = Math.abs(upEvent.clientX - startX);
-                const dy = Math.abs(upEvent.clientY - startY);
-                if (dx > 5 || dy > 5) return;
-
-                // Single click: select and enter edit mode (mouse-initiated, don't force cursor)
-                onSelect(node.id);
-                handleStartEdit(node.id, node.label, { placeCursor: 'none' });
-              };
-
-              document.addEventListener('mouseup', handleMouseUp);
+              // Let the textarea handle its own clicks - only handle clicks on prefix/padding
+              const target = e.target as HTMLElement;
+              if (target.tagName === 'TEXTAREA') return;
+              
+              // Select this node
+              onSelect(node.id);
             }}
-            onClick={(e) => {
-              // Prevent default click behavior - we handle it in mousedown/mouseup
-              e.stopPropagation();
-            }}
+            onClick={(e) => e.stopPropagation()}
           >
             
             {/* Prefix/numbering - body nodes get empty spacer for alignment */}
-            <span className={cn(
-              "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap",
-              prefix ? "text-muted-foreground" : ""
-            )}>
+            <span 
+              className={cn(
+                "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap",
+                prefix ? "text-muted-foreground" : ""
+              )}
+              onMouseDown={(e) => {
+                // Clicking prefix should focus the textarea
+                e.preventDefault();
+                onSelect(node.id);
+                if (editingId !== node.id) {
+                  handleStartEdit(node.id, node.label, { placeCursor: 'end' });
+                }
+                requestAnimationFrame(() => {
+                  inputRefs.current.get(node.id)?.focus();
+                });
+              }}
+            >
               {prefix || ''}
             </span>
             
-            {/* Label - always in edit mode when selected */}
-            {editingId === node.id ? (
+            {/* Content column: textarea + suffix inline */}
+            <div className="flex items-start min-w-0">
               <textarea
                 ref={getInputRefCallback(node.id)}
-                value={editValue}
+                value={editingId === node.id ? editValue : node.label}
+                readOnly={editingId !== node.id}
                 onChange={(e) => {
+                  if (editingId !== node.id) return;
                   setEditValue(e.target.value);
                   // Auto-resize textarea to fit content including visual wraps
                   e.target.style.height = 'auto';
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
-                onKeyDown={(e) => handleKeyDown(e, node)}
-                onPaste={(e) => handlePaste(e, node.id)}
-                onSelect={(e) => handleSelectionChange(e, fullPrefix, node.label)}
+                onKeyDown={(e) => {
+                  if (editingId !== node.id) return;
+                  handleKeyDown(e, node);
+                }}
+                onPaste={(e) => {
+                  if (editingId !== node.id) return;
+                  handlePaste(e, node.id);
+                }}
+                onSelect={(e) => {
+                  if (editingId !== node.id) return;
+                  handleSelectionChange(e, fullPrefix, node.label);
+                }}
                 onMouseDown={(e) => {
+                  // Always stop propagation so container doesn't interfere
                   e.stopPropagation();
                 }}
                 onClick={(e) => e.stopPropagation()}
                 onFocus={(e) => {
                   // Track this as the last focused node for term insertion
                   lastFocusedNodeIdRef.current = node.id;
-                  lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
+                  
+                  // Capture cursor position BEFORE state change (browser placed it from the click)
+                  const cursorStart = e.target.selectionStart;
+                  const cursorEnd = e.target.selectionEnd;
+                  
+                  // Enter edit mode if not already editing this node
+                  if (editingId !== node.id) {
+                    setEditingId(node.id);
+                    setEditValue(node.label);
+                    
+                    // Restore cursor position after React re-renders
+                    const textarea = e.target;
+                    requestAnimationFrame(() => {
+                      textarea.selectionStart = cursorStart;
+                      textarea.selectionEnd = cursorEnd;
+                    });
+                  }
+                  
+                  lastCursorPositionRef.current = { start: cursorStart, end: cursorEnd };
                   lastEditValueRef.current = e.target.value;
 
-                  // Ensure proper height when textarea receives focus (fixes wrapped text disappearing)
+                  // Ensure proper height when textarea receives focus
                   requestAnimationFrame(() => {
                     e.target.style.height = 'auto';
                     e.target.style.height = `${e.target.scrollHeight}px`;
@@ -886,34 +887,29 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     });
                     return;
                   }
-                  handleEndEdit(node.id);
+                  
+                  if (editingId === node.id) {
+                    handleEndEdit(node.id);
+                  }
                 }}
                 placeholder=""
                 rows={1}
                 style={{ 
-                  caretColor: 'hsl(var(--primary))',
+                  caretColor: editingId === node.id ? 'hsl(var(--primary))' : 'transparent',
                   overflow: 'hidden'
                 }}
                 className={cn(
-                  "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0 select-text",
-                  levelStyle.underline && editValue && "underline decoration-foreground"
+                  "bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 w-full min-w-0 select-text cursor-text flex-1",
+                  editingId !== node.id && "cursor-text",
+                  levelStyle.underline && (editingId === node.id ? editValue : node.label) && "underline decoration-foreground",
+                  !node.label && editingId !== node.id && "text-muted-foreground/50"
                 )}
               />
-            ) : (
-              <span 
-                className="text-sm font-mono whitespace-pre-wrap break-words leading-6 min-w-0 select-text"
-              >
-                <span className={cn(
-                  node.label ? 'text-foreground' : 'text-muted-foreground/50',
-                  levelStyle.underline && node.label && 'underline'
-                )}>
-                  {node.label || ''}
-                </span>
-                {levelStyle.suffix && node.label && (
-                  <span className="text-foreground">{levelStyle.suffix}</span>
-                )}
-              </span>
-            )}
+              {/* Suffix for mixed styles - inline with text */}
+              {levelStyle.suffix && (editingId === node.id || node.label) && (
+                <span className="text-foreground text-sm font-mono leading-6 flex-shrink-0">{levelStyle.suffix}</span>
+              )}
+            </div>
           </div>
         );
       })}
