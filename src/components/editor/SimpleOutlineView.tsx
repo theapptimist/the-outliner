@@ -892,16 +892,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   overflow: 'hidden'
                 }}
                 className={cn(
-                  "flex-1 min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
+                  "min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
+                  editingId === node.id && "flex-1",
                   editingId !== node.id && "pointer-events-auto",
                   levelStyle.underline && (editingId === node.id ? editValue : node.label) && "underline decoration-foreground",
                   !node.label && editingId !== node.id && "text-muted-foreground/50"
                 )}
               />
-              {/* Suffix for mixed mode - only show when not editing */}
+              {/* Suffix for mixed mode - inline with text */}
               {levelStyle.suffix && node.label && editingId !== node.id && (
-                <span className="shrink-0 text-foreground text-sm font-mono leading-6">{levelStyle.suffix}</span>
+                <span className="text-foreground text-sm font-mono leading-6">{levelStyle.suffix}</span>
               )}
+              {/* Spacer to fill remaining space */}
+              <div className="flex-1" />
             </div>
           </div>
         );
