@@ -849,24 +849,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 // Track this as the last focused node for term insertion
                 lastFocusedNodeIdRef.current = node.id;
                 
-                // Capture cursor position BEFORE state change (browser placed it from the click)
-                const cursorStart = e.target.selectionStart;
-                const cursorEnd = e.target.selectionEnd;
-                
                 // Enter edit mode if not already editing this node
                 if (editingId !== node.id) {
                   setEditingId(node.id);
                   setEditValue(node.label);
-                  
-                  // Restore cursor position after React re-renders
-                  const textarea = e.target;
-                  requestAnimationFrame(() => {
-                    textarea.selectionStart = cursorStart;
-                    textarea.selectionEnd = cursorEnd;
-                  });
+                  // NOTE: We do NOT set cursor position here - browser already placed it from the click
                 }
                 
-                lastCursorPositionRef.current = { start: cursorStart, end: cursorEnd };
+                lastCursorPositionRef.current = { start: e.target.selectionStart, end: e.target.selectionEnd };
                 lastEditValueRef.current = e.target.value;
 
                 // Ensure proper height when textarea receives focus
