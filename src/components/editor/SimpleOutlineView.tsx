@@ -124,6 +124,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const pendingFocusAfterIdRef = useRef<string | null>(null);
   const prevNodesLengthRef = useRef(nodes.length);
 
+  // Stable ref callbacks cache - prevents ref churn on re-renders
+  const inputRefCallbacks = useRef(new Map<string, (el: HTMLTextAreaElement | null) => void>());
+  // Track when we just entered edit mode (to force cursor to end only on entry)
+  const justStartedEditingRef = useRef<string | null>(null);
+
   // Calculate indices for each node at each depth (skip body nodes)
   const nodeIndices = useMemo(() => {
     const indices = new Map<string, number[]>();
@@ -162,6 +167,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   }, [nodes]);
 
   const handleStartEdit = useCallback((id: string, currentLabel: string) => {
+    justStartedEditingRef.current = id;
     setEditingId(id);
     setEditValue(currentLabel);
   }, []);
@@ -642,39 +648,52 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [editingId, selectedId, nodes, onNavigateUp, onNavigateDown, onAddNode, onAddChildNode, onIndent, onOutdent, onVisualIndent, onDelete, handleStartEdit, onMergeIntoParent]);
 
-  // Callback ref to store input references
-  const setInputRef = useCallback((id: string) => (el: HTMLTextAreaElement | null) => {
-    if (el) {
-      inputRefs.current.set(id, el);
+  // Stable ref callback getter - returns same function instance per node ID
+  const getInputRefCallback = useCallback((id: string) => {
+    let callback = inputRefCallbacks.current.get(id);
+    if (!callback) {
+      callback = (el: HTMLTextAreaElement | null) => {
+        if (el) {
+          inputRefs.current.set(id, el);
 
-      // If this textarea is the active editor, focus immediately when it mounts.
-      if (editingIdRef.current === id) {
-        queueMicrotask(() => {
-          // Guard: element might unmount quickly during state transitions
-          const current = inputRefs.current.get(id);
-          if (current) {
-            current.focus();
-            const len = current.value.length ?? 0;
-            current.selectionStart = len;
-            current.selectionEnd = len;
-            // Auto-resize to fit wrapped content
-            current.style.height = 'auto';
-            current.style.height = `${current.scrollHeight}px`;
-            
-            // Double-check height after next frame when content is fully rendered
-            requestAnimationFrame(() => {
-              const el = inputRefs.current.get(id);
-              if (el) {
-                el.style.height = 'auto';
-                el.style.height = `${el.scrollHeight}px`;
+          // If this textarea is the active editor, focus immediately when it mounts.
+          if (editingIdRef.current === id) {
+            queueMicrotask(() => {
+              // Guard: element might unmount quickly during state transitions
+              const current = inputRefs.current.get(id);
+              if (current) {
+                current.focus();
+                
+                // Only force cursor to end if we just entered edit mode
+                if (justStartedEditingRef.current === id) {
+                  const len = current.value.length ?? 0;
+                  current.selectionStart = len;
+                  current.selectionEnd = len;
+                  justStartedEditingRef.current = null;
+                }
+                
+                // Auto-resize to fit wrapped content
+                current.style.height = 'auto';
+                current.style.height = `${current.scrollHeight}px`;
+                
+                // Double-check height after next frame when content is fully rendered
+                requestAnimationFrame(() => {
+                  const el = inputRefs.current.get(id);
+                  if (el) {
+                    el.style.height = 'auto';
+                    el.style.height = `${el.scrollHeight}px`;
+                  }
+                });
               }
             });
           }
-        });
-      }
-    } else {
-      inputRefs.current.delete(id);
+        } else {
+          inputRefs.current.delete(id);
+        }
+      };
+      inputRefCallbacks.current.set(id, callback);
     }
+    return callback;
   }, []);
 
   return (
@@ -772,7 +791,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             {/* Label - always in edit mode when selected */}
             {editingId === node.id ? (
               <textarea
-                ref={setInputRef(node.id)}
+                ref={getInputRefCallback(node.id)}
                 value={editValue}
                 onChange={(e) => {
                   setEditValue(e.target.value);
