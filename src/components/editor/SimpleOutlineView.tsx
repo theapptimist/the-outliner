@@ -130,6 +130,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const inputRefCallbacks = useRef(new Map<string, (el: HTMLTextAreaElement | null) => void>());
   // Track when we just entered edit mode (to force cursor to end only on entry)
   const justStartedEditingRef = useRef<string | null>(null);
+  // For mouse-initiated edits, we preserve click coordinates to place caret where the user clicked.
+  const pendingMouseCaretRef = useRef<{ id: string; x: number; y: number } | null>(null);
 
   // Calculate indices for each node at each depth (skip body nodes)
   const nodeIndices = useMemo(() => {
@@ -168,14 +170,28 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     return indices;
   }, [nodes]);
 
-  const handleStartEdit = useCallback((id: string, currentLabel: string, options?: { placeCursor?: 'none' | 'end' }) => {
-    // Only force cursor to end for keyboard/programmatic entries
-    if (options?.placeCursor === 'end') {
-      justStartedEditingRef.current = id;
-    }
-    setEditingId(id);
-    setEditValue(currentLabel);
-  }, []);
+  const handleStartEdit = useCallback(
+    (
+      id: string,
+      currentLabel: string,
+      options?: { placeCursor?: 'none' | 'end'; mouse?: { x: number; y: number } }
+    ) => {
+      // Only force cursor to end for keyboard/programmatic entries
+      if (options?.placeCursor === 'end') {
+        justStartedEditingRef.current = id;
+        pendingMouseCaretRef.current = null;
+      }
+
+      // For mouse-initiated entries, preserve click coordinates so the caret lands where the user clicked.
+      if (options?.placeCursor === 'none' && options?.mouse) {
+        pendingMouseCaretRef.current = { id, x: options.mouse.x, y: options.mouse.y };
+      }
+
+      setEditingId(id);
+      setEditValue(currentLabel);
+    },
+    []
+  );
 
   // Auto-focus on initial mount if autoFocusId is provided
   const autoFocusHandledRef = useRef(false);
@@ -652,7 +668,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           if (selectedId) {
             e.preventDefault();
             const node = nodes.find(n => n.id === selectedId);
-            if (node) handleStartEdit(selectedId, node.label);
+            if (node) handleStartEdit(selectedId, node.label, { placeCursor: 'end' });
           }
           break;
         case 'Escape':
@@ -704,19 +720,41 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               const current = inputRefs.current.get(id);
               if (current) {
                 current.focus();
-                
-                // Only force cursor to end if we just entered edit mode
+
+                // Only force cursor to end if we just entered edit mode programmatically
                 if (justStartedEditingRef.current === id) {
                   const len = current.value.length ?? 0;
                   current.selectionStart = len;
                   current.selectionEnd = len;
                   justStartedEditingRef.current = null;
                 }
-                
+
+                // If this edit was initiated by a mouse click on the display row,
+                // synthesize the click on the textarea so the browser places the caret at the clicked spot.
+                const pendingMouse = pendingMouseCaretRef.current;
+                if (pendingMouse?.id === id) {
+                  pendingMouseCaretRef.current = null;
+                  requestAnimationFrame(() => {
+                    const el2 = inputRefs.current.get(id);
+                    if (!el2) return;
+                    const { x, y } = pendingMouse;
+                    const opts: MouseEventInit = {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: x,
+                      clientY: y,
+                      view: window,
+                    };
+                    el2.dispatchEvent(new MouseEvent('mousedown', opts));
+                    el2.dispatchEvent(new MouseEvent('mouseup', opts));
+                    el2.dispatchEvent(new MouseEvent('click', opts));
+                  });
+                }
+
                 // Auto-resize to fit wrapped content
                 current.style.height = 'auto';
                 current.style.height = `${current.scrollHeight}px`;
-                
+
                 // Double-check height after next frame when content is fully rendered
                 requestAnimationFrame(() => {
                   const el = inputRefs.current.get(id);
@@ -822,9 +860,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 const dy = Math.abs(upEvent.clientY - startY);
                 if (dx > 5 || dy > 5) return;
 
-                // Single click: select and enter edit mode (mouse-initiated, don't force cursor)
+                // Single click: select and enter edit mode (mouse-initiated, place caret at click)
                 onSelect(node.id);
-                handleStartEdit(node.id, node.label, { placeCursor: 'none' });
+                handleStartEdit(node.id, node.label, {
+                  placeCursor: 'none',
+                  mouse: { x: upEvent.clientX, y: upEvent.clientY },
+                });
               };
 
               document.addEventListener('mouseup', handleMouseUp);
