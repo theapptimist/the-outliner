@@ -34,6 +34,7 @@ interface FileMenuProps {
   onDelete: () => void;
   onOpenRecent: (id: string) => void;
   hasDocument: boolean;
+  iconOnly?: boolean;
 }
 
 export function FileMenu({
@@ -46,6 +47,7 @@ export function FileMenu({
   onDelete,
   onOpenRecent,
   hasDocument,
+  iconOnly = false,
 }: FileMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recentDocs = getRecentDocuments();
@@ -72,8 +74,11 @@ export function FileMenu({
       />
       <Menubar className="border-none bg-transparent h-auto p-0">
         <MenubarMenu>
-          <MenubarTrigger className="font-medium px-3 py-1.5 cursor-pointer">
-            File
+          <MenubarTrigger className={iconOnly 
+            ? "h-7 w-7 p-0 rounded-md flex items-center justify-center hover:bg-muted/50 text-muted-foreground cursor-pointer" 
+            : "font-medium px-3 py-1.5 cursor-pointer"
+          }>
+            {iconOnly ? <FileText className="h-4 w-4" /> : "File"}
           </MenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={onNew}>

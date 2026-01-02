@@ -25,6 +25,7 @@ import {
   Wrench,
   BookOpen,
   Plus,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -34,6 +35,7 @@ import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { useEditorContext } from './EditorContext';
 import { DefinedTermsPane } from './DefinedTermsPane';
+import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
 type SidebarTab = 'tools' | 'terms';
@@ -51,6 +53,7 @@ interface EditorSidebarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  fileMenuProps: React.ComponentProps<typeof FileMenu>;
 }
 
 interface ToolButtonProps {
@@ -111,6 +114,7 @@ export function EditorSidebar({
   onRedo,
   canUndo,
   canRedo,
+  fileMenuProps,
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('tools');
@@ -188,6 +192,9 @@ export function EditorSidebar({
           "flex items-center gap-1 px-2 pb-2",
           collapsed && "flex-col"
         )}>
+          {/* File Menu Icon */}
+          <FileMenu {...fileMenuProps} iconOnly />
+          
           <Tooltip>
             <TooltipTrigger asChild>
               <button
