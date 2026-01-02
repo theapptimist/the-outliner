@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { AddTermDialog } from './AddTermDialog';
 import { TermUsage } from '@/lib/termScanner';
@@ -27,11 +28,18 @@ interface DefinedTermsPaneProps {
 }
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
-  const { selectionSource, insertTextAtCursor } = useEditorContext();
+  const { selectionSource, insertTextAtCursor, setInspectedTerm } = useEditorContext();
   const [terms, setTerms] = useSessionStorage<DefinedTerm[]>('defined-terms', []);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
+
+  // Handle opening term usages pane
+  const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setInspectedTerm(term);
+  }, [setInspectedTerm]);
 
   // Handle clicking on a term card to insert it at cursor
   const handleTermClick = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
@@ -159,9 +167,21 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                         <div className="font-medium text-xs text-foreground">{term.term}</div>
                         <div className="flex items-center gap-1">
                           {totalUsages > 0 && (
-                            <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded">
-                              {totalUsages}
-                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className="flex items-center gap-1 text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded hover:bg-accent/30 transition-colors"
+                                  onMouseDownCapture={(e) => e.stopPropagation()}
+                                  onClick={(e) => handleViewUsages(term, e)}
+                                >
+                                  <Eye className="h-2.5 w-2.5" />
+                                  {totalUsages}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="text-xs">
+                                View all usages
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                           {hasUsages && (
                             isExpanded ? (
