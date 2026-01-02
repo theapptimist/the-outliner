@@ -794,29 +794,35 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             }}
             onMouseDown={(e) => {
               // If already editing this node, let the textarea handle its own clicks
-              if (editingId === node.id) {
-                return;
-              }
-              
-              // Track mouse position to detect drag (text selection)
+              if (editingId === node.id) return;
+
+              const containerEl = e.currentTarget as HTMLDivElement;
               const startX = e.clientX;
               const startY = e.clientY;
-              
+
               const handleMouseUp = (upEvent: MouseEvent) => {
                 document.removeEventListener('mouseup', handleMouseUp);
-                
-                // If mouse moved significantly, it's a text selection drag - don't trigger edit
+
+                // If the user selected text *inside this node*, don't enter edit mode.
+                const sel = window.getSelection?.();
+                if (sel && !sel.isCollapsed) {
+                  const anchor = sel.anchorNode;
+                  const focus = sel.focusNode;
+                  if ((anchor && containerEl.contains(anchor)) || (focus && containerEl.contains(focus))) {
+                    return;
+                  }
+                }
+
+                // If mouse moved significantly, it's likely a drag action - don't trigger edit.
                 const dx = Math.abs(upEvent.clientX - startX);
                 const dy = Math.abs(upEvent.clientY - startY);
-                if (dx > 5 || dy > 5) {
-                  return;
-                }
-                
+                if (dx > 5 || dy > 5) return;
+
                 // Single click - trigger selection and edit
                 onSelect(node.id);
                 handleStartEdit(node.id, node.label);
               };
-              
+
               document.addEventListener('mouseup', handleMouseUp);
             }}
             onClick={(e) => {
@@ -893,10 +899,6 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             ) : (
               <span 
                 className="text-sm font-mono whitespace-pre-wrap break-words leading-6 min-w-0 select-text"
-                onMouseDown={(e) => {
-                  // Allow text selection on the span without parent interference
-                  e.stopPropagation();
-                }}
               >
                 <span className={cn(
                   node.label ? 'text-foreground' : 'text-muted-foreground/50',
