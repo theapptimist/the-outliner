@@ -5,7 +5,6 @@ import { EditorProvider, useEditorContext } from '@/components/editor/EditorCont
 import { TermUsagesPane } from '@/components/editor/TermUsagesPane';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { FileMenu } from '@/components/editor/FileMenu';
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
 import { DocumentState, createEmptyDocument } from '@/types/document';
@@ -17,7 +16,6 @@ import {
   importDocument,
   createNewDocument,
 } from '@/lib/documentStorage';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 const MIXED_CONFIG_STORAGE_KEY = 'outline-mixed-config';
@@ -60,32 +58,8 @@ function loadCurrentDocument(): DocumentState {
 }
 
 // Inner component that uses EditorContext
-function EditorContent({
-  document,
-  onTitleChange,
-  hasUnsavedChanges,
-}: {
-  document: DocumentState;
-  onTitleChange: (title: string) => void;
-  hasUnsavedChanges: boolean;
-}) {
+function EditorContent() {
   const { inspectedTerm, setInspectedTerm } = useEditorContext();
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleValue, setTitleValue] = useState(document.meta.title);
-
-  // Sync title when document changes
-  useEffect(() => {
-    setTitleValue(document.meta.title);
-  }, [document.meta.title]);
-
-  const handleTitleSubmit = () => {
-    if (titleValue.trim()) {
-      onTitleChange(titleValue.trim());
-    } else {
-      setTitleValue(document.meta.title);
-    }
-    setIsEditingTitle(false);
-  };
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -109,40 +83,9 @@ function EditorContent({
 
         {/* Main Editor Panel */}
         <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
-          <div className="flex flex-col h-full overflow-hidden">
-            <header className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
-              <div className="flex items-center gap-2">
-                {isEditingTitle ? (
-                  <Input
-                    value={titleValue}
-                    onChange={(e) => setTitleValue(e.target.value)}
-                    onBlur={handleTitleSubmit}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleTitleSubmit();
-                      if (e.key === 'Escape') {
-                        setTitleValue(document.meta.title);
-                        setIsEditingTitle(false);
-                      }
-                    }}
-                    className="h-7 w-48 text-sm font-medium"
-                    autoFocus
-                  />
-                ) : (
-                  <button
-                    onClick={() => setIsEditingTitle(true)}
-                    className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1"
-                  >
-                    {document.meta.title}
-                    {hasUnsavedChanges && <span className="text-warning">•</span>}
-                  </button>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground">Type "/" for commands</p>
-            </header>
-            <main className="flex-1 overflow-hidden">
-              <DocumentEditor />
-            </main>
-          </div>
+          <main className="h-full overflow-hidden">
+            <DocumentEditor />
+          </main>
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
@@ -308,10 +251,13 @@ export default function Editor() {
   }, []);
 
   const fileMenuProps = {
+    documentTitle: document.meta.title,
+    hasUnsavedChanges,
     onNew: handleNew,
     onOpen: () => setOpenDialogOpen(true),
     onSave: handleSave,
     onSaveAs: () => setSaveAsDialogOpen(true),
+    onRename: handleTitleChange,
     onExport: handleExport,
     onImport: handleImport,
     onDelete: handleDelete,
@@ -352,11 +298,7 @@ export default function Editor() {
           fileMenuProps={fileMenuProps}
         />
         
-        <EditorContent
-          document={document}
-          onTitleChange={handleTitleChange}
-          hasUnsavedChanges={hasUnsavedChanges}
-        />
+        <EditorContent />
 
         <OpenDocumentDialog
           open={openDialogOpen}
