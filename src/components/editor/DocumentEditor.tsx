@@ -155,7 +155,17 @@ export function DocumentEditor() {
   }, [handleInsertHierarchy, setInsertHierarchyHandler]);
 
   return (
-    <div className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative">
+    <div
+      className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative"
+      onMouseDownCapture={(e) => {
+        // Ensure clicking on the page focuses TipTap (helps when other UI prevented focus).
+        if (!editor) return;
+        const t = e.target as HTMLElement | null;
+        // Don't steal focus when interacting with floating UI.
+        if (t?.closest('[data-floating-ui]') || t?.closest('[data-radix-popper-content-wrapper]')) return;
+        editor.chain().focus().run();
+      }}
+    >
       <div className="flex-1 overflow-auto">
         <PaginatedDocument>
           {editor ? (
