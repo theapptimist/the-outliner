@@ -701,17 +701,32 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               gridTemplateColumns: '3.5rem 1fr'
             }}
             onMouseDown={(e) => {
-              // Only trigger selection/edit on single click, not during text selection drag
-              if (editingId === node.id) {
-                // Already editing - don't interfere with text selection
-                return;
-              }
+              // Track mouse position to detect drag (text selection)
+              const startX = e.clientX;
+              const startY = e.clientY;
+              
+              const handleMouseUp = (upEvent: MouseEvent) => {
+                document.removeEventListener('mouseup', handleMouseUp);
+                
+                // If mouse moved significantly, it's a text selection drag - don't trigger edit
+                const dx = Math.abs(upEvent.clientX - startX);
+                const dy = Math.abs(upEvent.clientY - startY);
+                if (dx > 5 || dy > 5) {
+                  return;
+                }
+                
+                // Single click - trigger selection and edit
+                onSelect(node.id);
+                if (editingId !== node.id) {
+                  handleStartEdit(node.id, node.label);
+                }
+              };
+              
+              document.addEventListener('mouseup', handleMouseUp);
             }}
-            onClick={() => {
-              onSelect(node.id);
-              if (editingId !== node.id) {
-                handleStartEdit(node.id, node.label);
-              }
+            onClick={(e) => {
+              // Prevent default click behavior - we handle it in mousedown/mouseup
+              e.stopPropagation();
             }}
           >
             
