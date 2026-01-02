@@ -294,16 +294,26 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         }
       });
 
-      // Calculate prefix for this node
+      // Calculate FULL hierarchical prefix for this node (e.g., "1.a.b." not just "b.")
       const isBody = node.type === 'body';
       const indices = nodeIndices.get(node.id) || [1];
-      const prefix = isBody ? '' : (
-        outlineStyle === 'mixed' 
-          ? getOutlinePrefixCustom(node.depth, indices, mixedConfig)
-          : getOutlinePrefix(outlineStyle, node.depth, indices)
-      );
+      
+      // Build full hierarchical prefix path
+      const fullPrefix = isBody ? '' : (() => {
+        if (outlineStyle === 'legal') {
+          return indices.slice(0, node.depth + 1).join('.') + '.';
+        }
+        // For mixed/other styles, build path from each level
+        return indices.slice(0, node.depth + 1).map((idx, d) => {
+          const levelPrefix = outlineStyle === 'mixed'
+            ? getOutlinePrefixCustom(d, indices, mixedConfig)
+            : getOutlinePrefix(outlineStyle, d, indices.slice(0, d + 1).map((_, i) => indices[i]));
+          // Remove trailing punctuation for compact display
+          return levelPrefix.replace(/[.\s]+$/, '').replace(/^\(|\)$/g, '');
+        }).join('') + '.';
+      })();
 
-      return { nodePrefix: prefix, nodeLabel: newVal };
+      return { nodePrefix: fullPrefix, nodeLabel: newVal };
     };
 
     setInsertTextAtCursor(insertFn);
