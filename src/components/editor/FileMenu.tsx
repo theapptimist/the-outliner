@@ -1,15 +1,11 @@
 import { useRef, useState } from 'react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-  DropdownMenuShortcut,
-} from '@/components/ui/dropdown-menu';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +25,7 @@ import {
   Clock,
   FileText,
   Pencil,
+  ChevronRight,
 } from 'lucide-react';
 import { getRecentDocuments } from '@/lib/documentStorage';
 import { formatDistanceToNow } from 'date-fns';
@@ -50,6 +47,33 @@ interface FileMenuProps {
   iconOnly?: boolean;
 }
 
+interface MenuItemProps {
+  icon: React.ReactNode;
+  label: string;
+  shortcut?: string;
+  onClick: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+}
+
+function MenuItem({ icon, label, shortcut, onClick, disabled, destructive }: MenuItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-left",
+        "hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none",
+        destructive && "text-destructive hover:bg-destructive/10"
+      )}
+    >
+      <span className="h-4 w-4 flex-shrink-0">{icon}</span>
+      <span className="flex-1">{label}</span>
+      {shortcut && <span className="text-xs text-muted-foreground">{shortcut}</span>}
+    </button>
+  );
+}
+
 export function FileMenu({
   documentTitle,
   hasUnsavedChanges,
@@ -66,12 +90,15 @@ export function FileMenu({
   iconOnly = false,
 }: FileMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [newTitle, setNewTitle] = useState(documentTitle);
+  const [showRecent, setShowRecent] = useState(false);
   const recentDocs = getRecentDocuments();
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
+    setSheetOpen(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,6 +118,12 @@ export function FileMenu({
   const openRenameDialog = () => {
     setNewTitle(documentTitle);
     setRenameOpen(true);
+    setSheetOpen(false);
+  };
+
+  const handleAction = (action: () => void) => {
+    action();
+    setSheetOpen(false);
   };
 
   return (
@@ -124,8 +157,8 @@ export function FileMenu({
         </DialogContent>
       </Dialog>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetTrigger asChild>
           <button
             data-allow-pointer
             className={cn(
@@ -135,87 +168,116 @@ export function FileMenu({
           >
             <FileText className="h-4 w-4" />
           </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
-          {/* Document title header */}
-          <div className="px-2 py-1.5 border-b border-border mb-1">
-            <p className="text-sm font-medium truncate flex items-center gap-1">
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 p-0">
+          <SheetHeader className="px-4 py-3 border-b border-border">
+            <SheetTitle className="text-sm font-medium flex items-center gap-1">
               {documentTitle}
               {hasUnsavedChanges && <span className="text-warning">•</span>}
-            </p>
-          </div>
+            </SheetTitle>
+          </SheetHeader>
 
-          <DropdownMenuItem onClick={onNew}>
-            <FilePlus className="mr-2 h-4 w-4" />
-            New
-            <DropdownMenuShortcut>⌘N</DropdownMenuShortcut>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={onOpen}>
-            <FolderOpen className="mr-2 h-4 w-4" />
-            Open...
-            <DropdownMenuShortcut>⌘O</DropdownMenuShortcut>
-          </DropdownMenuItem>
+          {!showRecent ? (
+            <div className="p-2 space-y-1">
+              <MenuItem
+                icon={<FilePlus className="h-4 w-4" />}
+                label="New"
+                shortcut="⌘N"
+                onClick={() => handleAction(onNew)}
+              />
+              <MenuItem
+                icon={<FolderOpen className="h-4 w-4" />}
+                label="Open..."
+                shortcut="⌘O"
+                onClick={() => handleAction(onOpen)}
+              />
+              {recentDocs.length > 0 && (
+                <button
+                  onClick={() => setShowRecent(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors hover:bg-muted/50"
+                >
+                  <Clock className="h-4 w-4" />
+                  <span className="flex-1">Open Recent</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
 
-          {recentDocs.length > 0 && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Clock className="mr-2 h-4 w-4" />
-                Open Recent
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {recentDocs.map((doc) => (
-                  <DropdownMenuItem key={doc.id} onClick={() => onOpenRecent(doc.id)}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span className="flex-1 truncate max-w-[200px]">{doc.title}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+              <div className="h-px bg-border my-2" />
+
+              <MenuItem
+                icon={<Save className="h-4 w-4" />}
+                label="Save"
+                shortcut="⌘S"
+                onClick={() => handleAction(onSave)}
+                disabled={!hasDocument}
+              />
+              <MenuItem
+                icon={<Save className="h-4 w-4" />}
+                label="Save As..."
+                shortcut="⇧⌘S"
+                onClick={() => handleAction(onSaveAs)}
+              />
+              <MenuItem
+                icon={<Pencil className="h-4 w-4" />}
+                label="Rename..."
+                onClick={openRenameDialog}
+              />
+
+              <div className="h-px bg-border my-2" />
+
+              <MenuItem
+                icon={<FileDown className="h-4 w-4" />}
+                label="Export..."
+                onClick={() => handleAction(onExport)}
+                disabled={!hasDocument}
+              />
+              <MenuItem
+                icon={<FileUp className="h-4 w-4" />}
+                label="Import..."
+                onClick={handleImportClick}
+              />
+
+              <div className="h-px bg-border my-2" />
+
+              <MenuItem
+                icon={<Trash2 className="h-4 w-4" />}
+                label="Delete Document"
+                onClick={() => handleAction(onDelete)}
+                disabled={!hasDocument}
+                destructive
+              />
+            </div>
+          ) : (
+            <div className="p-2">
+              <button
+                onClick={() => setShowRecent(false)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronRight className="h-4 w-4 rotate-180" />
+                Back
+              </button>
+              <div className="h-px bg-border my-2" />
+              {recentDocs.map((doc) => (
+                <button
+                  key={doc.id}
+                  onClick={() => {
+                    onOpenRecent(doc.id);
+                    setSheetOpen(false);
+                    setShowRecent(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors hover:bg-muted/50 text-left"
+                >
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <span className="flex-1 truncate">{doc.title}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem onClick={onSave} disabled={!hasDocument}>
-            <Save className="mr-2 h-4 w-4" />
-            Save
-            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={onSaveAs}>
-            <Save className="mr-2 h-4 w-4" />
-            Save As...
-            <DropdownMenuShortcut>⇧⌘S</DropdownMenuShortcut>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={openRenameDialog}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Rename...
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem onClick={onExport} disabled={!hasDocument}>
-            <FileDown className="mr-2 h-4 w-4" />
-            Export...
-          </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={handleImportClick}>
-            <FileUp className="mr-2 h-4 w-4" />
-            Import...
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem onClick={onDelete} disabled={!hasDocument} className="text-destructive">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Document
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
