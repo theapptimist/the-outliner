@@ -64,19 +64,23 @@ function EditorContent({
   return (
     <div className="flex-1 flex overflow-hidden">
       <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* Left Panel - Term Usages (conditionally rendered, between sidebar and editor) */}
-        {inspectedTerm && (
-          <>
-            <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
-              <TermUsagesPane 
-                term={inspectedTerm} 
-                onClose={() => setInspectedTerm(null)} 
-              />
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-          </>
-        )}
-        
+        {/* Term Usages Panel (kept mounted to avoid remounting the editor) */}
+        <ResizablePanel
+          defaultSize={inspectedTerm ? 25 : 0}
+          minSize={0}
+          maxSize={40}
+          collapsible
+          collapsedSize={0}
+        >
+          {inspectedTerm ? (
+            <TermUsagesPane term={inspectedTerm} onClose={() => setInspectedTerm(null)} />
+          ) : (
+            <div className="h-full" />
+          )}
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
         {/* Main Editor Panel */}
         <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
           <div className="flex flex-col h-full overflow-hidden">
