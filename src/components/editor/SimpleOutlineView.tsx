@@ -889,12 +889,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 rows={1}
                 style={{ 
                   caretColor: editingId === node.id ? 'hsl(var(--primary))' : 'transparent',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  width: editingId === node.id ? undefined : 'fit-content',
+                  maxWidth: '100%'
                 }}
                 className={cn(
                   "min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
                   editingId === node.id && "flex-1",
-                  editingId !== node.id && "pointer-events-auto",
+                  editingId !== node.id && "pointer-events-auto shrink-0",
                   levelStyle.underline && (editingId === node.id ? editValue : node.label) && "underline decoration-foreground",
                   !node.label && editingId !== node.id && "text-muted-foreground/50"
                 )}
