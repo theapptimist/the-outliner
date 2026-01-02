@@ -5,8 +5,23 @@ import { EditorProvider, useEditorContext } from '@/components/editor/EditorCont
 import { TermUsagesPane } from '@/components/editor/TermUsagesPane';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { FileMenu } from '@/components/editor/FileMenu';
+import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
+import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
+import { DocumentState, createEmptyDocument } from '@/types/document';
+import {
+  loadDocument,
+  saveDocument,
+  deleteDocument,
+  exportDocument,
+  importDocument,
+  createNewDocument,
+} from '@/lib/documentStorage';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 const MIXED_CONFIG_STORAGE_KEY = 'outline-mixed-config';
+const CURRENT_DOC_KEY = 'outliner:current-doc-id';
 
 function loadMixedConfig(): MixedStyleConfig {
   try {
@@ -31,36 +46,49 @@ function saveMixedConfig(config: MixedStyleConfig) {
   }
 }
 
+function loadCurrentDocument(): DocumentState {
+  try {
+    const currentId = localStorage.getItem(CURRENT_DOC_KEY);
+    if (currentId) {
+      const doc = loadDocument(currentId);
+      if (doc) return doc;
+    }
+  } catch (e) {
+    console.warn('Failed to load current document:', e);
+  }
+  return createEmptyDocument();
+}
+
 // Inner component that uses EditorContext
 function EditorContent({
-  outlineStyle,
-  onOutlineStyleChange,
-  mixedConfig,
-  onMixedConfigChange,
-  autoDescend,
-  onAutoDescendChange,
-  showRevealCodes,
-  onShowRevealCodesChange,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
+  document,
+  onTitleChange,
+  hasUnsavedChanges,
+  fileMenuProps,
 }: {
-  outlineStyle: OutlineStyle;
-  onOutlineStyleChange: (style: OutlineStyle) => void;
-  mixedConfig: MixedStyleConfig;
-  onMixedConfigChange: (config: MixedStyleConfig) => void;
-  autoDescend: boolean;
-  onAutoDescendChange: (v: boolean) => void;
-  showRevealCodes: boolean;
-  onShowRevealCodesChange: (v: boolean) => void;
-  onUndo: () => void;
-  onRedo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
+  document: DocumentState;
+  onTitleChange: (title: string) => void;
+  hasUnsavedChanges: boolean;
+  fileMenuProps: React.ComponentProps<typeof FileMenu>;
 }) {
   const { inspectedTerm, setInspectedTerm } = useEditorContext();
-  
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(document.meta.title);
+
+  // Sync title when document changes
+  useEffect(() => {
+    setTitleValue(document.meta.title);
+  }, [document.meta.title]);
+
+  const handleTitleSubmit = () => {
+    if (titleValue.trim()) {
+      onTitleChange(titleValue.trim());
+    } else {
+      setTitleValue(document.meta.title);
+    }
+    setIsEditingTitle(false);
+  };
+
   return (
     <div className="flex-1 flex overflow-hidden">
       <ResizablePanelGroup direction="horizontal" className="flex-1">
@@ -84,8 +112,34 @@ function EditorContent({
         {/* Main Editor Panel */}
         <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
           <div className="flex flex-col h-full overflow-hidden">
-            <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-              <h1 className="text-lg font-semibold text-foreground">The Outliner</h1>
+            <header className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
+              <div className="flex items-center gap-2">
+                <FileMenu {...fileMenuProps} />
+                {isEditingTitle ? (
+                  <Input
+                    value={titleValue}
+                    onChange={(e) => setTitleValue(e.target.value)}
+                    onBlur={handleTitleSubmit}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleTitleSubmit();
+                      if (e.key === 'Escape') {
+                        setTitleValue(document.meta.title);
+                        setIsEditingTitle(false);
+                      }
+                    }}
+                    className="h-7 w-48 text-sm font-medium"
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    onClick={() => setIsEditingTitle(true)}
+                    className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    {document.meta.title}
+                    {hasUnsavedChanges && <span className="text-warning">•</span>}
+                  </button>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">Type "/" for commands</p>
             </header>
             <main className="flex-1 overflow-hidden">
@@ -103,6 +157,13 @@ export default function Editor() {
   const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
   const [autoDescend, setAutoDescend] = useState(false);
   const [showRevealCodes, setShowRevealCodes] = useState(false);
+  
+  // Document state
+  const [document, setDocument] = useState<DocumentState>(loadCurrentDocument);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [openDialogOpen, setOpenDialogOpen] = useState(false);
+  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Undo/redo state passed up from document
   const [canUndo, setCanUndo] = useState(false);
@@ -124,22 +185,142 @@ export default function Editor() {
     setCanRedo(canR);
   }, []);
 
+  // Persist current doc ID
+  useEffect(() => {
+    localStorage.setItem(CURRENT_DOC_KEY, document.meta.id);
+  }, [document.meta.id]);
+
   // Save mixed config when it changes
   useEffect(() => {
     saveMixedConfig(mixedConfig);
   }, [mixedConfig]);
 
-  // Global keyboard handler for reveal codes
+  // Global keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.key === 'F3') {
         e.preventDefault();
         setShowRevealCodes(prev => !prev);
       }
+      // Ctrl/Cmd+S = Save
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+      // Ctrl/Cmd+O = Open
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        setOpenDialogOpen(true);
+      }
+      // Ctrl/Cmd+N = New
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        handleNew();
+      }
+      // Ctrl/Cmd+Shift+S = Save As
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        setSaveAsDialogOpen(true);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [document]);
+
+  const handleNew = useCallback(() => {
+    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+    const newDoc = createNewDocument('Untitled');
+    setDocument(newDoc);
+    setHasUnsavedChanges(false);
+    toast.success('New document created');
+  }, [hasUnsavedChanges]);
+
+  const handleSave = useCallback(() => {
+    const saved = saveDocument(document);
+    setDocument(saved);
+    setHasUnsavedChanges(false);
+    toast.success('Document saved');
+  }, [document]);
+
+  const handleSaveAs = useCallback((title: string) => {
+    const newDoc: DocumentState = {
+      ...document,
+      meta: {
+        ...document.meta,
+        id: crypto.randomUUID(),
+        title,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    };
+    const saved = saveDocument(newDoc);
+    setDocument(saved);
+    setHasUnsavedChanges(false);
+    toast.success(`Saved as "${title}"`);
+  }, [document]);
+
+  const handleOpenDocument = useCallback((id: string) => {
+    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+    const doc = loadDocument(id);
+    if (doc) {
+      setDocument(doc);
+      setHasUnsavedChanges(false);
+    } else {
+      toast.error('Document not found');
+    }
+  }, [hasUnsavedChanges]);
+
+  const handleDelete = useCallback(() => {
+    if (!confirm('Delete this document permanently?')) return;
+    deleteDocument(document.meta.id);
+    const newDoc = createNewDocument('Untitled');
+    setDocument(newDoc);
+    setHasUnsavedChanges(false);
+    toast.success('Document deleted');
+  }, [document.meta.id]);
+
+  const handleExport = useCallback(() => {
+    exportDocument(document);
+    toast.success('Document exported');
+  }, [document]);
+
+  const handleImport = useCallback(async () => {
+    fileInputRef.current?.click();
   }, []);
+
+  const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const imported = await importDocument(file);
+      setDocument(imported);
+      setHasUnsavedChanges(false);
+      toast.success('Document imported');
+    } catch (err) {
+      toast.error('Failed to import document');
+    }
+    e.target.value = '';
+  }, []);
+
+  const handleTitleChange = useCallback((title: string) => {
+    setDocument(prev => ({
+      ...prev,
+      meta: { ...prev.meta, title },
+    }));
+    setHasUnsavedChanges(true);
+  }, []);
+
+  const fileMenuProps = {
+    onNew: handleNew,
+    onOpen: () => setOpenDialogOpen(true),
+    onSave: handleSave,
+    onSaveAs: () => setSaveAsDialogOpen(true),
+    onExport: handleExport,
+    onImport: handleImport,
+    onDelete: handleDelete,
+    onOpenRecent: handleOpenDocument,
+    hasDocument: true,
+  };
 
   return (
     <EditorProvider
@@ -150,6 +331,14 @@ export default function Editor() {
       onUndoRedoChange={handleUndoRedoChange}
     >
       <div className="h-screen flex bg-background">
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept=".json"
+          onChange={handleFileSelected}
+        />
+        
         <EditorSidebar
           outlineStyle={outlineStyle}
           onOutlineStyleChange={setOutlineStyle}
@@ -166,18 +355,24 @@ export default function Editor() {
         />
         
         <EditorContent
-          outlineStyle={outlineStyle}
-          onOutlineStyleChange={setOutlineStyle}
-          mixedConfig={mixedConfig}
-          onMixedConfigChange={setMixedConfig}
-          autoDescend={autoDescend}
-          onAutoDescendChange={setAutoDescend}
-          showRevealCodes={showRevealCodes}
-          onShowRevealCodesChange={setShowRevealCodes}
-          onUndo={() => undoRef.current()}
-          onRedo={() => redoRef.current()}
-          canUndo={canUndo}
-          canRedo={canRedo}
+          document={document}
+          onTitleChange={handleTitleChange}
+          hasUnsavedChanges={hasUnsavedChanges}
+          fileMenuProps={fileMenuProps}
+        />
+
+        <OpenDocumentDialog
+          open={openDialogOpen}
+          onOpenChange={setOpenDialogOpen}
+          onSelect={handleOpenDocument}
+          currentDocId={document.meta.id}
+        />
+
+        <SaveAsDialog
+          open={saveAsDialogOpen}
+          onOpenChange={setSaveAsDialogOpen}
+          onSave={handleSaveAs}
+          defaultTitle={document.meta.title}
         />
       </div>
     </EditorProvider>
