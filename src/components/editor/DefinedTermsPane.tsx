@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,12 +28,19 @@ interface DefinedTermsPaneProps {
 }
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
-  const { selectionSource, insertTextAtCursor, setInspectedTerm } = useEditorContext();
-  const [terms, setTerms] = useSessionStorage<DefinedTerm[]>('defined-terms', []);
+  const { selectionSource, insertTextAtCursor, setInspectedTerm, document, documentVersion } = useEditorContext();
+  
+  // Use document-specific storage key so terms are scoped to each document
+  const docId = document?.meta?.id ?? 'default';
+  const [terms, setTerms] = useSessionStorage<DefinedTerm[]>(`defined-terms:${docId}`, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
-
+  
+  // Clear inspected term when document changes
+  useEffect(() => {
+    setInspectedTerm(null);
+  }, [documentVersion, setInspectedTerm]);
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
     e.stopPropagation();
