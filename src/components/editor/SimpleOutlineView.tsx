@@ -997,6 +997,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
                       const next = e.relatedTarget as HTMLElement | null;
                       if (next?.closest('[data-editor-sidebar]')) {
+                        // Allow focus to go to textareas/inputs in the sidebar (e.g., AI prompt)
+                        if (next?.closest('textarea, input, [contenteditable="true"]')) {
+                          return;
+                        }
                         requestAnimationFrame(() => {
                           inputRefs.current.get(node.id)?.focus();
                         });
