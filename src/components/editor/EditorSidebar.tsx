@@ -121,26 +121,25 @@ export function EditorSidebar({
         collapsed ? "w-12" : activeTab === 'terms' ? "w-64" : "w-56"
       )}
     >
-      {/* Gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-accent/5 to-success/5 dark:from-primary/10 dark:via-accent/8 dark:to-success/8" />
-      <div className="absolute inset-0 bg-card/80 backdrop-blur-sm" />
+      {/* Subtle gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-muted/30 via-background to-muted/20" />
       
       {/* Decorative accent line */}
-      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary via-accent to-success opacity-60" />
+      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary via-accent to-primary/50 opacity-50" />
 
-      {/* Static Header */}
-      <div className="relative border-b border-border/30">
+      {/* Tool Strip Header - distinguished with stronger background */}
+      <div className="relative bg-gradient-to-r from-primary/10 via-accent/8 to-primary/10 border-b border-primary/20 shadow-sm">
         <div className={cn(
           "flex items-center justify-between px-2 py-2",
           collapsed && "justify-center"
         )}>
           {!collapsed && (
-            <span className="text-xs font-semibold text-foreground tracking-wide">Editor</span>
+            <span className="text-xs font-semibold text-primary tracking-wide uppercase">Editor</span>
           )}
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 hover:bg-primary/10 hover:text-primary transition-colors"
+            className="h-6 w-6 p-0 hover:bg-primary/15 hover:text-primary transition-colors"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
