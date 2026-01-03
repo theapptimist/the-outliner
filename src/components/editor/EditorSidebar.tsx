@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -26,6 +26,7 @@ import {
   BookOpen,
   Plus,
   FileText,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -35,10 +36,11 @@ import { OutlineHelp } from './OutlineHelp';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { useEditorContext } from './EditorContext';
 import { DefinedTermsPane } from './DefinedTermsPane';
+import { AIGeneratePane } from './AIGeneratePane';
 import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
-type SidebarTab = 'tools' | 'terms';
+type SidebarTab = 'tools' | 'terms' | 'ai';
 
 interface EditorSidebarProps {
   outlineStyle: OutlineStyle;
@@ -121,7 +123,14 @@ export function EditorSidebar({
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
-  const { editor, onInsertHierarchy, onFindReplace, selectedText } = useEditorContext();
+  const { editor, onInsertHierarchy, onFindReplace, selectedText, onPasteHierarchy } = useEditorContext();
+
+  // Callback for AI generation to insert hierarchy
+  const handleAIInsertHierarchy = useCallback((items: Array<{ label: string; depth: number }>) => {
+    if (onPasteHierarchy) {
+      onPasteHierarchy(items);
+    }
+  }, [onPasteHierarchy]);
 
   useEffect(() => {
     if (isDark) {
@@ -229,7 +238,23 @@ export function EditorSidebar({
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>Defined Terms</TooltipContent>
           </Tooltip>
-          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                data-allow-pointer
+                onClick={() => setActiveTab('ai')}
+                className={cn(
+                  "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+                  activeTab === 'ai'
+                    ? "bg-success/15 text-success"
+                    : "hover:bg-muted/50 text-muted-foreground"
+                )}
+              >
+                <Sparkles className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? "right" : "bottom"}>AI Generate</TooltipContent>
+          </Tooltip>
           {/* Always-visible Add Term button */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -257,7 +282,11 @@ export function EditorSidebar({
       </div>
 
       {/* Conditional Content */}
-      {activeTab === 'terms' ? (
+      {activeTab === 'ai' ? (
+        <AIGeneratePane 
+          onInsertHierarchy={handleAIInsertHierarchy}
+        />
+      ) : activeTab === 'terms' ? (
         <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
       ) : (
         <>

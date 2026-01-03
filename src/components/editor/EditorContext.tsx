@@ -29,6 +29,8 @@ export type InsertTextAtCursorFn = (text: string) => { nodePrefix: string; nodeL
 // Callback type for scrolling to and highlighting a node
 export type ScrollToNodeFn = (nodeId: string) => void;
 
+// Callback type for pasting AI-generated hierarchy items
+export type PasteHierarchyFn = (items: Array<{ label: string; depth: number }>) => void;
 interface EditorContextValue {
   outlineStyle: OutlineStyle;
   mixedConfig: MixedStyleConfig;
@@ -67,6 +69,10 @@ interface EditorContextValue {
   // Term inspection state (for the right panel)
   inspectedTerm: DefinedTerm | null;
   setInspectedTerm: (term: DefinedTerm | null) => void;
+
+  // AI-generated hierarchy paste handler
+  onPasteHierarchy: PasteHierarchyFn | null;
+  setOnPasteHierarchy: (fn: PasteHierarchyFn | null) => void;
 
   // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
@@ -119,6 +125,9 @@ const EditorContext = createContext<EditorContextValue>({
   inspectedTerm: null,
   setInspectedTerm: () => {},
 
+  onPasteHierarchy: null,
+  setOnPasteHierarchy: () => {},
+
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
   onFindReplace: () => {},
@@ -166,9 +175,15 @@ export function EditorProvider({
   const [insertTextAtCursorFn, setInsertTextAtCursorFn] = useState<InsertTextAtCursorFn | null>(null);
   const [scrollToNodeFn, setScrollToNodeFn] = useState<ScrollToNodeFn | null>(null);
   const [inspectedTerm, setInspectedTerm] = useState<DefinedTerm | null>(null);
+  const [pasteHierarchyFn, setPasteHierarchyFn] = useState<PasteHierarchyFn | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
+
+  const setOnPasteHierarchy = useCallback((fn: PasteHierarchyFn | null) => {
+    setPasteHierarchyFn(() => fn);
+  }, []);
+
   const setInsertHierarchyHandler = useCallback((handler: () => void) => {
     setInsertHierarchyHandlerState(() => handler);
   }, []);
@@ -230,6 +245,8 @@ export function EditorProvider({
         setScrollToNode,
         inspectedTerm,
         setInspectedTerm,
+        onPasteHierarchy: pasteHierarchyFn,
+        setOnPasteHierarchy,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,
