@@ -833,15 +833,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             {/* Label + suffix container - keeps them in same grid cell */}
             <div className="flex items-start min-w-0">
               {(() => {
-                const displayValue =
-                  editingId === node.id
-                    ? editValue
-                    : levelStyle.suffix && node.label
-                      ? `${node.label}${levelStyle.suffix}`
-                      : node.label;
+                const isEditing = editingId === node.id;
+                // When editing, show just the label; when not editing, also show suffix in textarea
+                const displayValue = isEditing
+                  ? editValue
+                  : node.label;
 
                 const shouldUnderline =
-                  levelStyle.underline && (editingId === node.id ? editValue : node.label);
+                  levelStyle.underline && (isEditing ? editValue : node.label);
 
                 return (
                   <>
@@ -851,12 +850,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       onChange={(e) => {
                         // Lazily enter edit mode on first change if not already editing
                         if (editingId !== node.id) {
-                          // Strip suffix if it was included in the display value
-                          const rawValue = levelStyle.suffix && e.target.value.endsWith(levelStyle.suffix)
-                            ? e.target.value.slice(0, -levelStyle.suffix.length)
-                            : e.target.value;
                           setEditingId(node.id);
-                          setEditValue(rawValue);
+                          setEditValue(e.target.value);
                         } else {
                           setEditValue(e.target.value);
                         }
@@ -888,59 +883,22 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                         handlePaste(e, node.id);
                       }}
                       onSelect={(e) => {
-                        // Allow selection tracking even during focus transition
                         handleSelectionChange(e, fullPrefix, node.label);
                       }}
-                      onMouseDown={(e) => {
-                        // Track drag start position for this textarea
-                        mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
-                        isDragRef.current = false;
-                        e.stopPropagation();
-                      }}
-                      onMouseUp={(e) => {
-                        // Check if this was a drag (text selection)
-                        const downPos = mouseDownPosRef.current;
-                        if (downPos) {
-                          const dx = Math.abs(e.clientX - downPos.x);
-                          const dy = Math.abs(e.clientY - downPos.y);
-                          isDragRef.current = dx > 5 || dy > 5;
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
                       onFocus={(e) => {
-                        // Track this as the last focused node for term insertion
+                        // Track last focused node for external insertion (e.g. from sidebar)
                         lastFocusedNodeIdRef.current = node.id;
                         onSelect(node.id);
 
-                        // For programmatic focus (from handleStartEdit), enter edit mode immediately
-                        if (
-                          editIntentRef.current === 'program' &&
-                          justStartedEditingRef.current === node.id
-                        ) {
-                          if (editingId !== node.id) {
-                            setEditingId(node.id);
-                            setEditValue(node.label);
-                          }
-                          requestAnimationFrame(() => {
-                            const el = inputRefs.current.get(node.id);
-                            if (el) {
-                              const len = el.value.length;
-                              el.selectionStart = len;
-                              el.selectionEnd = len;
-                            }
-                            justStartedEditingRef.current = null;
-                            editIntentRef.current = null;
-                          });
+                        // If this focus was triggered by an explicit edit intent (F2, double-click),
+                        // enter edit mode immediately
+                        if (editIntentRef.current === 'program') {
+                          setEditingId(node.id);
+                          setEditValue(node.label);
+                          editIntentRef.current = null;
                         }
-                        // For mouse focus, do NOT enter edit mode yet - allow selection first
 
-                        lastCursorPositionRef.current = {
-                          start: e.target.selectionStart,
-                          end: e.target.selectionEnd,
-                        };
-                        lastEditValueRef.current = e.target.value;
-
-                        // Ensure proper height when textarea receives focus
+                        // Recalculate height after focus to ensure wrapped text is visible
                         requestAnimationFrame(() => {
                           e.target.style.height = 'auto';
                           e.target.style.height = `${e.target.scrollHeight}px`;
@@ -973,11 +931,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                         caretColor: 'hsl(var(--primary))',
                       }}
                       className={cn(
-                        "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
+                        "flex-1 min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
                         shouldUnderline && "underline decoration-foreground",
                         !node.label && editingId !== node.id && "text-muted-foreground/50"
                       )}
                     />
+                    {/* Suffix rendered separately so it's NOT underlined */}
+                    {levelStyle.suffix && node.label && (
+                      <span className="text-foreground text-sm font-mono leading-6 select-none flex-shrink-0">
+                        {levelStyle.suffix}
+                      </span>
+                    )}
                   </>
                 );
               })()}
