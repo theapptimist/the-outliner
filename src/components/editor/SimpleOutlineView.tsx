@@ -20,7 +20,7 @@ interface SimpleOutlineViewProps {
   onIndent: (id: string) => void;
   onOutdent: (id: string) => void;
   onVisualIndent?: (id: string, delta: number) => void;
-  onAddNode: (afterId?: string | null) => void;
+  onAddNode: (afterId?: string | null) => string | undefined;
   onAddBodyNode: (afterId?: string | null) => string | undefined;
   onAddBodyNodeWithSpacer?: (afterId?: string | null) => string | undefined;
   onAddChildNode: (parentId?: string) => string | undefined;
@@ -399,8 +399,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         }
       } else {
         // Normal: create sibling node after this one
-        pendingFocusAfterIdRef.current = node.id;
-        onAddNode(node.id);
+        const newId = onAddNode(node.id);
+        if (newId) {
+          pendingNewNodeIdRef.current = newId;
+        }
       }
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
       // Ctrl+Enter: create spacer + body node (two nodes, focus the second)
