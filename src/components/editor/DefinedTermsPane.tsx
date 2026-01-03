@@ -108,6 +108,10 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     t.definition.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Detect orphaned terms (terms exist but no outline to scan)
+  const hasOrphanedTerms = terms.length > 0 && 
+    (!document?.hierarchyBlocks || Object.keys(document.hierarchyBlocks).length === 0);
+
   if (collapsed) {
     return (
       <div className="flex flex-col items-center py-4 space-y-2">
@@ -247,6 +251,25 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0">
+        {/* Orphaned terms warning */}
+        {hasOrphanedTerms && (
+          <div className="p-2 border-b border-warning/30 bg-warning/10">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-warning-foreground">
+                No outline found. Terms are from a previous session.
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 px-2 text-[10px] text-warning-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setTerms([])}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Search (collapsible) */}
         {searchOpen && (
           <div className="p-2 border-b border-border/30">
