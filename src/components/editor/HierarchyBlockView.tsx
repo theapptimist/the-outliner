@@ -553,8 +553,60 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   // Context-callable paste handler (uses selected node or last node as anchor)
   const handlePasteHierarchyFromContext = useCallback((items: Array<{ label: string; depth: number }>) => {
-    // Use the selected node, or fall back to the last node in the tree
     const currentFlatNodes = flattenTree(treeRef.current);
+    
+    // Check if tree only has a single empty node (fresh outline)
+    const isFreshOutline = currentFlatNodes.length === 1 && 
+                           !currentFlatNodes[0].label?.trim();
+    
+    if (isFreshOutline && items.length > 0) {
+      // Build hierarchy directly as the new tree (replacing the empty placeholder)
+      const newTree: HierarchyNode[] = [];
+      const parentStack: (HierarchyNode[] | null)[] = [newTree]; // Stack of children arrays
+      const nodeStack: (HierarchyNode | null)[] = [null]; // Stack of parent nodes
+      let lastInsertedId: string | null = null;
+      
+      for (const item of items) {
+        const depth = Math.max(0, item.depth);
+        
+        // Trim parent stacks to current depth
+        while (parentStack.length > depth + 1) {
+          parentStack.pop();
+          nodeStack.pop();
+        }
+        
+        // Extend stacks if needed (for jumps in depth)
+        while (parentStack.length < depth + 1) {
+          const lastParent = nodeStack[nodeStack.length - 1];
+          if (lastParent) {
+            parentStack.push(lastParent.children);
+            nodeStack.push(lastParent);
+          } else {
+            break;
+          }
+        }
+        
+        const targetArray = parentStack[parentStack.length - 1] || newTree;
+        const parentNode = nodeStack[nodeStack.length - 1];
+        
+        const newNode = createNode(parentNode?.id || null, 'default', item.label);
+        targetArray.push(newNode);
+        lastInsertedId = newNode.id;
+        
+        // Prepare for potential children
+        parentStack[depth + 1] = newNode.children;
+        nodeStack[depth + 1] = newNode;
+      }
+      
+      setTree(newTree);
+      if (lastInsertedId) {
+        setSelectedId(lastInsertedId);
+        setAutoFocusId(lastInsertedId);
+      }
+      return;
+    }
+    
+    // Existing logic for non-empty outlines
     const anchorId = selectedId || currentFlatNodes[currentFlatNodes.length - 1]?.id;
     if (anchorId) {
       handlePasteHierarchy(anchorId, items);
