@@ -29,9 +29,18 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
     try {
       const context = getDocumentContext?.();
       
-      const { data, error } = await supabase.functions.invoke('generate-outline', {
+      console.log('AI Generate: invoking generate-outline');
+      
+      const timeoutMs = 30000;
+      const fetchPromise = supabase.functions.invoke('generate-outline', {
         body: { prompt: prompt.trim(), context },
       });
+      
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), timeoutMs)
+      );
+      
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (error) {
         throw error;
@@ -96,6 +105,7 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
           {isLoading ? 'Generating...' : 'Ctrl+Enter to generate'}
         </span>
         <Button
+          data-allow-pointer
           size="sm"
           onClick={handleGenerate}
           disabled={isLoading || !prompt.trim()}
