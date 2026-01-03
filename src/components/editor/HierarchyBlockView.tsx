@@ -554,71 +554,84 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   // Context-callable paste handler (uses selected node or last node as anchor)
   const handlePasteHierarchyFromContext = useCallback((items: Array<{ label: string; depth: number }>) => {
     console.log('handlePasteHierarchyFromContext called', { itemCount: items.length });
-    const currentFlatNodes = flattenTree(treeRef.current);
-    console.log('Current flat nodes:', currentFlatNodes.length, 'first label:', currentFlatNodes[0]?.label);
     
-    // Check if tree only has a single empty node (fresh outline)
-    const isFreshOutline = currentFlatNodes.length === 1 && 
-                           !currentFlatNodes[0].label?.trim();
-    
-    console.log('isFreshOutline:', isFreshOutline);
-    
-    if (isFreshOutline && items.length > 0) {
-      console.log('Building new tree from AI items');
-      // Build hierarchy directly as the new tree (replacing the empty placeholder)
-      const newTree: HierarchyNode[] = [];
-      const parentStack: (HierarchyNode[] | null)[] = [newTree]; // Stack of children arrays
-      const nodeStack: (HierarchyNode | null)[] = [null]; // Stack of parent nodes
-      let lastInsertedId: string | null = null;
+    try {
+      const currentTree = treeRef.current;
+      console.log('treeRef.current:', currentTree);
       
-      for (const item of items) {
-        const depth = Math.max(0, item.depth);
+      if (!currentTree || !Array.isArray(currentTree)) {
+        console.error('Invalid tree ref:', currentTree);
+        return;
+      }
+      
+      const currentFlatNodes = flattenTree(currentTree);
+      console.log('Current flat nodes:', currentFlatNodes.length, 'first label:', currentFlatNodes[0]?.label);
+      
+      // Check if tree only has a single empty node (fresh outline)
+      const isFreshOutline = currentFlatNodes.length === 1 && 
+                             !currentFlatNodes[0].label?.trim();
+      
+      console.log('isFreshOutline:', isFreshOutline);
+      
+      if (isFreshOutline && items.length > 0) {
+        console.log('Building new tree from AI items');
+        // Build hierarchy directly as the new tree (replacing the empty placeholder)
+        const newTree: HierarchyNode[] = [];
+        const parentStack: (HierarchyNode[] | null)[] = [newTree]; // Stack of children arrays
+        const nodeStack: (HierarchyNode | null)[] = [null]; // Stack of parent nodes
+        let lastInsertedId: string | null = null;
         
-        // Trim parent stacks to current depth
-        while (parentStack.length > depth + 1) {
-          parentStack.pop();
-          nodeStack.pop();
-        }
-        
-        // Extend stacks if needed (for jumps in depth)
-        while (parentStack.length < depth + 1) {
-          const lastParent = nodeStack[nodeStack.length - 1];
-          if (lastParent) {
-            parentStack.push(lastParent.children);
-            nodeStack.push(lastParent);
-          } else {
-            break;
+        for (const item of items) {
+          const depth = Math.max(0, item.depth);
+          
+          // Trim parent stacks to current depth
+          while (parentStack.length > depth + 1) {
+            parentStack.pop();
+            nodeStack.pop();
           }
+          
+          // Extend stacks if needed (for jumps in depth)
+          while (parentStack.length < depth + 1) {
+            const lastParent = nodeStack[nodeStack.length - 1];
+            if (lastParent) {
+              parentStack.push(lastParent.children);
+              nodeStack.push(lastParent);
+            } else {
+              break;
+            }
+          }
+          
+          const targetArray = parentStack[parentStack.length - 1] || newTree;
+          const parentNode = nodeStack[nodeStack.length - 1];
+          
+          const newNode = createNode(parentNode?.id || null, 'default', item.label);
+          targetArray.push(newNode);
+          lastInsertedId = newNode.id;
+          
+          // Prepare for potential children
+          parentStack[depth + 1] = newNode.children;
+          nodeStack[depth + 1] = newNode;
         }
         
-        const targetArray = parentStack[parentStack.length - 1] || newTree;
-        const parentNode = nodeStack[nodeStack.length - 1];
-        
-        const newNode = createNode(parentNode?.id || null, 'default', item.label);
-        targetArray.push(newNode);
-        lastInsertedId = newNode.id;
-        
-        // Prepare for potential children
-        parentStack[depth + 1] = newNode.children;
-        nodeStack[depth + 1] = newNode;
+        console.log('Setting new tree with', newTree.length, 'root nodes');
+        setTree(newTree);
+        if (lastInsertedId) {
+          setSelectedId(lastInsertedId);
+          setAutoFocusId(lastInsertedId);
+        }
+        return;
       }
       
-      console.log('Setting new tree with', newTree.length, 'root nodes');
-      setTree(newTree);
-      if (lastInsertedId) {
-        setSelectedId(lastInsertedId);
-        setAutoFocusId(lastInsertedId);
+      // Existing logic for non-empty outlines
+      const anchorId = selectedId || currentFlatNodes[currentFlatNodes.length - 1]?.id;
+      console.log('Using anchor:', anchorId);
+      if (anchorId) {
+        handlePasteHierarchy(anchorId, items);
+      } else {
+        console.error('No anchor found for paste!');
       }
-      return;
-    }
-    
-    // Existing logic for non-empty outlines
-    const anchorId = selectedId || currentFlatNodes[currentFlatNodes.length - 1]?.id;
-    console.log('Using anchor:', anchorId);
-    if (anchorId) {
-      handlePasteHierarchy(anchorId, items);
-    } else {
-      console.error('No anchor found for paste!');
+    } catch (err) {
+      console.error('Error in handlePasteHierarchyFromContext:', err);
     }
   }, [selectedId, handlePasteHierarchy, setTree]);
 
