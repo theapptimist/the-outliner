@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2, Highlighter, HighlighterIcon } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2, Highlighter, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,6 +24,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     addTerm,
     highlightMode,
     setHighlightMode,
+    recalculateUsages,
+    document,
   } = useEditorContext();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,6 +88,13 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     const nextIndex = (currentIndex + 1) % modes.length;
     setHighlightMode(modes[nextIndex]);
   }, [highlightMode, setHighlightMode]);
+
+  // Handle recalculating usages
+  const handleRecalculate = useCallback(() => {
+    if (document?.hierarchyBlocks) {
+      recalculateUsages(document.hierarchyBlocks);
+    }
+  }, [document, recalculateUsages]);
 
   const filteredTerms = terms.filter(t =>
     t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -175,6 +184,25 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
             Highlight: {highlightMode === 'all' ? 'All terms' : highlightMode === 'selected' ? 'Selected only' : 'Off'}
           </TooltipContent>
         </Tooltip>
+
+        {/* Recalculate Usages */}
+        {terms.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRecalculate}
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              Recalculate usages
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         <div className="flex-1" />
 
