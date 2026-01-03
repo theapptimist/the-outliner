@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -274,10 +274,27 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       </ScrollArea>
 
       {/* Footer */}
-      <div className="p-2 border-t border-border/30">
-        <p className="text-[10px] text-muted-foreground text-center">
+      <div className="p-2 border-t border-border/30 flex items-center justify-between">
+        <p className="text-[10px] text-muted-foreground">
           {terms.length} defined term{terms.length !== 1 ? 's' : ''}
         </p>
+        {terms.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                onClick={() => setTerms([])}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              Clear all terms
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Add Term Dialog */}
