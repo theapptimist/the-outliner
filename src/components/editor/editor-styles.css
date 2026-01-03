@@ -1,5 +1,26 @@
 /* TipTap Editor Styles */
 
+/* Term highlighting */
+.term-highlight {
+  background-color: hsl(var(--accent) / 0.3);
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.term-highlight:hover {
+  background-color: hsl(var(--accent) / 0.5);
+}
+
+.dark .term-highlight {
+  background-color: hsl(var(--accent) / 0.25);
+}
+
+.dark .term-highlight:hover {
+  background-color: hsl(var(--accent) / 0.4);
+}
+
 .ProseMirror {
   outline: none;
 }
