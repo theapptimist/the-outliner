@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -128,15 +128,27 @@ export function EditorSidebar({
   // Callback for AI generation to insert hierarchy
   const handleAIInsertHierarchy = useCallback((items: Array<{ label: string; depth: number }>) => {
     if (onPasteHierarchy) {
+      // Outline block exists, paste directly
       onPasteHierarchy(items);
     } else {
-      // Fail loudly if insertion can't happen
-      import('@/hooks/use-toast').then(({ toast }) => {
-        toast({
-          title: "Can't insert yet",
-          description: "Click 'Insert Outline' first, then place your cursor where you want to insert.",
-          variant: 'destructive',
-        });
+      // No outline block yet - create one first, then paste
+      // We'll store items temporarily and paste after the block mounts
+      pendingAIItemsRef.current = items;
+      onInsertHierarchy(); // This creates the outline block
+    }
+  }, [onPasteHierarchy, onInsertHierarchy]);
+
+  // Ref to hold pending AI items when we need to create an outline block first
+  const pendingAIItemsRef = useRef<Array<{ label: string; depth: number }> | null>(null);
+  
+  // When onPasteHierarchy becomes available and we have pending items, paste them
+  useEffect(() => {
+    if (onPasteHierarchy && pendingAIItemsRef.current) {
+      const items = pendingAIItemsRef.current;
+      pendingAIItemsRef.current = null;
+      // Small delay to ensure the outline block is fully mounted
+      requestAnimationFrame(() => {
+        onPasteHierarchy(items);
       });
     }
   }, [onPasteHierarchy]);
