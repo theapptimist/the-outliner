@@ -245,7 +245,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                   >
                     <CollapsibleTrigger asChild>
                       <button 
-                        className="w-full p-2 text-left overflow-hidden"
+                        className="w-full p-2 text-left"
                         onMouseDownCapture={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-between">
@@ -281,10 +281,10 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                           {term.definition}
                         </div>
                         {term.sourceLocation && (
-                          <div className="flex items-center gap-1.5 mt-2 text-xs text-primary overflow-hidden">
+                          <div className="grid grid-cols-[auto_auto_1fr] gap-1.5 mt-2 text-xs text-primary items-start">
                             <MapPin className="h-3.5 w-3.5 shrink-0" />
-                            <span className="font-mono font-medium shrink-0">{term.sourceLocation.prefix}</span>
-                            <span className="truncate">{term.sourceLocation.label}</span>
+                            <span className="font-mono font-medium whitespace-nowrap">{term.sourceLocation.prefix}</span>
+                            <span className="min-w-0 break-words">{term.sourceLocation.label}</span>
                           </div>
                         )}
                       </button>
