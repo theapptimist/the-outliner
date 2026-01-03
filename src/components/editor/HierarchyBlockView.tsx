@@ -44,6 +44,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     registerUndoRedo,
     registerFindReplaceProvider,
     unregisterFindReplaceProvider,
+    setOnPasteHierarchy,
   } = useEditorContext();
   
   // Local hierarchy state for this block - persist to session storage
@@ -549,6 +550,22 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       setAutoFocusId(lastInsertedId);
     }
   }, [tree]);
+
+  // Context-callable paste handler (uses selected node or last node as anchor)
+  const handlePasteHierarchyFromContext = useCallback((items: Array<{ label: string; depth: number }>) => {
+    // Use the selected node, or fall back to the last node in the tree
+    const currentFlatNodes = flattenTree(treeRef.current);
+    const anchorId = selectedId || currentFlatNodes[currentFlatNodes.length - 1]?.id;
+    if (anchorId) {
+      handlePasteHierarchy(anchorId, items);
+    }
+  }, [selectedId, handlePasteHierarchy]);
+
+  // Register the paste handler with context
+  useEffect(() => {
+    setOnPasteHierarchy(handlePasteHierarchyFromContext);
+    return () => setOnPasteHierarchy(null);
+  }, [handlePasteHierarchyFromContext, setOnPasteHierarchy]);
 
   return (
     <NodeViewWrapper 
