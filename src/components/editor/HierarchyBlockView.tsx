@@ -553,13 +553,18 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   // Context-callable paste handler (uses selected node or last node as anchor)
   const handlePasteHierarchyFromContext = useCallback((items: Array<{ label: string; depth: number }>) => {
+    console.log('handlePasteHierarchyFromContext called', { itemCount: items.length });
     const currentFlatNodes = flattenTree(treeRef.current);
+    console.log('Current flat nodes:', currentFlatNodes.length, 'first label:', currentFlatNodes[0]?.label);
     
     // Check if tree only has a single empty node (fresh outline)
     const isFreshOutline = currentFlatNodes.length === 1 && 
                            !currentFlatNodes[0].label?.trim();
     
+    console.log('isFreshOutline:', isFreshOutline);
+    
     if (isFreshOutline && items.length > 0) {
+      console.log('Building new tree from AI items');
       // Build hierarchy directly as the new tree (replacing the empty placeholder)
       const newTree: HierarchyNode[] = [];
       const parentStack: (HierarchyNode[] | null)[] = [newTree]; // Stack of children arrays
@@ -598,6 +603,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         nodeStack[depth + 1] = newNode;
       }
       
+      console.log('Setting new tree with', newTree.length, 'root nodes');
       setTree(newTree);
       if (lastInsertedId) {
         setSelectedId(lastInsertedId);
@@ -608,10 +614,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     
     // Existing logic for non-empty outlines
     const anchorId = selectedId || currentFlatNodes[currentFlatNodes.length - 1]?.id;
+    console.log('Using anchor:', anchorId);
     if (anchorId) {
       handlePasteHierarchy(anchorId, items);
+    } else {
+      console.error('No anchor found for paste!');
     }
-  }, [selectedId, handlePasteHierarchy]);
+  }, [selectedId, handlePasteHierarchy, setTree]);
 
   // Register the paste handler with context
   useEffect(() => {
