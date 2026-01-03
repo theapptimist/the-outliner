@@ -7,22 +7,26 @@ import { FindReplace } from './FindReplace';
 import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
 import { PaginatedDocument } from './PageContainer';
 import { useEditorContext } from './EditorContext';
-import { useSessionStorage } from '@/hooks/useSessionStorage';
 
 export function DocumentEditor() {
-  // Persist TipTap document content to localStorage so blockIds survive refresh
-  const [savedContent, setSavedContent] = useSessionStorage<any>('document-content', null);
-  const initialContentRef = useRef(savedContent);
   const {
+    document,
+    documentVersion,
+    setDocumentContent,
     setEditor,
     setInsertHierarchyHandler,
     setFindReplaceHandler,
     setSelectedText,
   } = useEditorContext();
+  
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = useState({ top: 0, left: 0 });
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
+  
+  // Track initial content for this document version
+  const initialContentRef = useRef(document?.content || null);
+  const lastVersionRef = useRef(documentVersion);
 
   const editor = useEditor({
     extensions: [
@@ -43,7 +47,7 @@ export function DocumentEditor() {
     ],
     content: initialContentRef.current,
     onUpdate: ({ editor }) => {
-      setSavedContent(editor.getJSON());
+      setDocumentContent(editor.getJSON());
     },
     editorProps: {
       attributes: {
@@ -66,6 +70,16 @@ export function DocumentEditor() {
       },
     },
   });
+
+  // Reload editor content when document changes (user opened a different document)
+  useEffect(() => {
+    if (!editor) return;
+    if (documentVersion !== lastVersionRef.current) {
+      lastVersionRef.current = documentVersion;
+      initialContentRef.current = document?.content || null;
+      editor.commands.setContent(document?.content || { type: 'doc', content: [{ type: 'paragraph' }] });
+    }
+  }, [editor, document, documentVersion]);
 
   // Register editor in context
   useEffect(() => {
