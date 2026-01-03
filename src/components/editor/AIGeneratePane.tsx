@@ -68,24 +68,36 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
       }
 
       if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-        console.log('AI Generate: inserting items', { count: data.items.length });
+        const stripOutlinePrefix = (label: string) => {
+          // Remove common outline-style prefixes that the model sometimes includes in the label (e.g. "1.", "a)", "(i)").
+          // Our renderer already generates prefixes, so keeping them causes "2. 1. Title"-style duplication.
+          const s = (label ?? '').trimStart();
+          return s.replace(/^((?:\(?\d+\)?|[a-zA-Z]|[ivxlcdmIVXLCDM]+)\s*[\.)])+\s+/u, '').trimStart();
+        };
+
+        const sanitizedItems = data.items.map((it: any) => ({
+          ...it,
+          label: typeof it?.label === 'string' ? stripOutlinePrefix(it.label) : it?.label,
+        }));
+
+        console.log('AI Generate: inserting items', { count: sanitizedItems.length });
         setStatus('success');
-        setStatusDetail(`Received ${data.items.length} items`);
-        
+        setStatusDetail(`Received ${sanitizedItems.length} items`);
+
         // Insert the outline items
-        onInsertHierarchy(data.items);
-        
+        onInsertHierarchy(sanitizedItems);
+
         // Extract and add any defined terms found in the generated content
-        const extractedTerms = extractDefinedTermsFromItems(data.items);
+        const extractedTerms = extractDefinedTermsFromItems(sanitizedItems);
         if (extractedTerms.length > 0 && addExtractedTerms) {
           addExtractedTerms(extractedTerms);
           console.log('AI Generate: extracted terms', extractedTerms);
         }
-        
+
         setPrompt('');
         toast({
           title: 'Generated',
-          description: `Inserted ${data.items.length} outline item(s)${extractedTerms.length > 0 ? ` with ${extractedTerms.length} defined term(s)` : ''}`,
+          description: `Inserted ${sanitizedItems.length} outline item(s)${extractedTerms.length > 0 ? ` with ${extractedTerms.length} defined term(s)` : ''}`,
         });
       } else {
         setStatus('error');
