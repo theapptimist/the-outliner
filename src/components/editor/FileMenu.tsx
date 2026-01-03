@@ -56,7 +56,7 @@ function MenuItem({ icon, label, shortcut, onClick, disabled, destructive }: Men
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors text-left",
+        "w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors text-left outline-none focus:outline-none focus-visible:outline-none",
         "hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none",
         destructive && "text-destructive hover:bg-destructive/10"
       )}
