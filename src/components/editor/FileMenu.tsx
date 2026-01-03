@@ -176,11 +176,18 @@ export function FileMenu({
           side="left"
           overlayClassName="top-[72px] bg-transparent"
           className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[72px] h-[calc(100%-72px)]"
+          hideCloseButton
         >
           <SheetHeader className="px-3 py-2 border-b border-border">
-            <SheetTitle className="text-xs font-semibold flex items-center gap-1">
-              {documentTitle}
-              {hasUnsavedChanges && <span className="text-warning">•</span>}
+            <SheetTitle asChild>
+              <button
+                onClick={openRenameDialog}
+                className="text-xs font-semibold flex items-center gap-1 hover:text-primary transition-colors cursor-pointer text-left"
+              >
+                {documentTitle}
+                {hasUnsavedChanges && <span className="text-warning">•</span>}
+                <Pencil className="h-2.5 w-2.5 opacity-50" />
+              </button>
             </SheetTitle>
           </SheetHeader>
 
