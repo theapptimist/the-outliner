@@ -559,8 +559,34 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         }
       }
       // Otherwise let default paste behavior work for text
+    } else if (e.key === 'ArrowUp') {
+      // Navigate to previous node if cursor is on first line
+      const input = e.currentTarget;
+      const cursorPos = input.selectionStart ?? 0;
+      const textBefore = editValue.slice(0, cursorPos);
+      const isOnFirstLine = !textBefore.includes('\n');
+      
+      if (isOnFirstLine) {
+        e.preventDefault();
+        handleEndEdit(node.id);
+        onNavigateUp();
+      }
+      // Otherwise let arrow work normally within multi-line text
+    } else if (e.key === 'ArrowDown') {
+      // Navigate to next node if cursor is on last line
+      const input = e.currentTarget;
+      const cursorPos = input.selectionStart ?? 0;
+      const textAfter = editValue.slice(cursorPos);
+      const isOnLastLine = !textAfter.includes('\n');
+      
+      if (isOnLastLine) {
+        e.preventDefault();
+        handleEndEdit(node.id);
+        onNavigateDown();
+      }
+      // Otherwise let arrow work normally within multi-line text
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard, onNavigateUp, onNavigateDown]);
 
   // Handle paste event to detect outline patterns
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>, nodeId: string) => {
@@ -799,7 +825,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               }
             }}
             className={cn(
-              'grid items-start py-1.5 px-2 cursor-text group transition-all duration-300',
+              'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
               highlightedNodeId === node.id && 'bg-accent/30 ring-2 ring-accent/50 rounded-md'
             )}
             style={{ 
