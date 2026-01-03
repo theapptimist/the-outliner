@@ -102,8 +102,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
   return (
     <div className="flex h-full">
-      {/* Vertical Tool Strip */}
-      <div className="flex flex-col items-center gap-1 p-1 border-r border-border/30 bg-muted/20">
+      {/* Vertical Tool Strip - compact */}
+      <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20">
         {/* Add Term */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -114,11 +114,11 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               size="sm"
               onClick={() => setDialogOpen(true)}
               className={cn(
-                "h-8 w-8 p-0",
+                "h-7 w-7 p-0",
                 selectedText && "bg-accent/20 text-accent"
               )}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="right" className="text-xs">
@@ -134,12 +134,12 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               size="sm"
               onClick={() => setSearchOpen(!searchOpen)}
               className={cn(
-                "h-8 w-8 p-0",
+                "h-7 w-7 p-0",
                 searchOpen && "bg-accent/20 text-accent",
                 searchQuery && "text-accent"
               )}
             >
-              <Search className="h-4 w-4" />
+              <Search className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="right" className="text-xs">
@@ -155,16 +155,16 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               size="sm"
               onClick={cycleHighlightMode}
               className={cn(
-                "h-8 w-8 p-0 relative",
+                "h-7 w-7 p-0 relative",
                 highlightMode === 'all' && "bg-accent/20 text-accent",
                 highlightMode === 'selected' && "bg-primary/20 text-primary",
                 highlightMode === 'none' && "text-muted-foreground"
               )}
             >
-              <Highlighter className="h-4 w-4" />
+              <Highlighter className="h-3.5 w-3.5" />
               {/* Mode indicator dot */}
               <span className={cn(
-                "absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full",
+                "absolute bottom-0.5 right-0.5 h-1 w-1 rounded-full",
                 highlightMode === 'all' && "bg-accent",
                 highlightMode === 'selected' && "bg-primary",
                 highlightMode === 'none' && "bg-muted-foreground"
@@ -185,14 +185,14 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                 onClick={() => setTerms([])}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right" className="text-xs">
-              Clear all terms ({terms.length})
+              Clear all ({terms.length})
             </TooltipContent>
           </Tooltip>
         )}
