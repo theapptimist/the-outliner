@@ -185,7 +185,7 @@ export function FileMenu({
   const [draftTitle, setDraftTitle] = useState(documentTitle);
   const [showRecent, setShowRecent] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [recentDocs, setRecentDocs] = useState(getRecentDocuments);
+  const [recentDocs, setRecentDocs] = useState(() => getRecentDocuments());
   
   // Refresh recent docs list when sheet opens
   useEffect(() => {
