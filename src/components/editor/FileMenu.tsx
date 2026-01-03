@@ -118,7 +118,7 @@ export function FileMenu({
   const openRenameDialog = () => {
     setNewTitle(documentTitle);
     setRenameOpen(true);
-    setSheetOpen(false);
+    // Keep the sheet open while renaming to avoid click-through into sidebar tabs.
   };
 
   const handleAction = (action: () => void) => {
