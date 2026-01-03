@@ -168,6 +168,7 @@ export function FileMenu({
           </button>
         </SheetTrigger>
         <SheetContent
+          data-allow-pointer
           side="left"
           overlayClassName="bg-transparent"
           className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[72px] h-[calc(100%-72px)]"
