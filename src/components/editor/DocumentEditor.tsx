@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { FindReplace } from './FindReplace';
 import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
+import { TermHighlightExtension, termHighlightPluginKey } from './extensions/TermHighlightPlugin';
 import { PaginatedDocument } from './PageContainer';
 import { useEditorContext } from './EditorContext';
 
@@ -17,6 +18,9 @@ export function DocumentEditor() {
     setInsertHierarchyHandler,
     setFindReplaceHandler,
     setSelectedText,
+    terms,
+    highlightMode,
+    inspectedTerm,
   } = useEditorContext();
   
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -44,6 +48,7 @@ export function DocumentEditor() {
         },
       }),
       HierarchyBlockExtension,
+      TermHighlightExtension,
     ],
     content: initialContentRef.current,
     onUpdate: ({ editor }) => {
@@ -110,6 +115,19 @@ export function DocumentEditor() {
       editor.off('selectionUpdate', updateSelectedText);
     };
   }, [editor, setSelectedText]);
+
+  // Update term highlights when terms, mode, or inspected term changes
+  useEffect(() => {
+    if (!editor) return;
+    
+    const tr = editor.state.tr.setMeta(termHighlightPluginKey, {
+      terms,
+      highlightMode,
+      inspectedTerm,
+    });
+    
+    editor.view.dispatch(tr);
+  }, [editor, terms, highlightMode, inspectedTerm]);
 
   // Keyboard shortcuts for find/replace
   useEffect(() => {
