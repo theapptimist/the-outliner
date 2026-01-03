@@ -198,13 +198,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     []
   );
 
-  // Auto-focus on initial mount if autoFocusId is provided
-  const autoFocusHandledRef = useRef(false);
+  // Auto-focus when autoFocusId changes (for programmatic navigation like arrow keys)
+  const lastAutoFocusIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (autoFocusId && nodes.length > 0 && !autoFocusHandledRef.current) {
+    if (autoFocusId && nodes.length > 0 && autoFocusId !== lastAutoFocusIdRef.current) {
       const node = nodes.find(n => n.id === autoFocusId);
       if (node) {
-        autoFocusHandledRef.current = true;
+        lastAutoFocusIdRef.current = autoFocusId;
         handleStartEdit(autoFocusId, node.label, { placeCursor: 'end' });
         onAutoFocusHandled?.();
       }
@@ -568,7 +568,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       
       if (isOnFirstLine) {
         e.preventDefault();
-        handleEndEdit(node.id);
+        // Save current value directly before navigating
+        onUpdateLabel(node.id, editValue);
+        setEditingId(null);
         onNavigateUp();
       }
       // Otherwise let arrow work normally within multi-line text
@@ -581,7 +583,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       
       if (isOnLastLine) {
         e.preventDefault();
-        handleEndEdit(node.id);
+        // Save current value directly before navigating
+        onUpdateLabel(node.id, editValue);
+        setEditingId(null);
         onNavigateDown();
       }
       // Otherwise let arrow work normally within multi-line text
