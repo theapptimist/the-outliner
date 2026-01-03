@@ -6,4 +6,4 @@ export { SelectionProvider, useSelectionContext } from './SelectionContext';
 export type { SelectionSource, InsertTextAtCursorFn } from './SelectionContext';
 
 export { TermsProvider, useTermsContext } from './TermsContext';
-export type { DefinedTerm, TermUsage } from './TermsContext';
+export type { DefinedTerm, TermUsage, HighlightMode } from './TermsContext';
