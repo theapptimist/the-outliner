@@ -845,7 +845,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     <div 
                       className="inline-grid min-w-0"
                       style={{ 
-                        flex: isEditing ? '1 1 0%' : '0 1 auto',
+                        flex: '0 1 auto',
                         maxWidth: '100%',
                       }}
                     >
@@ -936,8 +936,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                           caretColor: 'hsl(var(--primary))',
                         }}
                         className={cn(
-                          "min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
-                          isEditing ? "w-full" : "w-auto",
+                          "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
                           shouldUnderline && "underline decoration-foreground",
                           !node.label && editingId !== node.id && "text-muted-foreground/50"
                         )}
@@ -945,7 +944,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     </div>
                     {/* Suffix rendered separately so it's NOT underlined */}
                     {levelStyle.suffix && node.label && (
-                      <span className="text-foreground text-sm font-mono leading-6 select-none flex-shrink-0">
+                      <span className="ml-0.5 text-foreground text-sm font-mono leading-6 select-none flex-shrink-0">
                         {levelStyle.suffix}
                       </span>
                     )}
