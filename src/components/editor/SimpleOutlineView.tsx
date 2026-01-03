@@ -831,111 +831,117 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             </span>
             
             {/* Label + suffix container - keeps them in same grid cell */}
-            <div className="flex items-start min-w-0">
+            <div className="flex items-start min-w-0 w-full">
               {(() => {
                 const isEditing = editingId === node.id;
-                // When editing, show just the label; when not editing, also show suffix in textarea
-                const displayValue = isEditing
-                  ? editValue
-                  : node.label;
+                const displayValue = isEditing ? editValue : node.label;
 
                 const shouldUnderline =
                   levelStyle.underline && (isEditing ? editValue : node.label);
 
                 return (
                   <>
-                    <textarea
-                      ref={getInputRefCallback(node.id)}
-                      value={displayValue}
-                      onChange={(e) => {
-                        // Lazily enter edit mode on first change if not already editing
-                        if (editingId !== node.id) {
-                          setEditingId(node.id);
-                          setEditValue(e.target.value);
-                        } else {
-                          setEditValue(e.target.value);
-                        }
-                        // Auto-resize textarea to fit content including visual wraps
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${e.target.scrollHeight}px`;
+                    {/* Inline-grid wrapper: sizer span determines width, textarea overlays it */}
+                    <div 
+                      className="inline-grid min-w-0"
+                      style={{ 
+                        flex: isEditing ? '1 1 0%' : '0 1 auto',
+                        maxWidth: '100%',
                       }}
-                      onKeyDown={(e) => {
-                        // Enter edit mode on first content key if not already editing
-                        if (editingId !== node.id) {
-                          // Allow navigation keys and modifiers without entering edit mode
-                          const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
-                          if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-                            // Will enter edit mode via onChange
-                          } else if (!isNavKey) {
-                            return; // Block special keys when not in edit mode
+                    >
+                      {/* Hidden sizer - determines natural content width */}
+                      <span 
+                        className="invisible whitespace-pre-wrap break-words text-sm font-mono leading-6 min-w-0"
+                        style={{ gridArea: '1 / 1' }}
+                        aria-hidden="true"
+                      >
+                        {displayValue || ' '}
+                      </span>
+                      
+                      {/* Actual textarea - overlays the sizer */}
+                      <textarea
+                        ref={getInputRefCallback(node.id)}
+                        value={displayValue}
+                        onChange={(e) => {
+                          if (editingId !== node.id) {
+                            setEditingId(node.id);
+                            setEditValue(e.target.value);
+                          } else {
+                            setEditValue(e.target.value);
                           }
-                        }
-                        if (editingId === node.id) {
-                          handleKeyDown(e, node);
-                        }
-                      }}
-                      onPaste={(e) => {
-                        // Enter edit mode for paste if not already
-                        if (editingId !== node.id) {
-                          setEditingId(node.id);
-                          setEditValue(node.label);
-                        }
-                        handlePaste(e, node.id);
-                      }}
-                      onSelect={(e) => {
-                        handleSelectionChange(e, fullPrefix, node.label);
-                      }}
-                      onFocus={(e) => {
-                        // Track last focused node for external insertion (e.g. from sidebar)
-                        lastFocusedNodeIdRef.current = node.id;
-                        onSelect(node.id);
-
-                        // If this focus was triggered by an explicit edit intent (F2, double-click),
-                        // enter edit mode immediately
-                        if (editIntentRef.current === 'program') {
-                          setEditingId(node.id);
-                          setEditValue(node.label);
-                          editIntentRef.current = null;
-                        }
-
-                        // Recalculate height after focus to ensure wrapped text is visible
-                        requestAnimationFrame(() => {
                           e.target.style.height = 'auto';
                           e.target.style.height = `${e.target.scrollHeight}px`;
-                        });
-                      }}
-                      onBlur={(e) => {
-                        // Save final cursor position before blur
-                        lastCursorPositionRef.current = {
-                          start: e.target.selectionStart,
-                          end: e.target.selectionEnd,
-                        };
-                        lastEditValueRef.current = e.target.value;
+                        }}
+                        onKeyDown={(e) => {
+                          if (editingId !== node.id) {
+                            const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
+                            if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                              // Will enter edit mode via onChange
+                            } else if (!isNavKey) {
+                              return;
+                            }
+                          }
+                          if (editingId === node.id) {
+                            handleKeyDown(e, node);
+                          }
+                        }}
+                        onPaste={(e) => {
+                          if (editingId !== node.id) {
+                            setEditingId(node.id);
+                            setEditValue(node.label);
+                          }
+                          handlePaste(e, node.id);
+                        }}
+                        onSelect={(e) => {
+                          handleSelectionChange(e, fullPrefix, node.label);
+                        }}
+                        onFocus={(e) => {
+                          lastFocusedNodeIdRef.current = node.id;
+                          onSelect(node.id);
 
-                        const next = e.relatedTarget as HTMLElement | null;
-                        // Clicking sidebar toggles should not kick you out of editing
-                        if (next?.closest('[data-editor-sidebar]')) {
+                          if (editIntentRef.current === 'program') {
+                            setEditingId(node.id);
+                            setEditValue(node.label);
+                            editIntentRef.current = null;
+                          }
+
                           requestAnimationFrame(() => {
-                            inputRefs.current.get(node.id)?.focus();
+                            e.target.style.height = 'auto';
+                            e.target.style.height = `${e.target.scrollHeight}px`;
                           });
-                          return;
-                        }
+                        }}
+                        onBlur={(e) => {
+                          lastCursorPositionRef.current = {
+                            start: e.target.selectionStart,
+                            end: e.target.selectionEnd,
+                          };
+                          lastEditValueRef.current = e.target.value;
 
-                        if (editingId === node.id) {
-                          handleEndEdit(node.id);
-                        }
-                      }}
-                      placeholder=""
-                      rows={1}
-                      style={{
-                        caretColor: 'hsl(var(--primary))',
-                      }}
-                      className={cn(
-                        "flex-1 min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
-                        shouldUnderline && "underline decoration-foreground",
-                        !node.label && editingId !== node.id && "text-muted-foreground/50"
-                      )}
-                    />
+                          const next = e.relatedTarget as HTMLElement | null;
+                          if (next?.closest('[data-editor-sidebar]')) {
+                            requestAnimationFrame(() => {
+                              inputRefs.current.get(node.id)?.focus();
+                            });
+                            return;
+                          }
+
+                          if (editingId === node.id) {
+                            handleEndEdit(node.id);
+                          }
+                        }}
+                        placeholder=""
+                        rows={1}
+                        style={{
+                          gridArea: '1 / 1',
+                          caretColor: 'hsl(var(--primary))',
+                        }}
+                        className={cn(
+                          "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
+                          shouldUnderline && "underline decoration-foreground",
+                          !node.label && editingId !== node.id && "text-muted-foreground/50"
+                        )}
+                      />
+                    </div>
                     {/* Suffix rendered separately so it's NOT underlined */}
                     {levelStyle.suffix && node.label && (
                       <span className="text-foreground text-sm font-mono leading-6 select-none flex-shrink-0">
