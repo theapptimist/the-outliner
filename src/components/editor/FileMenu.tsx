@@ -20,10 +20,13 @@ import {
   ChevronRight,
   Check,
   X,
+  Bug,
+  Copy,
 } from 'lucide-react';
-import { getRecentDocuments } from '@/lib/documentStorage';
+import { getRecentDocuments, listDocuments } from '@/lib/documentStorage';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface FileMenuProps {
   documentTitle: string;
@@ -68,6 +71,98 @@ function MenuItem({ icon, label, shortcut, onClick, disabled, destructive }: Men
   );
 }
 
+interface DiagnosticsData {
+  documentsIndex: unknown[];
+  recentIds: string[];
+  resolvedRecent: { id: string; title: string }[];
+}
+
+function DiagnosticsPanel({ 
+  onBack, 
+  onCopy,
+  getData,
+}: { 
+  onBack: () => void; 
+  onCopy: () => void;
+  getData: () => DiagnosticsData;
+}) {
+  const data = getData();
+  
+  return (
+    <div className="p-3 text-xs">
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronRight className="h-4 w-4 rotate-180" />
+          Back
+        </button>
+        <button
+          onClick={onCopy}
+          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Copy className="h-3 w-3" />
+          Copy
+        </button>
+      </div>
+      
+      <div className="space-y-3">
+        <div>
+          <div className="font-medium text-muted-foreground mb-1">
+            Documents Index ({(data.documentsIndex as unknown[]).length})
+          </div>
+          <div className="bg-muted/30 rounded p-2 max-h-24 overflow-auto">
+            {(data.documentsIndex as { id: string; title: string }[]).length === 0 ? (
+              <span className="text-muted-foreground italic">Empty</span>
+            ) : (
+              (data.documentsIndex as { id: string; title: string }[]).map((doc, i) => (
+                <div key={i} className="truncate">
+                  • {doc.title} <span className="text-muted-foreground">({doc.id?.slice(0,8)}...)</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        
+        <div>
+          <div className="font-medium text-muted-foreground mb-1">
+            Recent IDs ({data.recentIds.length})
+          </div>
+          <div className="bg-muted/30 rounded p-2 max-h-20 overflow-auto">
+            {data.recentIds.length === 0 ? (
+              <span className="text-muted-foreground italic">Empty</span>
+            ) : (
+              data.recentIds.map((id, i) => (
+                <div key={i} className="truncate text-muted-foreground">
+                  {i + 1}. {id.slice(0, 8)}...
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        
+        <div>
+          <div className="font-medium text-muted-foreground mb-1">
+            Resolved Recent ({data.resolvedRecent.length})
+          </div>
+          <div className="bg-muted/30 rounded p-2 max-h-20 overflow-auto">
+            {data.resolvedRecent.length === 0 ? (
+              <span className="text-muted-foreground italic">Empty</span>
+            ) : (
+              data.resolvedRecent.map((doc, i) => (
+                <div key={i} className="truncate">
+                  {i + 1}. {doc.title}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FileMenu({
   documentTitle,
   hasUnsavedChanges,
@@ -89,6 +184,7 @@ export function FileMenu({
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(documentTitle);
   const [showRecent, setShowRecent] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [recentDocs, setRecentDocs] = useState(getRecentDocuments);
   
   // Refresh recent docs list when sheet opens
@@ -111,8 +207,42 @@ export function FileMenu({
     if (!sheetOpen) {
       setIsRenaming(false);
       setShowRecent(false);
+      setShowDiagnostics(false);
     }
   }, [sheetOpen]);
+
+  const getDiagnosticsData = () => {
+    const DOCUMENTS_KEY = 'outliner:documents';
+    const RECENT_KEY = 'outliner:recent';
+    
+    let documentsIndex: unknown[] = [];
+    let recentIds: string[] = [];
+    
+    try {
+      const storedDocs = localStorage.getItem(DOCUMENTS_KEY);
+      documentsIndex = storedDocs ? JSON.parse(storedDocs) : [];
+    } catch { documentsIndex = []; }
+    
+    try {
+      const storedRecent = localStorage.getItem(RECENT_KEY);
+      recentIds = storedRecent ? JSON.parse(storedRecent) : [];
+    } catch { recentIds = []; }
+    
+    const resolvedRecent = getRecentDocuments();
+    
+    return {
+      documentsIndex,
+      recentIds,
+      resolvedRecent,
+    };
+  };
+
+  const copyDiagnostics = () => {
+    const data = getDiagnosticsData();
+    const text = JSON.stringify(data, null, 2);
+    navigator.clipboard.writeText(text);
+    toast.success('Diagnostics copied to clipboard');
+  };
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -302,8 +432,19 @@ export function FileMenu({
                 disabled={!hasDocument}
                 destructive
               />
+
+              <div className="h-px bg-border my-3" />
+
+              <button
+                onClick={() => setShowDiagnostics(true)}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50 text-muted-foreground"
+              >
+                <Bug className="h-4 w-4" />
+                <span className="flex-1">Diagnostics</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-          ) : (
+          ) : showRecent ? (
             <div className="p-3">
               <button
                 onClick={() => setShowRecent(false)}
@@ -332,7 +473,13 @@ export function FileMenu({
                 </button>
               ))}
             </div>
-          )}
+          ) : showDiagnostics ? (
+            <DiagnosticsPanel 
+              onBack={() => setShowDiagnostics(false)} 
+              onCopy={copyDiagnostics}
+              getData={getDiagnosticsData}
+            />
+          ) : null}
         </SheetContent>
       </Sheet>
     </>
