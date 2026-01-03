@@ -895,6 +895,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                         return;
                       }
                       
+                      // Always allow Tab to work for indent/outdent, even before editingId propagates
+                      if (e.key === 'Tab') {
+                        e.preventDefault();
+                        if (editingId !== node.id) {
+                          setEditingId(node.id);
+                          setEditValue(node.label);
+                        }
+                        handleKeyDown(e, node);
+                        return;
+                      }
+                      
                       if (editingId !== node.id) {
                         const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
                         if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
