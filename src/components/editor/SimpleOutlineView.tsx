@@ -936,7 +936,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                           caretColor: 'hsl(var(--primary))',
                         }}
                         className={cn(
-                          "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
+                          "min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
+                          isEditing ? "w-full" : "w-auto",
                           shouldUnderline && "underline decoration-foreground",
                           !node.label && editingId !== node.id && "text-muted-foreground/50"
                         )}
