@@ -58,7 +58,7 @@ export function saveDocument(doc: DocumentState): DocumentState {
   // Save full document
   localStorage.setItem(DOC_PREFIX + docId, JSON.stringify(updatedDoc));
 
-  // Update index
+  // Update index - read fresh, update, write back atomically
   const docs = getDocumentsIndex();
   const existingIndex = docs.findIndex(d => d.id === docId);
   const metadata: DocumentMetadata = {
@@ -75,6 +75,10 @@ export function saveDocument(doc: DocumentState): DocumentState {
   }
   setDocumentsIndex(docs);
   addToRecent(docId);
+
+  // Debug: log index state
+  console.log('[Storage] Saved doc:', docId, doc.meta.title);
+  console.log('[Storage] Index now has', docs.length, 'docs:', docs.map(d => d.title));
 
   return updatedDoc;
 }
@@ -108,9 +112,15 @@ export function getRecentDocuments(): DocumentMetadata[] {
   const recentIds = getRecentIds();
   const allDocs = getDocumentsIndex();
   
-  return recentIds
+  console.log('[Storage] getRecentDocuments - recentIds:', recentIds);
+  console.log('[Storage] getRecentDocuments - allDocs:', allDocs.map(d => ({ id: d.id, title: d.title })));
+  
+  const result = recentIds
     .map(id => allDocs.find(d => d.id === id))
     .filter((d): d is DocumentMetadata => d !== undefined);
+  
+  console.log('[Storage] getRecentDocuments - returning:', result.map(d => d.title));
+  return result;
 }
 
 export function exportDocument(doc: DocumentState): void {
