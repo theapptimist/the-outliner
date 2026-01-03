@@ -130,27 +130,20 @@ export function EditorSidebar({
   
   // Callback for AI generation to insert hierarchy
   const handleAIInsertHierarchy = useCallback((items: Array<{ label: string; depth: number }>) => {
-    console.log('handleAIInsertHierarchy called', { itemCount: items.length, hasPasteHandler: !!onPasteHierarchy });
     if (onPasteHierarchy) {
-      // Outline block exists, paste directly
-      console.log('Calling onPasteHierarchy directly');
       onPasteHierarchy(items);
     } else {
       // No outline block yet - create one first, then paste
-      console.log('No paste handler - storing items and creating outline block');
       pendingAIItemsRef.current = items;
-      onInsertHierarchy(); // This creates the outline block
+      onInsertHierarchy();
     }
   }, [onPasteHierarchy, onInsertHierarchy]);
   
   // When onPasteHierarchy becomes available and we have pending items, paste them
   useEffect(() => {
-    console.log('onPasteHierarchy effect', { hasPasteHandler: !!onPasteHierarchy, hasPendingItems: !!pendingAIItemsRef.current });
     if (onPasteHierarchy && pendingAIItemsRef.current) {
       const items = pendingAIItemsRef.current;
       pendingAIItemsRef.current = null;
-      console.log('Pasting pending AI items', { count: items.length });
-      // Small delay to ensure the outline block is fully mounted
       requestAnimationFrame(() => {
         onPasteHierarchy(items);
       });
