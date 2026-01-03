@@ -28,7 +28,7 @@ interface DefinedTermsPaneProps {
 }
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
-  const { selectionSource, insertTextAtCursor, setInspectedTerm, document, documentVersion } = useEditorContext();
+  const { selectionSource, insertTextAtCursor, setInspectedTerm, document, documentVersion, setAddExtractedTerms } = useEditorContext();
   
   // Use document-specific storage key so terms are scoped to each document
   const docId = document?.meta?.id ?? 'default';
@@ -41,6 +41,28 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   useEffect(() => {
     setInspectedTerm(null);
   }, [documentVersion, setInspectedTerm]);
+
+  // Register callback for adding extracted terms from AI generation
+  useEffect(() => {
+    setAddExtractedTerms((extractedTerms) => {
+      const newTerms: DefinedTerm[] = extractedTerms.map(t => ({
+        id: crypto.randomUUID(),
+        term: t.term,
+        definition: t.definition,
+        sourceLocation: { prefix: 'AI', label: t.sourceLabel },
+        usages: [],
+      }));
+      
+      // Only add terms that don't already exist (case-insensitive)
+      setTerms(prev => {
+        const existingLower = new Set(prev.map(t => t.term.toLowerCase()));
+        const toAdd = newTerms.filter(t => !existingLower.has(t.term.toLowerCase()));
+        return [...prev, ...toAdd];
+      });
+    });
+    
+    return () => setAddExtractedTerms(null);
+  }, [setAddExtractedTerms, setTerms]);
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
     e.stopPropagation();

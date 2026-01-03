@@ -7,6 +7,60 @@ export interface TermUsage {
   count: number;
 }
 
+export interface ExtractedTerm {
+  term: string;
+  definition: string;
+  sourceLabel: string;
+}
+
+/**
+ * Extracts defined terms from AI-generated outline items.
+ * Looks for patterns like: "Term" means..., the "Term", referred to as "Term"
+ */
+export function extractDefinedTermsFromItems(
+  items: Array<{ label: string; depth: number }>
+): ExtractedTerm[] {
+  const terms: ExtractedTerm[] = [];
+  const seenTerms = new Set<string>();
+
+  for (const item of items) {
+    const label = item.label;
+    
+    // Pattern 1: "Term" means/refers to... (definition pattern)
+    // e.g., "Confidential Information" means any non-public information...
+    const defPattern = /"([^"]+)"\s+(means|refers to|shall mean|is defined as)/gi;
+    let match;
+    while ((match = defPattern.exec(label)) !== null) {
+      const term = match[1].trim();
+      if (!seenTerms.has(term.toLowerCase())) {
+        seenTerms.add(term.toLowerCase());
+        terms.push({
+          term,
+          definition: label,
+          sourceLabel: label.substring(0, 60) + (label.length > 60 ? '...' : ''),
+        });
+      }
+    }
+
+    // Pattern 2: the "Term" or (the "Term") - introducing a defined term
+    // e.g., the parties (the "Parties"), hereinafter the "Landlord"
+    const introPattern = /(?:the|hereinafter|referred to as|collectively,?)\s*(?:\(?\s*the\s*)?"([^"]+)"/gi;
+    while ((match = introPattern.exec(label)) !== null) {
+      const term = match[1].trim();
+      if (!seenTerms.has(term.toLowerCase())) {
+        seenTerms.add(term.toLowerCase());
+        terms.push({
+          term,
+          definition: label,
+          sourceLabel: label.substring(0, 60) + (label.length > 60 ? '...' : ''),
+        });
+      }
+    }
+  }
+
+  return terms;
+}
+
 /**
  * Scans hierarchy nodes for occurrences of a term.
  * Uses case-insensitive matching with word boundaries.
@@ -16,7 +70,6 @@ export function scanForTermUsages(
   blocks: { id: string; tree: HierarchyNode[] }[]
 ): TermUsage[] {
   const usages: TermUsage[] = [];
-  const termLower = term.toLowerCase();
   const wordBoundaryRegex = new RegExp(`\\b${escapeRegex(term)}\\b`, 'gi');
 
   function scanNode(node: HierarchyNode, blockId: string) {
