@@ -59,7 +59,7 @@ function loadCurrentDocument(): DocumentState {
 
 // Inner component that uses EditorContext
 function EditorContent() {
-  const { inspectedTerm, setInspectedTerm } = useEditorContext();
+  const { inspectedTerm, setInspectedTerm, documentVersion } = useEditorContext();
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -84,7 +84,8 @@ function EditorContent() {
         {/* Main Editor Panel */}
         <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
           <main className="h-full overflow-hidden">
-            <DocumentEditor />
+            {/* Force TipTap to remount on explicit document changes */}
+            <DocumentEditor key={documentVersion} />
           </main>
         </ResizablePanel>
       </ResizablePanelGroup>
