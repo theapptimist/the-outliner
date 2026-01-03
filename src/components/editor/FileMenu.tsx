@@ -181,7 +181,10 @@ export function FileMenu({
           <SheetHeader className="px-3 py-2 border-b border-border">
             <SheetTitle asChild>
               <button
-                onClick={openRenameDialog}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openRenameDialog();
+                }}
                 className="text-xs font-semibold flex items-center gap-1 hover:text-primary transition-colors cursor-pointer text-left"
               >
                 {documentTitle}
