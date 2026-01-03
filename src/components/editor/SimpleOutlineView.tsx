@@ -458,7 +458,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       } else {
         onIndent(node.id);
       }
-      // Keep editing the same node - don't call setEditingId(null)
+      // Re-focus the textarea after indent/outdent to maintain edit mode
+      requestAnimationFrame(() => {
+        const input = inputRefs.current.get(node.id);
+        if (input) {
+          input.focus();
+        }
+      });
     } else if (e.key === 'Backspace' && editValue === '') {
       // Empty line - delete it and move cursor to previous line
       e.preventDefault();
