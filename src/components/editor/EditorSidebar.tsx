@@ -319,6 +319,7 @@ export function EditorSidebar({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                data-allow-pointer
                 variant="ghost"
                 size="sm"
                 onClick={onInsertHierarchy}
