@@ -174,7 +174,7 @@ export function FileMenu({
         </SheetTrigger>
         <SheetContent
           side="left"
-          overlayClassName="top-[72px]"
+          overlayClassName="top-[72px] bg-transparent"
           className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[72px] h-[calc(100%-72px)]"
         >
           <SheetHeader className="px-3 py-2 border-b border-border">
