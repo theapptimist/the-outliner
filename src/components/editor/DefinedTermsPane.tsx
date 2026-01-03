@@ -225,7 +225,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                 <div
                   key={term.id}
                   className={cn(
-                    "rounded-md border border-border/50 bg-card/50",
+                    "rounded-md border border-border/50 bg-card/50 overflow-hidden",
                     "hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer"
                   )}
                   onClick={(e) => handleTermClick(term, e)}
@@ -245,7 +245,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                   >
                     <CollapsibleTrigger asChild>
                       <button 
-                        className="w-full p-2 text-left"
+                        className="w-full p-2 text-left overflow-hidden"
                         onMouseDownCapture={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-between">
@@ -281,10 +281,10 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                           {term.definition}
                         </div>
                         {term.sourceLocation && (
-                          <div className="flex items-center gap-1.5 mt-2 text-xs text-primary">
-                            <MapPin className="h-3.5 w-3.5" />
-                            <span className="font-mono font-medium">{term.sourceLocation.prefix}</span>
-                            <span className="flex-1 min-w-0 truncate">{term.sourceLocation.label}</span>
+                          <div className="flex items-center gap-1.5 mt-2 text-xs text-primary overflow-hidden">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            <span className="font-mono font-medium shrink-0">{term.sourceLocation.prefix}</span>
+                            <span className="truncate">{term.sourceLocation.label}</span>
                           </div>
                         )}
                       </button>
