@@ -27,6 +27,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   } = useEditorContext();
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
 
@@ -125,6 +126,27 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
           </TooltipContent>
         </Tooltip>
 
+        {/* Search Toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchOpen(!searchOpen)}
+              className={cn(
+                "h-8 w-8 p-0",
+                searchOpen && "bg-accent/20 text-accent",
+                searchQuery && "text-accent"
+              )}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">
+            {searchOpen ? 'Close search' : 'Search terms'}
+          </TooltipContent>
+        </Tooltip>
+
         {/* Highlight Mode Toggle */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -178,18 +200,18 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Search */}
-        <div className="p-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        {/* Search (collapsible) */}
+        {searchOpen && (
+          <div className="p-2 border-b border-border/30">
             <Input
-              placeholder="Search terms..."
+              autoFocus
+              placeholder="Filter terms..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-7 h-8 text-xs"
+              className="h-7 text-xs"
             />
           </div>
-        </div>
+        )}
 
         {/* Terms List */}
         <ScrollArea className="flex-1 px-2">
