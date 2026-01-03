@@ -129,6 +129,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const pendingNewNodeIdRef = useRef<string | null>(null);
   const pendingFocusAfterIdRef = useRef<string | null>(null);
   const prevNodesLengthRef = useRef(nodes.length);
+  // For focus-on-mount: when a textarea mounts and matches this ID, focus it immediately
+  const pendingProgramFocusIdRef = useRef<string | null>(null);
 
   // Stable ref callbacks cache - prevents ref churn on re-renders
   const inputRefCallbacks = useRef(new Map<string, (el: HTMLTextAreaElement | null) => void>());
@@ -184,6 +186,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       if (options?.placeCursor === 'end') {
         editIntentRef.current = 'program';
         justStartedEditingRef.current = id;
+        // Mark this ID for focus-on-mount (in case textarea isn't rendered yet)
+        pendingProgramFocusIdRef.current = id;
       } else {
         editIntentRef.current = 'mouse';
       }
@@ -725,6 +729,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             el.style.height = 'auto';
             el.style.height = `${el.scrollHeight}px`;
           });
+          // Focus-on-mount: if this textarea is the one we're waiting for, focus it now
+          if (pendingProgramFocusIdRef.current === id) {
+            pendingProgramFocusIdRef.current = null;
+            requestAnimationFrame(() => {
+              el.focus();
+              // Place cursor at end
+              el.selectionStart = el.selectionEnd = el.value.length;
+            });
+          }
         } else {
           inputRefs.current.delete(id);
         }
