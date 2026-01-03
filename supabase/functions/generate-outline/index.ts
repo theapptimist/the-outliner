@@ -108,19 +108,20 @@ Only output valid JSON. No markdown, no explanation, just the JSON array.`;
     // Parse the JSON response
     let items: Array<{ label: string; depth: number }>;
     try {
-      // Clean up the response - remove markdown code blocks if present
+      // Clean up the response - extract JSON from markdown code blocks
       let cleanContent = content.trim();
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.slice(7);
-      }
-      if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.slice(3);
-      }
-      if (cleanContent.endsWith('```')) {
-        cleanContent = cleanContent.slice(0, -3);
+      const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        cleanContent = jsonMatch[1].trim();
       }
       
-      items = JSON.parse(cleanContent.trim());
+      // Fix common AI JSON mistakes
+      cleanContent = cleanContent
+        .replace(/"depth\s*=\s*(\d+)"/g, '"depth": $1')  // Fix "depth = 1" to "depth": 1
+        .replace(/,\s*}/g, '}')   // Remove trailing commas in objects
+        .replace(/,\s*]/g, ']');  // Remove trailing commas in arrays
+      
+      items = JSON.parse(cleanContent);
       
       if (!Array.isArray(items)) {
         throw new Error('Response is not an array');
@@ -134,8 +135,13 @@ Only output valid JSON. No markdown, no explanation, just the JSON array.`;
       
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
-      // Fallback: treat as single item
-      items = [{ label: content, depth: 0 }];
+      // Return error instead of dumping raw content
+      return new Response(JSON.stringify({ 
+        error: 'Failed to parse AI response. Please try again.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`[${requestId}] Parsed items:`, items.length);
