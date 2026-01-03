@@ -86,6 +86,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [smartPasteData, setSmartPasteData] = useState<SmartPasteResult | null>(null);
   const smartPasteNodeIdRef = useRef<string | null>(null);
 
+  // Track mouse drag state for distinguishing clicks from text selection
+  const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isDragRef = useRef(false);
+
   // Track text selection in textarea and include source context
   const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {
     const textarea = e.currentTarget;
@@ -781,17 +785,40 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               paddingLeft: `${visualDepth * 24 + 8}px`,
               gridTemplateColumns: '3.5rem 1fr'
             }}
-            onClick={(e) => {
-              // Clicking the container (e.g., prefix area) should focus the textarea
-              e.stopPropagation();
-              const textarea = inputRefs.current.get(node.id);
-              if (textarea) {
-                textarea.focus();
-                // Put cursor at end for prefix clicks
-                const len = textarea.value.length;
-                textarea.selectionStart = len;
-                textarea.selectionEnd = len;
+            onMouseDown={(e) => {
+              // Capture mouse down position to detect drag vs click
+              mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+              isDragRef.current = false;
+            }}
+            onMouseUp={(e) => {
+              // Calculate movement to distinguish click from drag
+              const downPos = mouseDownPosRef.current;
+              if (downPos) {
+                const dx = Math.abs(e.clientX - downPos.x);
+                const dy = Math.abs(e.clientY - downPos.y);
+                isDragRef.current = dx > 5 || dy > 5;
               }
+              mouseDownPosRef.current = null;
+              
+              // If it was a drag (text selection), preserve the selection - don't move cursor
+              if (isDragRef.current) {
+                return;
+              }
+              
+              // True click in prefix area - focus textarea and move cursor to end
+              const target = e.target as HTMLElement;
+              if (target.tagName !== 'TEXTAREA') {
+                const textarea = inputRefs.current.get(node.id);
+                if (textarea) {
+                  textarea.focus();
+                  const len = textarea.value.length;
+                  textarea.selectionStart = len;
+                  textarea.selectionEnd = len;
+                }
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
             }}
           >
             
@@ -838,7 +865,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                         handlePaste(e, node.id);
                       }}
                       onSelect={(e) => {
-                        if (editingId !== node.id) return;
+                        // Allow selection tracking even during focus transition
                         handleSelectionChange(e, fullPrefix, node.label);
                       }}
                       onMouseDown={(e) => {
