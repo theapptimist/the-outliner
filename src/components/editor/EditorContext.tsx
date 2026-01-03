@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useRef, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { HierarchyNode } from '@/types/node';
@@ -171,13 +171,15 @@ export function EditorProvider({
   // Track document version to trigger reloads when document ID changes
   const [documentVersion, setDocumentVersion] = useState(0);
   const lastDocIdRef = useRef(document.meta.id);
-  
-  // Increment version when document ID changes (user opened a different doc)
-  if (document.meta.id !== lastDocIdRef.current) {
-    lastDocIdRef.current = document.meta.id;
-    setDocumentVersion(v => v + 1);
-  }
 
+  // Increment version when document ID changes (user opened a different doc)
+  // NOTE: must be in an effect (never set state during render)
+  useEffect(() => {
+    if (document.meta.id !== lastDocIdRef.current) {
+      lastDocIdRef.current = document.meta.id;
+      setDocumentVersion(v => v + 1);
+    }
+  }, [document.meta.id]);
   const setInsertHierarchyHandler = useCallback((handler: () => void) => {
     setInsertHierarchyHandlerState(() => handler);
   }, []);
