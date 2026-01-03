@@ -848,7 +848,6 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     <textarea
                       ref={getInputRefCallback(node.id)}
                       value={displayValue}
-                      readOnly={editingId !== node.id}
                       onChange={(e) => {
                         if (editingId !== node.id) return;
                         setEditValue(e.target.value);
@@ -869,7 +868,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                         handleSelectionChange(e, fullPrefix, node.label);
                       }}
                       onMouseDown={(e) => {
+                        // Track drag start position for this textarea
+                        mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+                        isDragRef.current = false;
                         e.stopPropagation();
+                      }}
+                      onMouseUp={(e) => {
+                        // Check if this was a drag (text selection)
+                        const downPos = mouseDownPosRef.current;
+                        if (downPos) {
+                          const dx = Math.abs(e.clientX - downPos.x);
+                          const dy = Math.abs(e.clientY - downPos.y);
+                          isDragRef.current = dx > 5 || dy > 5;
+                        }
                       }}
                       onClick={(e) => e.stopPropagation()}
                       onFocus={(e) => {
