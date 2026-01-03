@@ -149,6 +149,8 @@ export function EditorSidebar({
         // can also cancel subsequent click events. We allow pointer/click for elements
         // marked with data-allow-pointer (e.g. tab switches).
         const t = e.target as HTMLElement | null;
+        // Always allow form controls through
+        if (t?.closest('textarea, input, select, option, [contenteditable="true"]')) return;
         if (t?.closest('[data-allow-pointer]')) return;
         if (t?.closest('button,[role="button"],a')) {
           e.preventDefault();
@@ -156,6 +158,8 @@ export function EditorSidebar({
       }}
       onPointerDownCapture={(e) => {
         const t = e.target as HTMLElement | null;
+        // Always allow form controls through
+        if (t?.closest('textarea, input, select, option, [contenteditable="true"]')) return;
         if (t?.closest('[data-allow-pointer]')) return;
         if (t?.closest('button,[role="button"],a')) {
           e.preventDefault();

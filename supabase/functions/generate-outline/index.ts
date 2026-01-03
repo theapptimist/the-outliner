@@ -6,20 +6,25 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  const requestId = crypto.randomUUID().slice(0, 8);
+  console.log(`[${requestId}] Request received: ${req.method}`);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { prompt, context } = await req.json();
+    console.log(`[${requestId}] Prompt length: ${prompt?.length || 0}, context: ${context ? 'yes' : 'no'}`);
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
+      console.error(`[${requestId}] LOVABLE_API_KEY not configured`);
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Generating outline for prompt:', prompt);
-    console.log('Context provided:', context ? 'yes' : 'no');
+    console.log(`[${requestId}] Generating outline for prompt:`, prompt);
 
     const systemPrompt = `You are a legal document drafting assistant that generates structured outline content.
 
@@ -73,9 +78,11 @@ Only output valid JSON. No markdown, no explanation, just the JSON array.`;
       }),
     });
 
+    console.log(`[${requestId}] AI gateway response status:`, response.status);
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+      console.error(`[${requestId}] AI gateway error:`, response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
@@ -131,14 +138,15 @@ Only output valid JSON. No markdown, no explanation, just the JSON array.`;
       items = [{ label: content, depth: 0 }];
     }
 
-    console.log('Parsed items:', items.length);
+    console.log(`[${requestId}] Parsed items:`, items.length);
+    console.log(`[${requestId}] Returning success response`);
 
     return new Response(JSON.stringify({ items }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in generate-outline:', error);
+    console.error(`[${requestId}] Error in generate-outline:`, error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
