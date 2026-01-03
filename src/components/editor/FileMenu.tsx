@@ -172,7 +172,7 @@ export function FileMenu({
             <FileText className="h-4 w-4" />
           </button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none">
+        <SheetContent side="left" className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[72px] h-[calc(100%-72px)]">
           <SheetHeader className="px-3 py-2 border-b border-border">
             <SheetTitle className="text-xs font-semibold flex items-center gap-1">
               {documentTitle}
