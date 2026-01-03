@@ -1,8 +1,9 @@
-import { createContext, useContext, ReactNode, useState, useCallback } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useRef } from 'react';
 import { Editor } from '@tiptap/react';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { HierarchyNode } from '@/types/node';
 import { DefinedTerm } from './DefinedTermsPane';
+import { DocumentState } from '@/types/document';
 
 export type FindReplaceMatch =
   | { kind: 'tiptap'; from: number; to: number }
@@ -33,6 +34,11 @@ interface EditorContextValue {
   mixedConfig: MixedStyleConfig;
   autoDescend: boolean;
   showRevealCodes: boolean;
+  
+  // Document state
+  document: DocumentState | null;
+  documentVersion: number;
+  setDocumentContent: (content: any) => void;
 
   // TipTap editor (optional)
   editor: Editor | null;
@@ -87,6 +93,10 @@ const EditorContext = createContext<EditorContextValue>({
   mixedConfig: DEFAULT_MIXED_CONFIG,
   autoDescend: false,
   showRevealCodes: false,
+  
+  document: null,
+  documentVersion: 0,
+  setDocumentContent: () => {},
 
   editor: null,
   setEditor: () => {},
@@ -127,6 +137,8 @@ interface EditorProviderProps {
   mixedConfig: MixedStyleConfig;
   autoDescend: boolean;
   showRevealCodes: boolean;
+  document: DocumentState;
+  onDocumentContentChange: (content: any) => void;
   onUndoRedoChange?: (
     undo: () => void,
     redo: () => void,
@@ -141,6 +153,8 @@ export function EditorProvider({
   mixedConfig,
   autoDescend,
   showRevealCodes,
+  document,
+  onDocumentContentChange,
   onUndoRedoChange,
 }: EditorProviderProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -153,6 +167,16 @@ export function EditorProvider({
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
+  
+  // Track document version to trigger reloads when document ID changes
+  const [documentVersion, setDocumentVersion] = useState(0);
+  const lastDocIdRef = useRef(document.meta.id);
+  
+  // Increment version when document ID changes (user opened a different doc)
+  if (document.meta.id !== lastDocIdRef.current) {
+    lastDocIdRef.current = document.meta.id;
+    setDocumentVersion(v => v + 1);
+  }
 
   const setInsertHierarchyHandler = useCallback((handler: () => void) => {
     setInsertHierarchyHandlerState(() => handler);
@@ -198,6 +222,9 @@ export function EditorProvider({
         mixedConfig,
         autoDescend,
         showRevealCodes,
+        document,
+        documentVersion,
+        setDocumentContent: onDocumentContentChange,
         editor,
         setEditor,
         selectedText,

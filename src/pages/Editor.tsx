@@ -250,6 +250,14 @@ export default function Editor() {
     setHasUnsavedChanges(true);
   }, []);
 
+  const handleDocumentContentChange = useCallback((content: any) => {
+    setDocument(prev => ({
+      ...prev,
+      content,
+    }));
+    setHasUnsavedChanges(true);
+  }, []);
+
   const fileMenuProps = {
     documentTitle: document.meta.title,
     hasUnsavedChanges,
@@ -271,6 +279,8 @@ export default function Editor() {
       mixedConfig={mixedConfig}
       autoDescend={autoDescend}
       showRevealCodes={showRevealCodes}
+      document={document}
+      onDocumentContentChange={handleDocumentContentChange}
       onUndoRedoChange={handleUndoRedoChange}
     >
       <div className="h-screen flex bg-background">
