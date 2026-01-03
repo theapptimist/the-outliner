@@ -360,23 +360,33 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   const navigateUp = useCallback(() => {
     if (!selectedId) {
-      if (flatNodes.length > 0) setSelectedId(flatNodes[0].id);
+      if (flatNodes.length > 0) {
+        setSelectedId(flatNodes[0].id);
+        setAutoFocusId(flatNodes[0].id);
+      }
       return;
     }
     const currentIndex = flatNodes.findIndex(n => n.id === selectedId);
     if (currentIndex > 0) {
-      setSelectedId(flatNodes[currentIndex - 1].id);
+      const nextId = flatNodes[currentIndex - 1].id;
+      setSelectedId(nextId);
+      setAutoFocusId(nextId);
     }
   }, [selectedId, flatNodes]);
 
   const navigateDown = useCallback(() => {
     if (!selectedId) {
-      if (flatNodes.length > 0) setSelectedId(flatNodes[0].id);
+      if (flatNodes.length > 0) {
+        setSelectedId(flatNodes[0].id);
+        setAutoFocusId(flatNodes[0].id);
+      }
       return;
     }
     const currentIndex = flatNodes.findIndex(n => n.id === selectedId);
     if (currentIndex < flatNodes.length - 1) {
-      setSelectedId(flatNodes[currentIndex + 1].id);
+      const nextId = flatNodes[currentIndex + 1].id;
+      setSelectedId(nextId);
+      setAutoFocusId(nextId);
     }
   }, [selectedId, flatNodes]);
 
