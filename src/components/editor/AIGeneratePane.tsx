@@ -82,6 +82,7 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
       </div>
       
       <Textarea
+        data-allow-pointer
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         onKeyDown={handleKeyDown}
