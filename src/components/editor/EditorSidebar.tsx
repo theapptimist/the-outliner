@@ -296,11 +296,15 @@ export function EditorSidebar({
 
       {/* Conditional Content */}
       {activeTab === 'ai' ? (
-        <AIGeneratePane 
-          onInsertHierarchy={handleAIInsertHierarchy}
-        />
+        <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
+          <AIGeneratePane 
+            onInsertHierarchy={handleAIInsertHierarchy}
+          />
+        </div>
       ) : activeTab === 'terms' ? (
-        <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
+        <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
+          <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
+        </div>
       ) : (
         <>
           {/* Tools section */}
