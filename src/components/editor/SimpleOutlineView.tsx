@@ -969,33 +969,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       }}
                       placeholder=""
                       rows={1}
-                      cols={1}
                       style={{
-                        // Show caret when focused (regardless of edit mode)
                         caretColor: 'hsl(var(--primary))',
-                        // When not editing, constrain width to content so suffix stays attached
-                        width: editingId === node.id ? undefined : 'fit-content',
-                        flex: editingId === node.id ? '1 1 0%' : '0 0 auto',
                       }}
                       className={cn(
-                        "min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
-                        editingId === node.id && "w-full",
+                        "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
                         shouldUnderline && "underline decoration-foreground",
                         !node.label && editingId !== node.id && "text-muted-foreground/50"
                       )}
                     />
-
-                    {/* While editing, keep suffix visible but not part of the editable value */}
-                    {levelStyle.suffix && editingId === node.id && editValue && (
-                      <span
-                        className={cn(
-                          "text-foreground text-sm font-mono leading-6 select-none",
-                          shouldUnderline && "underline decoration-foreground"
-                        )}
-                      >
-                        {levelStyle.suffix}
-                      </span>
-                    )}
                   </>
                 );
               })()}
