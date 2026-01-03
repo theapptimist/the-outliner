@@ -32,6 +32,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
+  const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
 
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
@@ -91,9 +92,15 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
   // Handle recalculating usages
   const handleRecalculate = useCallback(() => {
-    if (document?.hierarchyBlocks) {
+    if (document?.hierarchyBlocks && Object.keys(document.hierarchyBlocks).length > 0) {
       recalculateUsages(document.hierarchyBlocks);
+      setRecalcFeedback('done');
+    } else {
+      // No hierarchy blocks to scan
+      setRecalcFeedback('empty');
     }
+    // Reset feedback after a moment
+    setTimeout(() => setRecalcFeedback('idle'), 1500);
   }, [document, recalculateUsages]);
 
   const filteredTerms = terms.filter(t =>
@@ -193,13 +200,25 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                 variant="ghost"
                 size="sm"
                 onClick={handleRecalculate}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                className={cn(
+                  "h-7 w-7 p-0 transition-colors",
+                  recalcFeedback === 'done' && "text-success",
+                  recalcFeedback === 'empty' && "text-warning",
+                  recalcFeedback === 'idle' && "text-muted-foreground hover:text-primary"
+                )}
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className={cn(
+                  "h-3.5 w-3.5",
+                  recalcFeedback !== 'idle' && "animate-spin"
+                )} />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right" className="text-xs">
-              Recalculate usages
+              {recalcFeedback === 'done' 
+                ? 'Usages updated!' 
+                : recalcFeedback === 'empty'
+                ? 'No outline to scan'
+                : 'Recalculate usages'}
             </TooltipContent>
           </Tooltip>
         )}
