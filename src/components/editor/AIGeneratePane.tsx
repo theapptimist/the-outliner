@@ -4,6 +4,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useEditorContext } from './EditorContext';
+import { extractDefinedTermsFromItems } from '@/lib/termScanner';
 
 interface AIGeneratePaneProps {
   onInsertHierarchy: (items: Array<{ label: string; depth: number }>) => void;
@@ -13,6 +15,7 @@ interface AIGeneratePaneProps {
 type GenerateStatus = 'idle' | 'clicked' | 'requesting' | 'success' | 'error';
 
 export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGeneratePaneProps) {
+  const { addExtractedTerms } = useEditorContext();
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<GenerateStatus>('idle');
@@ -68,11 +71,21 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
         console.log('AI Generate: inserting items', { count: data.items.length });
         setStatus('success');
         setStatusDetail(`Received ${data.items.length} items`);
+        
+        // Insert the outline items
         onInsertHierarchy(data.items);
+        
+        // Extract and add any defined terms found in the generated content
+        const extractedTerms = extractDefinedTermsFromItems(data.items);
+        if (extractedTerms.length > 0 && addExtractedTerms) {
+          addExtractedTerms(extractedTerms);
+          console.log('AI Generate: extracted terms', extractedTerms);
+        }
+        
         setPrompt('');
         toast({
           title: 'Generated',
-          description: `Inserted ${data.items.length} outline item(s)`,
+          description: `Inserted ${data.items.length} outline item(s)${extractedTerms.length > 0 ? ` with ${extractedTerms.length} defined term(s)` : ''}`,
         });
       } else {
         setStatus('error');

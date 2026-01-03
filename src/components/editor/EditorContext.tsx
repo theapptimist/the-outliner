@@ -31,6 +31,9 @@ export type ScrollToNodeFn = (nodeId: string) => void;
 
 // Callback type for pasting AI-generated hierarchy items
 export type PasteHierarchyFn = (items: Array<{ label: string; depth: number }>) => void;
+
+// Callback type for adding extracted defined terms
+export type AddExtractedTermsFn = (terms: Array<{ term: string; definition: string; sourceLabel: string }>) => void;
 interface EditorContextValue {
   outlineStyle: OutlineStyle;
   mixedConfig: MixedStyleConfig;
@@ -73,6 +76,10 @@ interface EditorContextValue {
   // AI-generated hierarchy paste handler
   onPasteHierarchy: PasteHierarchyFn | null;
   setOnPasteHierarchy: (fn: PasteHierarchyFn | null) => void;
+
+  // Add extracted terms from AI-generated content
+  addExtractedTerms: AddExtractedTermsFn | null;
+  setAddExtractedTerms: (fn: AddExtractedTermsFn | null) => void;
 
   // Commands owned by DocumentEditor
   onInsertHierarchy: () => void;
@@ -128,6 +135,9 @@ const EditorContext = createContext<EditorContextValue>({
   onPasteHierarchy: null,
   setOnPasteHierarchy: () => {},
 
+  addExtractedTerms: null,
+  setAddExtractedTerms: () => {},
+
   onInsertHierarchy: () => {},
   setInsertHierarchyHandler: () => {},
   onFindReplace: () => {},
@@ -176,12 +186,17 @@ export function EditorProvider({
   const [scrollToNodeFn, setScrollToNodeFn] = useState<ScrollToNodeFn | null>(null);
   const [inspectedTerm, setInspectedTerm] = useState<DefinedTerm | null>(null);
   const [pasteHierarchyFn, setPasteHierarchyFn] = useState<PasteHierarchyFn | null>(null);
+  const [addExtractedTermsFn, setAddExtractedTermsFn] = useState<AddExtractedTermsFn | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
 
   const setOnPasteHierarchy = useCallback((fn: PasteHierarchyFn | null) => {
     setPasteHierarchyFn(() => fn);
+  }, []);
+
+  const setAddExtractedTerms = useCallback((fn: AddExtractedTermsFn | null) => {
+    setAddExtractedTermsFn(() => fn);
   }, []);
 
   const setInsertHierarchyHandler = useCallback((handler: () => void) => {
@@ -247,6 +262,8 @@ export function EditorProvider({
         setInspectedTerm,
         onPasteHierarchy: pasteHierarchyFn,
         setOnPasteHierarchy,
+        addExtractedTerms: addExtractedTermsFn,
+        setAddExtractedTerms,
         onInsertHierarchy: insertHierarchyHandler,
         setInsertHierarchyHandler,
         onFindReplace: findReplaceHandler,
