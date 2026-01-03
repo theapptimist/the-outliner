@@ -214,7 +214,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
         )}
 
         {/* Terms List */}
-        <ScrollArea className="flex-1 px-2">
+        <ScrollArea className="flex-1 px-1">
           <div className="space-y-2 pb-2">
             {filteredTerms.map((term) => {
               const isExpanded = expandedTerms.has(term.id);
@@ -284,7 +284,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                           <div className="flex items-center gap-1.5 mt-2 text-xs text-primary">
                             <MapPin className="h-3.5 w-3.5" />
                             <span className="font-mono font-medium">{term.sourceLocation.prefix}</span>
-                            <span className="truncate max-w-[140px]">{term.sourceLocation.label}</span>
+                            <span className="flex-1 min-w-0 truncate">{term.sourceLocation.label}</span>
                           </div>
                         )}
                       </button>

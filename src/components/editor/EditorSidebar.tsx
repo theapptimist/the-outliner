@@ -118,7 +118,7 @@ export function EditorSidebar({
       }}
       className={cn(
         "flex flex-col border-r border-border/30 transition-all duration-300 relative overflow-hidden",
-        collapsed ? "w-12" : "w-56"
+        collapsed ? "w-12" : activeTab === 'terms' ? "w-64" : "w-56"
       )}
     >
       {/* Gradient background */}
@@ -238,7 +238,7 @@ export function EditorSidebar({
 
       {/* Conditional Content - now properly conditional rendering */}
       {activeTab === 'terms' && (
-        <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
+        <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
         </div>
       )}
