@@ -830,142 +830,135 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               {prefix || ''}
             </span>
             
-            {/* Label + suffix container - 2-column grid: [fit-content text] [suffix] */}
-            <div 
-              className="min-w-0 w-full items-start gap-x-0.5"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'fit-content(100%) auto',
-              }}
-            >
-              {(() => {
-                const isEditing = editingId === node.id;
-                const displayValue = isEditing ? editValue : node.label;
+            {/* Label + suffix in single inline-grid - suffix stays glued to text */}
+            {(() => {
+              const isEditing = editingId === node.id;
+              const displayValue = isEditing ? editValue : node.label;
+              const suffix = levelStyle.suffix && node.label ? levelStyle.suffix : '';
+              const shouldUnderline = levelStyle.underline && (isEditing ? editValue : node.label);
 
-                const shouldUnderline =
-                  levelStyle.underline && (isEditing ? editValue : node.label);
-
-                return (
-                  <>
-                    {/* Column 1: Inline-grid wrapper - sizer span determines width, textarea overlays it */}
-                    <div 
-                      className="inline-grid min-w-0"
-                      style={{ maxWidth: '100%' }}
-                    >
-                      {/* Hidden sizer - determines natural content width */}
-                      <span 
-                        className="invisible whitespace-pre-wrap break-words text-sm font-mono leading-6 min-w-0"
-                        style={{ gridArea: '1 / 1' }}
-                        aria-hidden="true"
-                      >
-                        {displayValue || ' '}
-                      </span>
+              return (
+                <div 
+                  className="inline-grid min-w-0 w-full"
+                  style={{ maxWidth: '100%' }}
+                >
+                  {/* Hidden sizer - includes text + suffix to size the container */}
+                  <span 
+                    className="invisible whitespace-pre-wrap break-words text-sm font-mono leading-6 min-w-0"
+                    style={{ gridArea: '1 / 1' }}
+                    aria-hidden="true"
+                  >
+                    {displayValue || ' '}{suffix}
+                  </span>
+                  
+                  {/* Visible layer - text (maybe underlined) + suffix (never underlined) */}
+                  <span 
+                    className="whitespace-pre-wrap break-words text-sm font-mono leading-6 min-w-0 pointer-events-none"
+                    style={{ gridArea: '1 / 1' }}
+                    aria-hidden="true"
+                  >
+                    <span className={cn(shouldUnderline && "underline decoration-foreground")}>
+                      {displayValue || ' '}
+                    </span>
+                    {suffix && <span className="select-none">{suffix}</span>}
+                  </span>
+                  
+                  {/* Textarea - overlays both, but only covers the text width */}
+                  <textarea
+                    ref={getInputRefCallback(node.id)}
+                    value={displayValue}
+                    onChange={(e) => {
+                      if (editingId !== node.id) {
+                        setEditingId(node.id);
+                        setEditValue(e.target.value);
+                      } else {
+                        setEditValue(e.target.value);
+                      }
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${e.target.scrollHeight}px`;
+                    }}
+                    onKeyDown={(e) => {
+                      // Always allow Escape to exit outline
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        if (editingId === node.id) {
+                          handleEndEdit(node.id);
+                        }
+                        setEditingId(null);
+                        editor?.chain().focus().run();
+                        return;
+                      }
                       
-                      {/* Actual textarea - overlays the sizer */}
-                      <textarea
-                        ref={getInputRefCallback(node.id)}
-                        value={displayValue}
-                        onChange={(e) => {
-                          if (editingId !== node.id) {
-                            setEditingId(node.id);
-                            setEditValue(e.target.value);
-                          } else {
-                            setEditValue(e.target.value);
-                          }
-                          e.target.style.height = 'auto';
-                          e.target.style.height = `${e.target.scrollHeight}px`;
-                        }}
-                        onKeyDown={(e) => {
-                          // Always allow Escape to exit outline
-                          if (e.key === 'Escape') {
-                            e.preventDefault();
-                            if (editingId === node.id) {
-                              handleEndEdit(node.id);
-                            }
-                            setEditingId(null);
-                            editor?.chain().focus().run();
-                            return;
-                          }
-                          
-                          if (editingId !== node.id) {
-                            const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
-                            if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-                              // Will enter edit mode via onChange
-                            } else if (!isNavKey) {
-                              return;
-                            }
-                          }
-                          if (editingId === node.id) {
-                            handleKeyDown(e, node);
-                          }
-                        }}
-                        onPaste={(e) => {
-                          if (editingId !== node.id) {
-                            setEditingId(node.id);
-                            setEditValue(node.label);
-                          }
-                          handlePaste(e, node.id);
-                        }}
-                        onSelect={(e) => {
-                          handleSelectionChange(e, fullPrefix, node.label);
-                        }}
-                        onFocus={(e) => {
-                          lastFocusedNodeIdRef.current = node.id;
-                          onSelect(node.id);
+                      if (editingId !== node.id) {
+                        const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
+                        if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                          // Will enter edit mode via onChange
+                        } else if (!isNavKey) {
+                          return;
+                        }
+                      }
+                      if (editingId === node.id) {
+                        handleKeyDown(e, node);
+                      }
+                    }}
+                    onPaste={(e) => {
+                      if (editingId !== node.id) {
+                        setEditingId(node.id);
+                        setEditValue(node.label);
+                      }
+                      handlePaste(e, node.id);
+                    }}
+                    onSelect={(e) => {
+                      handleSelectionChange(e, fullPrefix, node.label);
+                    }}
+                    onFocus={(e) => {
+                      lastFocusedNodeIdRef.current = node.id;
+                      onSelect(node.id);
 
-                          if (editIntentRef.current === 'program') {
-                            setEditingId(node.id);
-                            setEditValue(node.label);
-                            editIntentRef.current = null;
-                          }
+                      if (editIntentRef.current === 'program') {
+                        setEditingId(node.id);
+                        setEditValue(node.label);
+                        editIntentRef.current = null;
+                      }
 
-                          requestAnimationFrame(() => {
-                            e.target.style.height = 'auto';
-                            e.target.style.height = `${e.target.scrollHeight}px`;
-                          });
-                        }}
-                        onBlur={(e) => {
-                          lastCursorPositionRef.current = {
-                            start: e.target.selectionStart,
-                            end: e.target.selectionEnd,
-                          };
-                          lastEditValueRef.current = e.target.value;
+                      requestAnimationFrame(() => {
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${e.target.scrollHeight}px`;
+                      });
+                    }}
+                    onBlur={(e) => {
+                      lastCursorPositionRef.current = {
+                        start: e.target.selectionStart,
+                        end: e.target.selectionEnd,
+                      };
+                      lastEditValueRef.current = e.target.value;
 
-                          const next = e.relatedTarget as HTMLElement | null;
-                          if (next?.closest('[data-editor-sidebar]')) {
-                            requestAnimationFrame(() => {
-                              inputRefs.current.get(node.id)?.focus();
-                            });
-                            return;
-                          }
+                      const next = e.relatedTarget as HTMLElement | null;
+                      if (next?.closest('[data-editor-sidebar]')) {
+                        requestAnimationFrame(() => {
+                          inputRefs.current.get(node.id)?.focus();
+                        });
+                        return;
+                      }
 
-                          if (editingId === node.id) {
-                            handleEndEdit(node.id);
-                          }
-                        }}
-                        placeholder=""
-                        rows={1}
-                        style={{
-                          gridArea: '1 / 1',
-                          caretColor: 'hsl(var(--primary))',
-                        }}
-                        className={cn(
-                          "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
-                          shouldUnderline && "underline decoration-foreground",
-                          !node.label && editingId !== node.id && "text-muted-foreground/50"
-                        )}
-                      />
-                    </div>
-                    {/* Column 2: Suffix rendered separately so it's NOT underlined */}
-                    {levelStyle.suffix && node.label && (
-                      <span className="text-foreground text-sm font-mono leading-6 select-none">
-                        {levelStyle.suffix}
-                      </span>
+                      if (editingId === node.id) {
+                        handleEndEdit(node.id);
+                      }
+                    }}
+                    placeholder=""
+                    rows={1}
+                    style={{
+                      gridArea: '1 / 1',
+                      caretColor: 'hsl(var(--primary))',
+                    }}
+                    className={cn(
+                      "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-transparent placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text caret-primary",
+                      !node.label && editingId !== node.id && "text-muted-foreground/50"
                     )}
-                  </>
-                );
-              })()}
-            </div>
+                  />
+                </div>
+              );
+            })()}
           </div>
         );
       })}
