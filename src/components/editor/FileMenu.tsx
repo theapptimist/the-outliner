@@ -89,7 +89,14 @@ export function FileMenu({
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(documentTitle);
   const [showRecent, setShowRecent] = useState(false);
-  const recentDocs = getRecentDocuments();
+  const [recentDocs, setRecentDocs] = useState(getRecentDocuments);
+  
+  // Refresh recent docs list when sheet opens
+  useEffect(() => {
+    if (sheetOpen) {
+      setRecentDocs(getRecentDocuments());
+    }
+  }, [sheetOpen]);
 
   // Focus the input when entering rename mode
   useEffect(() => {
