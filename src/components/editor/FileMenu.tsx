@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -6,15 +6,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import {
   FilePlus,
   FolderOpen,
@@ -26,6 +18,8 @@ import {
   FileText,
   Pencil,
   ChevronRight,
+  Check,
+  X,
 } from 'lucide-react';
 import { getRecentDocuments } from '@/lib/documentStorage';
 import { formatDistanceToNow } from 'date-fns';
@@ -90,11 +84,28 @@ export function FileMenu({
   iconOnly = false,
 }: FileMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState(documentTitle);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(documentTitle);
   const [showRecent, setShowRecent] = useState(false);
   const recentDocs = getRecentDocuments();
+
+  // Focus the input when entering rename mode
+  useEffect(() => {
+    if (isRenaming) {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }
+  }, [isRenaming]);
+
+  // Reset rename state when sheet closes
+  useEffect(() => {
+    if (!sheetOpen) {
+      setIsRenaming(false);
+      setShowRecent(false);
+    }
+  }, [sheetOpen]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -108,17 +119,22 @@ export function FileMenu({
     e.target.value = '';
   };
 
-  const handleRenameSubmit = () => {
-    if (newTitle.trim()) {
-      onRename(newTitle.trim());
-    }
-    setRenameOpen(false);
+  const startRenaming = () => {
+    setDraftTitle(documentTitle);
+    setIsRenaming(true);
   };
 
-  const openRenameDialog = () => {
-    setNewTitle(documentTitle);
-    setRenameOpen(true);
-    // Keep the sheet open while renaming to avoid click-through into sidebar tabs.
+  const submitRename = () => {
+    const trimmed = draftTitle.trim();
+    if (trimmed && trimmed !== documentTitle) {
+      onRename(trimmed);
+    }
+    setIsRenaming(false);
+  };
+
+  const cancelRename = () => {
+    setDraftTitle(documentTitle);
+    setIsRenaming(false);
   };
 
   const handleAction = (action: () => void) => {
@@ -136,27 +152,6 @@ export function FileMenu({
         onChange={handleFileChange}
       />
       
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Rename Document</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Document title"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameSubmit();
-            }}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
-            <Button onClick={handleRenameSubmit}>Rename</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetTrigger asChild>
           <button
@@ -174,23 +169,59 @@ export function FileMenu({
         </SheetTrigger>
         <SheetContent
           side="left"
-          overlayClassName="top-[72px] bg-transparent"
+          overlayClassName="bg-transparent"
           className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[72px] h-[calc(100%-72px)]"
           hideCloseButton
         >
-          <SheetHeader className="px-3 py-2 border-b border-border">
+          <SheetHeader 
+            className="px-3 py-2 border-b border-border"
+            onPointerDownCapture={(e) => {
+              e.stopPropagation();
+            }}
+          >
             <SheetTitle asChild>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openRenameDialog();
-                }}
-                className="text-xs font-semibold flex items-center gap-1 hover:text-primary transition-colors cursor-pointer text-left"
-              >
-                {documentTitle}
-                {hasUnsavedChanges && <span className="text-warning">•</span>}
-                <Pencil className="h-2.5 w-2.5 opacity-50" />
-              </button>
+              {isRenaming ? (
+                <div 
+                  className="flex items-center gap-1"
+                  onPointerDownCapture={(e) => e.stopPropagation()}
+                >
+                  <Input
+                    ref={renameInputRef}
+                    value={draftTitle}
+                    onChange={(e) => setDraftTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submitRename();
+                      if (e.key === 'Escape') cancelRename();
+                    }}
+                    onBlur={submitRename}
+                    className="h-6 text-xs px-1.5 py-0"
+                  />
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={submitRename}
+                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted/50 text-primary"
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={cancelRename}
+                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted/50 text-muted-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onPointerDownCapture={(e) => e.stopPropagation()}
+                  onClick={startRenaming}
+                  className="text-xs font-semibold flex items-center gap-1 hover:text-primary transition-colors cursor-pointer text-left"
+                >
+                  {documentTitle}
+                  {hasUnsavedChanges && <span className="text-warning">•</span>}
+                  <Pencil className="h-2.5 w-2.5 opacity-50" />
+                </button>
+              )}
             </SheetTitle>
           </SheetHeader>
 
@@ -237,7 +268,7 @@ export function FileMenu({
               <MenuItem
                 icon={<Pencil className="h-3.5 w-3.5" />}
                 label="Rename..."
-                onClick={openRenameDialog}
+                onClick={startRenaming}
               />
 
               <div className="h-px bg-border my-1.5" />
