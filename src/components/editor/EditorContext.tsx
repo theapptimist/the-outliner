@@ -138,6 +138,7 @@ interface EditorProviderProps {
   autoDescend: boolean;
   showRevealCodes: boolean;
   document: DocumentState;
+  documentVersion: number;
   onDocumentContentChange: (content: any) => void;
   onUndoRedoChange?: (
     undo: () => void,
@@ -154,6 +155,7 @@ export function EditorProvider({
   autoDescend,
   showRevealCodes,
   document,
+  documentVersion,
   onDocumentContentChange,
   onUndoRedoChange,
 }: EditorProviderProps) {
@@ -167,19 +169,6 @@ export function EditorProvider({
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
-  
-  // Track document version to trigger reloads when document ID changes
-  const [documentVersion, setDocumentVersion] = useState(0);
-  const lastDocIdRef = useRef(document.meta.id);
-
-  // Increment version when document ID changes (user opened a different doc)
-  // NOTE: must be in an effect (never set state during render)
-  useEffect(() => {
-    if (document.meta.id !== lastDocIdRef.current) {
-      lastDocIdRef.current = document.meta.id;
-      setDocumentVersion(v => v + 1);
-    }
-  }, [document.meta.id]);
   const setInsertHierarchyHandler = useCallback((handler: () => void) => {
     setInsertHierarchyHandlerState(() => handler);
   }, []);

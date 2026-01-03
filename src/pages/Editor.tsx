@@ -101,6 +101,7 @@ export default function Editor() {
   // Document state
   const [document, setDocument] = useState<DocumentState>(loadCurrentDocument);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [documentVersion, setDocumentVersion] = useState(0);
   const [openDialogOpen, setOpenDialogOpen] = useState(false);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -171,6 +172,7 @@ export default function Editor() {
     if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
     const newDoc = createNewDocument('Untitled');
     setDocument(newDoc);
+    setDocumentVersion(v => v + 1);
     setHasUnsavedChanges(false);
     toast.success('New document created');
   }, [hasUnsavedChanges]);
@@ -195,6 +197,7 @@ export default function Editor() {
     };
     const saved = saveDocument(newDoc);
     setDocument(saved);
+    setDocumentVersion(v => v + 1);
     setHasUnsavedChanges(false);
     toast.success(`Saved as "${title}"`);
   }, [document]);
@@ -204,7 +207,9 @@ export default function Editor() {
     const doc = loadDocument(id);
     if (doc) {
       setDocument(doc);
+      setDocumentVersion(v => v + 1);
       setHasUnsavedChanges(false);
+      toast.success(`Opened "${doc.meta.title}"`);
     } else {
       toast.error('Document not found');
     }
@@ -215,6 +220,7 @@ export default function Editor() {
     deleteDocument(document.meta.id);
     const newDoc = createNewDocument('Untitled');
     setDocument(newDoc);
+    setDocumentVersion(v => v + 1);
     setHasUnsavedChanges(false);
     toast.success('Document deleted');
   }, [document.meta.id]);
@@ -234,6 +240,7 @@ export default function Editor() {
     try {
       const imported = await importDocument(file);
       setDocument(imported);
+      setDocumentVersion(v => v + 1);
       setHasUnsavedChanges(false);
       toast.success('Document imported');
     } catch (err) {
@@ -280,6 +287,7 @@ export default function Editor() {
       autoDescend={autoDescend}
       showRevealCodes={showRevealCodes}
       document={document}
+      documentVersion={documentVersion}
       onDocumentContentChange={handleDocumentContentChange}
       onUndoRedoChange={handleUndoRedoChange}
     >

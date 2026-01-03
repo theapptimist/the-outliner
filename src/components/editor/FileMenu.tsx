@@ -316,6 +316,7 @@ export function FileMenu({
               {recentDocs.map((doc) => (
                 <button
                   key={doc.id}
+                  data-allow-pointer
                   onClick={() => {
                     onOpenRecent(doc.id);
                     setSheetOpen(false);
