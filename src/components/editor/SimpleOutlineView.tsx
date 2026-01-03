@@ -830,8 +830,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               {prefix || ''}
             </span>
             
-            {/* Label + suffix container - keeps them in same grid cell */}
-            <div className="flex items-start min-w-0 w-full">
+            {/* Label + suffix container - 2-column grid: [fit-content text] [suffix] */}
+            <div 
+              className="min-w-0 w-full items-start gap-x-0.5"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'fit-content(100%) auto',
+              }}
+            >
               {(() => {
                 const isEditing = editingId === node.id;
                 const displayValue = isEditing ? editValue : node.label;
@@ -841,13 +847,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
                 return (
                   <>
-                    {/* Inline-grid wrapper: sizer span determines width, textarea overlays it */}
+                    {/* Column 1: Inline-grid wrapper - sizer span determines width, textarea overlays it */}
                     <div 
                       className="inline-grid min-w-0"
-                      style={{ 
-                        flex: '0 1 auto',
-                        maxWidth: '100%',
-                      }}
+                      style={{ maxWidth: '100%' }}
                     >
                       {/* Hidden sizer - determines natural content width */}
                       <span 
@@ -873,6 +876,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                           e.target.style.height = `${e.target.scrollHeight}px`;
                         }}
                         onKeyDown={(e) => {
+                          // Always allow Escape to exit outline
+                          if (e.key === 'Escape') {
+                            e.preventDefault();
+                            if (editingId === node.id) {
+                              handleEndEdit(node.id);
+                            }
+                            setEditingId(null);
+                            editor?.chain().focus().run();
+                            return;
+                          }
+                          
                           if (editingId !== node.id) {
                             const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
                             if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
@@ -942,9 +956,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                         )}
                       />
                     </div>
-                    {/* Suffix rendered separately so it's NOT underlined */}
+                    {/* Column 2: Suffix rendered separately so it's NOT underlined */}
                     {levelStyle.suffix && node.label && (
-                      <span className="ml-0.5 text-foreground text-sm font-mono leading-6 select-none flex-shrink-0">
+                      <span className="text-foreground text-sm font-mono leading-6 select-none">
                         {levelStyle.suffix}
                       </span>
                     )}
