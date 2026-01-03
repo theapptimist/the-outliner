@@ -849,18 +849,42 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       ref={getInputRefCallback(node.id)}
                       value={displayValue}
                       onChange={(e) => {
-                        if (editingId !== node.id) return;
-                        setEditValue(e.target.value);
+                        // Lazily enter edit mode on first change if not already editing
+                        if (editingId !== node.id) {
+                          // Strip suffix if it was included in the display value
+                          const rawValue = levelStyle.suffix && e.target.value.endsWith(levelStyle.suffix)
+                            ? e.target.value.slice(0, -levelStyle.suffix.length)
+                            : e.target.value;
+                          setEditingId(node.id);
+                          setEditValue(rawValue);
+                        } else {
+                          setEditValue(e.target.value);
+                        }
                         // Auto-resize textarea to fit content including visual wraps
                         e.target.style.height = 'auto';
                         e.target.style.height = `${e.target.scrollHeight}px`;
                       }}
                       onKeyDown={(e) => {
-                        if (editingId !== node.id) return;
-                        handleKeyDown(e, node);
+                        // Enter edit mode on first content key if not already editing
+                        if (editingId !== node.id) {
+                          // Allow navigation keys and modifiers without entering edit mode
+                          const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
+                          if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                            // Will enter edit mode via onChange
+                          } else if (!isNavKey) {
+                            return; // Block special keys when not in edit mode
+                          }
+                        }
+                        if (editingId === node.id) {
+                          handleKeyDown(e, node);
+                        }
                       }}
                       onPaste={(e) => {
-                        if (editingId !== node.id) return;
+                        // Enter edit mode for paste if not already
+                        if (editingId !== node.id) {
+                          setEditingId(node.id);
+                          setEditValue(node.label);
+                        }
                         handlePaste(e, node.id);
                       }}
                       onSelect={(e) => {
@@ -886,31 +910,29 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       onFocus={(e) => {
                         // Track this as the last focused node for term insertion
                         lastFocusedNodeIdRef.current = node.id;
+                        onSelect(node.id);
 
-                        // If not already editing this node, enter edit mode
-                        if (editingId !== node.id) {
-                          onSelect(node.id);
-                          setEditingId(node.id);
-                          setEditValue(node.label);
-
-                          // For programmatic focus (from handleStartEdit), move cursor to end
-                          if (
-                            editIntentRef.current === 'program' &&
-                            justStartedEditingRef.current === node.id
-                          ) {
-                            requestAnimationFrame(() => {
-                              const el = inputRefs.current.get(node.id);
-                              if (el) {
-                                const len = el.value.length;
-                                el.selectionStart = len;
-                                el.selectionEnd = len;
-                              }
-                              justStartedEditingRef.current = null;
-                              editIntentRef.current = null;
-                            });
+                        // For programmatic focus (from handleStartEdit), enter edit mode immediately
+                        if (
+                          editIntentRef.current === 'program' &&
+                          justStartedEditingRef.current === node.id
+                        ) {
+                          if (editingId !== node.id) {
+                            setEditingId(node.id);
+                            setEditValue(node.label);
                           }
-                          // For mouse focus, browser already placed cursor correctly - don't move it
+                          requestAnimationFrame(() => {
+                            const el = inputRefs.current.get(node.id);
+                            if (el) {
+                              const len = el.value.length;
+                              el.selectionStart = len;
+                              el.selectionEnd = len;
+                            }
+                            justStartedEditingRef.current = null;
+                            editIntentRef.current = null;
+                          });
                         }
+                        // For mouse focus, do NOT enter edit mode yet - allow selection first
 
                         lastCursorPositionRef.current = {
                           start: e.target.selectionStart,
@@ -948,10 +970,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       placeholder=""
                       rows={1}
                       style={{
-                        caretColor:
-                          editingId === node.id
-                            ? 'hsl(var(--primary))'
-                            : 'transparent',
+                        // Show caret when focused (regardless of edit mode)
+                        caretColor: 'hsl(var(--primary))',
                       }}
                       className={cn(
                         "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 resize-none whitespace-pre-wrap break-words leading-6 select-text cursor-text",
