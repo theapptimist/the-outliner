@@ -1,6 +1,9 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 
+// Highlight mode for terms in document
+export type HighlightMode = 'all' | 'selected' | 'none';
+
 // Term usage tracking
 export interface TermUsage {
   blockId: string;
@@ -31,6 +34,10 @@ interface TermsContextValue {
   inspectedTerm: DefinedTerm | null;
   setInspectedTerm: (term: DefinedTerm | null) => void;
 
+  // Highlight mode
+  highlightMode: HighlightMode;
+  setHighlightMode: (mode: HighlightMode) => void;
+
   // Add extracted terms from AI-generated content (built-in, no registration needed)
   addExtractedTerms: (terms: Array<{ term: string; definition: string; sourceLabel: string }>) => void;
 }
@@ -41,6 +48,8 @@ const TermsContext = createContext<TermsContextValue>({
   addTerm: () => {},
   inspectedTerm: null,
   setInspectedTerm: () => {},
+  highlightMode: 'all',
+  setHighlightMode: () => {},
   addExtractedTerms: () => {},
 });
 
@@ -54,6 +63,7 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
   // Use document-specific storage key so terms are scoped to each document
   const [terms, setTerms] = useSessionStorage<DefinedTerm[]>(`defined-terms:${documentId}`, []);
   const [inspectedTerm, setInspectedTerm] = useState<DefinedTerm | null>(null);
+  const [highlightMode, setHighlightMode] = useState<HighlightMode>('all');
 
   // Clear inspected term when document changes
   useEffect(() => {
@@ -98,6 +108,8 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
         addTerm,
         inspectedTerm,
         setInspectedTerm,
+        highlightMode,
+        setHighlightMode,
         addExtractedTerms,
       }}
     >

@@ -13,7 +13,7 @@ import {
 // Re-export types for backward compatibility
 export type { FindReplaceMatch, FindReplaceProvider, PasteHierarchyFn, ScrollToNodeFn } from './context';
 export type { SelectionSource, InsertTextAtCursorFn } from './context';
-export type { DefinedTerm, TermUsage } from './context';
+export type { DefinedTerm, TermUsage, HighlightMode } from './context';
 
 interface EditorProviderProps {
   children: ReactNode;

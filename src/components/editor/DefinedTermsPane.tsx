@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { AddTermDialog } from './AddTermDialog';
-import { useEditorContext, DefinedTerm } from './EditorContext';
+import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
 
 interface DefinedTermsPaneProps {
   collapsed: boolean;
@@ -21,7 +22,9 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     setInspectedTerm, 
     terms, 
     setTerms, 
-    addTerm 
+    addTerm,
+    highlightMode,
+    setHighlightMode,
   } = useEditorContext();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,7 +108,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       </div>
 
       {/* Add Term Button */}
-      <div className="px-2 pb-2">
+      <div className="px-2 pb-1">
         <Button
           data-add-term-btn
           data-allow-pointer
@@ -121,6 +124,38 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
           Add Term
           {selectedText && <span className="ml-1 text-[10px] opacity-80">(from selection)</span>}
         </Button>
+      </div>
+
+      {/* Highlight Mode Toggle */}
+      <div className="px-2 pb-2">
+        <ToggleGroup
+          type="single"
+          value={highlightMode}
+          onValueChange={(value) => value && setHighlightMode(value as HighlightMode)}
+          className="w-full justify-start gap-1"
+        >
+          <ToggleGroupItem
+            value="all"
+            size="sm"
+            className="flex-1 h-6 text-[10px] px-2 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
+          >
+            All
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="selected"
+            size="sm"
+            className="flex-1 h-6 text-[10px] px-2 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
+          >
+            Selected
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="none"
+            size="sm"
+            className="flex-1 h-6 text-[10px] px-2 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
+          >
+            None
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       {/* Terms List */}
