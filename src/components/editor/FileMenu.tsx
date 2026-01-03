@@ -162,8 +162,11 @@ export function FileMenu({
           <button
             data-allow-pointer
             className={cn(
-              "h-7 w-7 p-0 rounded-md flex items-center justify-center hover:bg-muted/50 text-muted-foreground cursor-pointer transition-colors",
-              hasUnsavedChanges && "text-warning"
+              "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+              sheetOpen
+                ? "bg-primary/15 text-primary"
+                : "hover:bg-muted/50 text-muted-foreground",
+              hasUnsavedChanges && !sheetOpen && "text-warning"
             )}
           >
             <FileText className="h-4 w-4" />
