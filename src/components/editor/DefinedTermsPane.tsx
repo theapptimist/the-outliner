@@ -44,7 +44,9 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
   // Register callback for adding extracted terms from AI generation
   useEffect(() => {
+    console.log('DefinedTermsPane: Registering addExtractedTerms callback');
     setAddExtractedTerms((extractedTerms) => {
+      console.log('addExtractedTerms called with', extractedTerms.length, 'terms:', extractedTerms);
       const newTerms: DefinedTerm[] = extractedTerms.map(t => ({
         id: crypto.randomUUID(),
         term: t.term,
@@ -57,11 +59,15 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       setTerms(prev => {
         const existingLower = new Set(prev.map(t => t.term.toLowerCase()));
         const toAdd = newTerms.filter(t => !existingLower.has(t.term.toLowerCase()));
+        console.log('Adding', toAdd.length, 'new terms (filtered from', newTerms.length, ')');
         return [...prev, ...toAdd];
       });
     });
     
-    return () => setAddExtractedTerms(null);
+    return () => {
+      console.log('DefinedTermsPane: Unregistering addExtractedTerms callback');
+      setAddExtractedTerms(null);
+    };
   }, [setAddExtractedTerms, setTerms]);
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
