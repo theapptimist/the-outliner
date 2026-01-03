@@ -3,7 +3,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Code2, 
-  ArrowDownRight, 
+  ArrowDownRight,
   Layers,
   Undo2,
   Redo2,
@@ -129,6 +129,15 @@ export function EditorSidebar({
   const handleAIInsertHierarchy = useCallback((items: Array<{ label: string; depth: number }>) => {
     if (onPasteHierarchy) {
       onPasteHierarchy(items);
+    } else {
+      // Fail loudly if insertion can't happen
+      import('@/hooks/use-toast').then(({ toast }) => {
+        toast({
+          title: "Can't insert yet",
+          description: "Click 'Insert Outline' first, then place your cursor where you want to insert.",
+          variant: 'destructive',
+        });
+      });
     }
   }, [onPasteHierarchy]);
 

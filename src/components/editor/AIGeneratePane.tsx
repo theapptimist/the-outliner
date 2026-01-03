@@ -104,6 +104,13 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
     }
   }, [handleGenerate]);
 
+  const examplePrompts = [
+    'Draft a confidentiality clause',
+    'Add termination provisions',
+    'Create an indemnification section',
+    'Draft payment terms with net-30',
+  ];
+
   return (
     <div data-allow-pointer className="p-3 space-y-3">
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -113,7 +120,7 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
       
       {/* Debug status line */}
       <div className="text-xs px-2 py-1 rounded bg-muted/50 font-mono">
-        Status: <span className={status === 'error' ? 'text-destructive' : status === 'success' ? 'text-success' : 'text-muted-foreground'}>{status}</span>
+        Status: <span className={status === 'error' ? 'text-destructive' : status === 'success' ? 'text-green-600' : 'text-muted-foreground'}>{status}</span>
         {statusDetail && <span className="ml-1 opacity-70">({statusDetail})</span>}
       </div>
       
@@ -135,7 +142,7 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
           data-allow-pointer
           size="sm"
           onClick={handleGenerate}
-          disabled={isLoading || !prompt.trim()}
+          disabled={isLoading}
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -148,14 +155,21 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
         </Button>
       </div>
 
-      <div className="text-xs text-muted-foreground space-y-1">
-        <p className="font-medium">Try prompts like:</p>
-        <ul className="list-disc list-inside space-y-0.5 opacity-80">
-          <li>Draft a confidentiality clause</li>
-          <li>Add termination provisions</li>
-          <li>Create an indemnification section</li>
-          <li>Draft payment terms with net-30</li>
-        </ul>
+      <div className="text-xs text-muted-foreground space-y-2">
+        <p className="font-medium">Try a prompt:</p>
+        <div className="flex flex-wrap gap-1">
+          {examplePrompts.map((example) => (
+            <button
+              key={example}
+              type="button"
+              data-allow-pointer
+              onClick={() => setPrompt(example)}
+              className="px-2 py-1 rounded-md bg-muted hover:bg-accent text-xs transition-colors text-left"
+            >
+              {example}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
