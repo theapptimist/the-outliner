@@ -3,8 +3,7 @@ import { X, ChevronLeft, ChevronRight, MapPin, ExternalLink } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { DefinedTerm } from './DefinedTermsPane';
-import { useEditorContext } from './EditorContext';
+import { useEditorContext, DefinedTerm } from './EditorContext';
 
 interface TermUsagesPaneProps {
   term: DefinedTerm;

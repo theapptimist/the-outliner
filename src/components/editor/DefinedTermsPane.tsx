@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,20 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { AddTermDialog } from './AddTermDialog';
-import { TermUsage } from '@/lib/termScanner';
-import { useEditorContext, SelectionSource } from './EditorContext';
-import { useSessionStorage } from '@/hooks/useSessionStorage';
-
-export interface DefinedTerm {
-  id: string;
-  term: string;
-  definition: string;
-  sourceLocation?: {
-    prefix: string;
-    label: string;
-  };
-  usages: TermUsage[];
-}
+import { useEditorContext, DefinedTerm } from './EditorContext';
 
 interface DefinedTermsPaneProps {
   collapsed: boolean;
@@ -28,41 +15,19 @@ interface DefinedTermsPaneProps {
 }
 
 export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPaneProps) {
-  const { selectionSource, insertTextAtCursor, setInspectedTerm, document, documentVersion, setAddExtractedTerms } = useEditorContext();
+  const { 
+    selectionSource, 
+    insertTextAtCursor, 
+    setInspectedTerm, 
+    terms, 
+    setTerms, 
+    addTerm 
+  } = useEditorContext();
   
-  // Use document-specific storage key so terms are scoped to each document
-  const docId = document?.meta?.id ?? 'default';
-  const [terms, setTerms] = useSessionStorage<DefinedTerm[]>(`defined-terms:${docId}`, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
-  
-  // Clear inspected term when document changes
-  useEffect(() => {
-    setInspectedTerm(null);
-  }, [documentVersion, setInspectedTerm]);
 
-  // Register callback for adding extracted terms from AI generation
-  useEffect(() => {
-    setAddExtractedTerms((extractedTerms) => {
-      const newTerms: DefinedTerm[] = extractedTerms.map(t => ({
-        id: crypto.randomUUID(),
-        term: t.term,
-        definition: t.definition,
-        sourceLocation: { prefix: 'AI', label: t.sourceLabel },
-        usages: [],
-      }));
-      
-      // Only add terms that don't already exist (case-insensitive)
-      setTerms(prev => {
-        const existingLower = new Set(prev.map(t => t.term.toLowerCase()));
-        const toAdd = newTerms.filter(t => !existingLower.has(t.term.toLowerCase()));
-        return [...prev, ...toAdd];
-      });
-    });
-    
-    return () => setAddExtractedTerms(null);
-  }, [setAddExtractedTerms, setTerms]);
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -109,7 +74,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
         }));
       }
     }
-  }, [insertTextAtCursor]);
+  }, [insertTextAtCursor, setTerms]);
 
   const filteredTerms = terms.filter(t =>
     t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -168,6 +133,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
             return (
               <div
+                key={term.id}
                 className={cn(
                   "rounded-md border border-border/50 bg-card/50",
                   "hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer"
@@ -286,14 +252,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
         prefillSelection={selectedText}
         selectionSource={selectionSource}
         onSave={(term, definition, source) => {
-          const newTerm: DefinedTerm = {
-            id: crypto.randomUUID(),
-            term,
-            definition,
-            sourceLocation: source ? { prefix: source.nodePrefix, label: source.nodeLabel } : undefined,
-            usages: [], // Will be populated by scanner later
-          };
-          setTerms(prev => [...prev, newTerm]);
+          addTerm(term, definition, source ?? undefined);
         }}
       />
     </div>

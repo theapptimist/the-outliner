@@ -13,7 +13,7 @@ import {
 // Re-export types for backward compatibility
 export type { FindReplaceMatch, FindReplaceProvider, PasteHierarchyFn, ScrollToNodeFn } from './context';
 export type { SelectionSource, InsertTextAtCursorFn } from './context';
-export type { AddExtractedTermsFn } from './context';
+export type { DefinedTerm, TermUsage } from './context';
 
 interface EditorProviderProps {
   children: ReactNode;
@@ -43,6 +43,8 @@ export function EditorProvider({
   onDocumentContentChange,
   onUndoRedoChange,
 }: EditorProviderProps) {
+  const documentId = document?.meta?.id ?? 'default';
+
   return (
     <DocumentProvider
       outlineStyle={outlineStyle}
@@ -55,7 +57,7 @@ export function EditorProvider({
       onUndoRedoChange={onUndoRedoChange}
     >
       <SelectionProvider>
-        <TermsProvider>
+        <TermsProvider documentId={documentId} documentVersion={documentVersion}>
           {children}
         </TermsProvider>
       </SelectionProvider>
