@@ -1,1 +1,4 @@
 project_id = "ddlwaucqlwcqafyqhggh"
+
+[functions.generate-outline]
+verify_jwt = false
