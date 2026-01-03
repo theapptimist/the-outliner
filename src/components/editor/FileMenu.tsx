@@ -56,12 +56,12 @@ function MenuItem({ icon, label, shortcut, onClick, disabled, destructive }: Men
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors text-left",
+        "w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors text-left",
         "hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none",
         destructive && "text-destructive hover:bg-destructive/10"
       )}
     >
-      <span className="h-3.5 w-3.5 flex-shrink-0">{icon}</span>
+      <span className="h-4 w-4 flex-shrink-0">{icon}</span>
       <span className="flex-1">{label}</span>
       {shortcut && <span className="text-[10px] text-muted-foreground">{shortcut}</span>}
     </button>
@@ -174,7 +174,7 @@ export function FileMenu({
           hideCloseButton
         >
           <SheetHeader 
-            className="px-3 py-3 border-b border-border"
+            className="px-3 py-4 border-b border-border"
             onPointerDownCapture={(e) => {
               e.stopPropagation();
             }}
@@ -226,7 +226,7 @@ export function FileMenu({
           </SheetHeader>
 
           {!showRecent ? (
-            <div className="p-2 space-y-1">
+            <div className="p-3 space-y-0.5">
               <MenuItem
                 icon={<FilePlus className="h-3.5 w-3.5" />}
                 label="New"
@@ -242,15 +242,15 @@ export function FileMenu({
               {recentDocs.length > 0 && (
                 <button
                   onClick={() => setShowRecent(true)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors hover:bg-muted/50"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50"
                 >
-                  <Clock className="h-3.5 w-3.5" />
+                  <Clock className="h-4 w-4" />
                   <span className="flex-1">Open Recent</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </button>
               )}
 
-              <div className="h-px bg-border my-2" />
+              <div className="h-px bg-border my-3" />
 
               <MenuItem
                 icon={<Save className="h-3.5 w-3.5" />}
@@ -271,7 +271,7 @@ export function FileMenu({
                 onClick={startRenaming}
               />
 
-              <div className="h-px bg-border my-2" />
+              <div className="h-px bg-border my-3" />
 
               <MenuItem
                 icon={<FileDown className="h-3.5 w-3.5" />}
@@ -285,7 +285,7 @@ export function FileMenu({
                 onClick={handleImportClick}
               />
 
-              <div className="h-px bg-border my-2" />
+              <div className="h-px bg-border my-3" />
 
               <MenuItem
                 icon={<Trash2 className="h-3.5 w-3.5" />}
@@ -296,12 +296,12 @@ export function FileMenu({
               />
             </div>
           ) : (
-            <div className="p-2">
+            <div className="p-3">
               <button
                 onClick={() => setShowRecent(false)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                <ChevronRight className="h-4 w-4 rotate-180" />
                 Back
               </button>
               <div className="h-px bg-border my-2" />
@@ -313,9 +313,9 @@ export function FileMenu({
                     setSheetOpen(false);
                     setShowRecent(false);
                   }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors hover:bg-muted/50 text-left"
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50 text-left"
                 >
-                  <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                  <FileText className="h-4 w-4 flex-shrink-0" />
                   <span className="flex-1 truncate">{doc.title}</span>
                   <span className="text-[10px] text-muted-foreground">
                     {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
