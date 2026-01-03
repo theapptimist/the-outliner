@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } 
 import { FlatNode, DropPosition, HierarchyNode } from '@/types/node';
 import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfig, DEFAULT_MIXED_CONFIG, getLevelStyle } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
-import { useEditorContext } from './EditorContext';
+import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
 import { toast } from '@/hooks/use-toast';
 import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
 import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
@@ -74,7 +74,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode, editor } = useEditorContext();
+  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode, editor, terms, highlightMode, inspectedTerm } = useEditorContext();
 
   // Track last focused position for term insertion when clicking sidebar
   const lastFocusedNodeIdRef = useRef<string | null>(null);
@@ -89,6 +89,60 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   // Track mouse drag state for distinguishing clicks from text selection
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
   const isDragRef = useRef(false);
+
+  // Build regex for term highlighting
+  const termHighlightRegex = useMemo(() => {
+    if (highlightMode === 'none') return null;
+    
+    const termsToHighlight = highlightMode === 'selected' && inspectedTerm
+      ? [inspectedTerm]
+      : terms;
+    
+    if (termsToHighlight.length === 0) return null;
+    
+    const escaped = termsToHighlight.map(t => 
+      t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    );
+    return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
+  }, [terms, highlightMode, inspectedTerm]);
+
+  // Helper to render text with term highlights
+  const renderHighlightedText = useCallback((text: string) => {
+    if (!termHighlightRegex || !text) {
+      return text || ' ';
+    }
+    
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let key = 0;
+    
+    // Reset regex state
+    termHighlightRegex.lastIndex = 0;
+    
+    while ((match = termHighlightRegex.exec(text)) !== null) {
+      // Add text before match
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+      
+      // Add highlighted match
+      parts.push(
+        <span key={key++} className="term-highlight">
+          {match[0]}
+        </span>
+      );
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : (text || ' ');
+  }, [termHighlightRegex]);
 
   // Track text selection in textarea and include source context
   const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {
@@ -909,7 +963,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     aria-hidden="true"
                   >
                     <span className={cn(shouldUnderline && "underline decoration-foreground")}>
-                      {displayValue || ' '}
+                      {renderHighlightedText(displayValue)}
                     </span>
                     {suffix && <span className="select-none">{suffix}</span>}
                   </span>
