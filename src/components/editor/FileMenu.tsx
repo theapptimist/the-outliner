@@ -174,7 +174,7 @@ export function FileMenu({
           hideCloseButton
         >
           <SheetHeader 
-            className="px-3 py-2 border-b border-border"
+            className="px-3 py-3 border-b border-border"
             onPointerDownCapture={(e) => {
               e.stopPropagation();
             }}
@@ -215,7 +215,7 @@ export function FileMenu({
                 <button
                   onPointerDownCapture={(e) => e.stopPropagation()}
                   onClick={startRenaming}
-                  className="text-xs font-semibold flex items-center gap-1 hover:text-primary transition-colors cursor-pointer text-left"
+                  className="text-xs font-medium flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer text-left"
                 >
                   {documentTitle}
                   {hasUnsavedChanges && <span className="text-warning">•</span>}
@@ -226,7 +226,7 @@ export function FileMenu({
           </SheetHeader>
 
           {!showRecent ? (
-            <div className="p-1.5 space-y-0.5">
+            <div className="p-2 space-y-1">
               <MenuItem
                 icon={<FilePlus className="h-3.5 w-3.5" />}
                 label="New"
@@ -250,7 +250,7 @@ export function FileMenu({
                 </button>
               )}
 
-              <div className="h-px bg-border my-1.5" />
+              <div className="h-px bg-border my-2" />
 
               <MenuItem
                 icon={<Save className="h-3.5 w-3.5" />}
@@ -271,7 +271,7 @@ export function FileMenu({
                 onClick={startRenaming}
               />
 
-              <div className="h-px bg-border my-1.5" />
+              <div className="h-px bg-border my-2" />
 
               <MenuItem
                 icon={<FileDown className="h-3.5 w-3.5" />}
@@ -285,7 +285,7 @@ export function FileMenu({
                 onClick={handleImportClick}
               />
 
-              <div className="h-px bg-border my-1.5" />
+              <div className="h-px bg-border my-2" />
 
               <MenuItem
                 icon={<Trash2 className="h-3.5 w-3.5" />}
@@ -296,7 +296,7 @@ export function FileMenu({
               />
             </div>
           ) : (
-            <div className="p-1.5">
+            <div className="p-2">
               <button
                 onClick={() => setShowRecent(false)}
                 className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -304,7 +304,7 @@ export function FileMenu({
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" />
                 Back
               </button>
-              <div className="h-px bg-border my-1.5" />
+              <div className="h-px bg-border my-2" />
               {recentDocs.map((doc) => (
                 <button
                   key={doc.id}
