@@ -311,17 +311,21 @@ export function EditorSidebar({
       </div>
 
       {/* Conditional Content */}
+      {/* Always render DefinedTermsPane to keep its callbacks registered, but hide when not active */}
+      <div className={cn(
+        "relative flex-1 overflow-y-auto p-2 scrollbar-thin",
+        activeTab !== 'terms' && "hidden"
+      )}>
+        <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
+      </div>
+      
       {activeTab === 'ai' ? (
         <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
           <AIGeneratePane 
             onInsertHierarchy={handleAIInsertHierarchy}
           />
         </div>
-      ) : activeTab === 'terms' ? (
-        <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
-          <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
-        </div>
-      ) : (
+      ) : activeTab === 'tools' && (
         <>
           {/* Tools section */}
           <div className="relative flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
