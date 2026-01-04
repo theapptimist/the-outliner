@@ -1021,7 +1021,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       handlePaste(e, node.id);
                     }}
                     onSelect={(e) => {
-                      handleSelectionChange(e, fullPrefix, node.label);
+                      // Use current value (editValue if editing, node.label otherwise)
+                      handleSelectionChange(e, fullPrefix, displayValue);
                     }}
                     onFocus={(e) => {
                       lastFocusedNodeIdRef.current = node.id;
