@@ -50,6 +50,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [capturedSelection, setCapturedSelection] = useState<string>('');
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
   const [orphanWarningDismissed, setOrphanWarningDismissed] = useState(false);
@@ -241,7 +242,11 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               data-allow-pointer
               variant="ghost"
               size="sm"
-              onClick={() => setDialogOpen(true)}
+              onClick={() => {
+                // Capture selection at the moment of click (before focus shifts)
+                setCapturedSelection(selectedText || '');
+                setDialogOpen(true);
+              }}
               className={cn(
                 "h-7 w-7 p-0",
                 selectedText && "bg-accent/20 text-accent"
@@ -631,8 +636,11 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       {/* Add Term Dialog */}
       <AddTermDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        prefillSelection={selectedText}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setCapturedSelection(''); // Clear on close
+        }}
+        prefillSelection={capturedSelection}
         selectionSource={selectionSource}
         onSave={(term, definition, source) => {
           addTerm(term, definition, source ?? undefined);
