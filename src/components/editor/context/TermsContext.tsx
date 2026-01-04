@@ -32,9 +32,13 @@ interface TermsContextValue {
   setTerms: React.Dispatch<React.SetStateAction<DefinedTerm[]>>;
   addTerm: (term: string, definition: string, source?: { nodePrefix: string; nodeLabel: string }) => void;
   
-  // Term inspection state (for the right panel)
+  // Term inspection state (for the usages panel - controls panel open/close)
   inspectedTerm: DefinedTerm | null;
   setInspectedTerm: (term: DefinedTerm | null) => void;
+
+  // Highlighted term (for "selected" highlight mode - controls which term is highlighted in doc)
+  highlightedTerm: DefinedTerm | null;
+  setHighlightedTerm: (term: DefinedTerm | null) => void;
 
   // Highlight mode
   highlightMode: HighlightMode;
@@ -53,6 +57,8 @@ const TermsContext = createContext<TermsContextValue>({
   addTerm: () => {},
   inspectedTerm: null,
   setInspectedTerm: () => {},
+  highlightedTerm: null,
+  setHighlightedTerm: () => {},
   highlightMode: 'all',
   setHighlightMode: () => {},
   addExtractedTerms: () => {},
@@ -69,11 +75,13 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
   // Use document-specific storage key so terms are scoped to each document
   const [terms, setTerms] = useSessionStorage<DefinedTerm[]>(`defined-terms:${documentId}`, []);
   const [inspectedTerm, setInspectedTerm] = useState<DefinedTerm | null>(null);
+  const [highlightedTerm, setHighlightedTerm] = useState<DefinedTerm | null>(null);
   const [highlightMode, setHighlightMode] = useState<HighlightMode>('all');
 
-  // Clear inspected term when document changes
+  // Clear states when document changes
   useEffect(() => {
     setInspectedTerm(null);
+    setHighlightedTerm(null);
   }, [documentVersion]);
 
   // Add a single term
@@ -127,6 +135,8 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
         addTerm,
         inspectedTerm,
         setInspectedTerm,
+        highlightedTerm,
+        setHighlightedTerm,
         highlightMode,
         setHighlightMode,
         addExtractedTerms,
