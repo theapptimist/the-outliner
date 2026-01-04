@@ -8,8 +8,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, FileText, Search } from 'lucide-react';
-import { DocumentMetadata, listDocuments, deleteDocument } from '@/lib/documentStorage';
+import { Trash2, FileText, Search, Loader2 } from 'lucide-react';
+import { CloudDocumentMetadata, listCloudDocuments, deleteCloudDocument } from '@/lib/cloudDocumentStorage';
 import { formatDistanceToNow } from 'date-fns';
 
 interface OpenDocumentDialogProps {
@@ -25,25 +25,44 @@ export function OpenDocumentDialog({
   onSelect,
   currentDocId,
 }: OpenDocumentDialogProps) {
-  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
+  const [documents, setDocuments] = useState<CloudDocumentMetadata[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
-      setDocuments(listDocuments());
-      setSearch('');
+    async function load() {
+      if (open) {
+        setLoading(true);
+        try {
+          const docs = await listCloudDocuments();
+          setDocuments(docs);
+        } catch (e) {
+          console.error('Failed to list documents:', e);
+        }
+        setLoading(false);
+        setSearch('');
+      }
     }
+    load();
   }, [open]);
 
   const filtered = documents.filter(d =>
     d.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Delete this document permanently?')) {
-      deleteDocument(id);
-      setDocuments(listDocuments());
+      setDeletingId(id);
+      try {
+        await deleteCloudDocument(id);
+        const docs = await listCloudDocuments();
+        setDocuments(docs);
+      } catch (e) {
+        console.error('Failed to delete document:', e);
+      }
+      setDeletingId(null);
     }
   };
 
@@ -70,7 +89,11 @@ export function OpenDocumentDialog({
         </div>
 
         <ScrollArea className="h-[300px] -mx-2">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               {documents.length === 0 ? 'No saved documents' : 'No matching documents'}
             </div>
@@ -96,8 +119,13 @@ export function OpenDocumentDialog({
                     size="icon"
                     className="h-8 w-8 opacity-0 group-hover:opacity-100 shrink-0"
                     onClick={(e) => handleDelete(doc.id, e)}
+                    disabled={deletingId === doc.id}
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    {deletingId === doc.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    )}
                   </Button>
                 </div>
               ))}
