@@ -8,7 +8,7 @@ export const termHighlightPluginKey = new PluginKey('termHighlight');
 interface TermHighlightState {
   terms: DefinedTerm[];
   highlightMode: HighlightMode;
-  inspectedTerm: DefinedTerm | null;
+  highlightedTerm: DefinedTerm | null;
 }
 
 function escapeRegex(str: string): string {
@@ -19,7 +19,7 @@ function findTermMatches(
   doc: any,
   terms: DefinedTerm[],
   highlightMode: HighlightMode,
-  inspectedTerm: DefinedTerm | null
+  highlightedTerm: DefinedTerm | null
 ): Decoration[] {
   const decorations: Decoration[] = [];
   
@@ -28,8 +28,8 @@ function findTermMatches(
   }
 
   // Determine which terms to highlight
-  const termsToHighlight = highlightMode === 'selected' && inspectedTerm
-    ? [inspectedTerm]
+  const termsToHighlight = highlightMode === 'selected' && highlightedTerm
+    ? [highlightedTerm]
     : terms;
 
   if (termsToHighlight.length === 0) {
@@ -78,7 +78,7 @@ export function createTermHighlightPlugin(initialState: TermHighlightState) {
           doc,
           initialState.terms,
           initialState.highlightMode,
-          initialState.inspectedTerm
+          initialState.highlightedTerm
         );
         return DecorationSet.create(doc, decorations);
       },
@@ -90,14 +90,14 @@ export function createTermHighlightPlugin(initialState: TermHighlightState) {
           const state = meta || {
             terms: initialState.terms,
             highlightMode: initialState.highlightMode,
-            inspectedTerm: initialState.inspectedTerm,
+            highlightedTerm: initialState.highlightedTerm,
           };
           
           const decorations = findTermMatches(
             newState.doc,
             state.terms,
             state.highlightMode,
-            state.inspectedTerm
+            state.highlightedTerm
           );
           return DecorationSet.create(newState.doc, decorations);
         }
@@ -122,7 +122,7 @@ export const TermHighlightExtension = Extension.create({
       createTermHighlightPlugin({
         terms: [],
         highlightMode: 'all',
-        inspectedTerm: null,
+        highlightedTerm: null,
       }),
     ];
   },

@@ -31,7 +31,9 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     selectionSource, 
     insertTextAtCursor, 
     inspectedTerm,
-    setInspectedTerm, 
+    setInspectedTerm,
+    highlightedTerm,
+    setHighlightedTerm,
     terms, 
     setTerms, 
     addTerm,
@@ -63,6 +65,13 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       }
     };
   }, []);
+
+  // Auto-recalculate usages when hierarchy blocks or terms change
+  useEffect(() => {
+    if (document?.hierarchyBlocks && Object.keys(document.hierarchyBlocks).length > 0 && terms.length > 0) {
+      recalculateUsages(document.hierarchyBlocks);
+    }
+  }, [document?.hierarchyBlocks, terms.length, recalculateUsages]);
   
   // Handle clearing terms with undo capability
   const handleClearTerms = useCallback(() => {
@@ -110,28 +119,33 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     }, 10000);
   }, [terms, setTerms, toast]);
   
-  // Handle highlighting a specific term
+  // Handle highlighting a specific term (highlighter button)
   const handleHighlightTerm = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     
     // If already highlighting this term, turn off highlighting
-    if (highlightMode === 'selected' && inspectedTerm?.id === term.id) {
+    if (highlightMode === 'selected' && highlightedTerm?.id === term.id) {
       setHighlightMode('none');
-      setInspectedTerm(null);
+      setHighlightedTerm(null);
     } else {
       // Set to highlight just this term
       setHighlightMode('selected');
-      setInspectedTerm(term);
+      setHighlightedTerm(term);
     }
-  }, [highlightMode, inspectedTerm, setHighlightMode, setInspectedTerm]);
+  }, [highlightMode, highlightedTerm, setHighlightMode, setHighlightedTerm]);
 
-  // Handle opening term usages pane
+  // Handle opening term usages pane (eye button) - toggles the panel
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setInspectedTerm(term);
-  }, [setInspectedTerm]);
+    // Toggle: if already viewing this term's usages, close the panel
+    if (inspectedTerm?.id === term.id) {
+      setInspectedTerm(null);
+    } else {
+      setInspectedTerm(term);
+    }
+  }, [inspectedTerm, setInspectedTerm]);
 
   // Handle clicking on a term card to insert it at cursor
   const handleTermClick = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
@@ -311,9 +325,9 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               </Button>
               {highlightMode === 'selected' && (
                 <div className="px-2 py-1 text-[10px] text-muted-foreground border-t border-border/30 mt-0.5">
-                  {inspectedTerm 
-                    ? <span>Showing: <strong className="text-primary">{inspectedTerm.term}</strong></span>
-                    : <span>Click <Eye className="inline h-2.5 w-2.5 mx-0.5" /> on a term to select</span>
+                  {highlightedTerm 
+                    ? <span>Showing: <strong className="text-primary">{highlightedTerm.term}</strong></span>
+                    : <span>Click <Highlighter className="inline h-2.5 w-2.5 mx-0.5" /> on a term to select</span>
                   }
                 </div>
               )}
@@ -434,7 +448,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               const isExpanded = expandedTerms.has(term.id);
               const hasUsages = term.usages.length > 0;
               const totalUsages = term.usages.reduce((sum, u) => sum + u.count, 0);
-              const isHighlighted = highlightMode === 'selected' && inspectedTerm?.id === term.id;
+              const isHighlighted = highlightMode === 'selected' && highlightedTerm?.id === term.id;
+              const isInspected = inspectedTerm?.id === term.id;
 
               return (
                 <div
@@ -498,7 +513,9 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                           <button
                             className={cn(
                               "flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors",
-                              "text-accent hover:bg-accent/20"
+                              isInspected 
+                                ? "bg-accent/30 text-accent" 
+                                : "text-accent hover:bg-accent/20"
                             )}
                             onMouseDownCapture={(e) => e.stopPropagation()}
                             onClick={(e) => handleViewUsages(term, e)}
@@ -508,7 +525,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-xs">
-                          View usages
+                          {isInspected ? 'Close usages panel' : 'View usages'}
                         </TooltipContent>
                       </Tooltip>
                       

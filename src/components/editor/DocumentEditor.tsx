@@ -20,7 +20,7 @@ export function DocumentEditor() {
     setSelectedText,
     terms,
     highlightMode,
-    inspectedTerm,
+    highlightedTerm,
   } = useEditorContext();
   
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -116,18 +116,18 @@ export function DocumentEditor() {
     };
   }, [editor, setSelectedText]);
 
-  // Update term highlights when terms, mode, or inspected term changes
+  // Update term highlights when terms, mode, or highlighted term changes
   useEffect(() => {
     if (!editor) return;
     
     const tr = editor.state.tr.setMeta(termHighlightPluginKey, {
       terms,
       highlightMode,
-      inspectedTerm,
+      highlightedTerm,
     });
     
     editor.view.dispatch(tr);
-  }, [editor, terms, highlightMode, inspectedTerm]);
+  }, [editor, terms, highlightMode, highlightedTerm]);
 
   // Keyboard shortcuts for find/replace
   useEffect(() => {
