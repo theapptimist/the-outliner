@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2, Highlighter, RefreshCw, X } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2, Highlighter, RefreshCw, X, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -441,15 +441,100 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                   key={term.id}
                   className={cn(
                     "rounded-md border border-border/50 bg-card/50 overflow-hidden",
-                    "hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer",
-                    isHighlighted && "border-l-2 border-l-amber-500 bg-amber-500/5"
+                    isHighlighted && "ring-1 ring-amber-500/50"
                   )}
-                  onClick={(e) => handleTermClick(term, e)}
                   onMouseDownCapture={(e) => {
                     // Prevent focus theft from editor textarea
                     e.preventDefault();
                   }}
                 >
+                  {/* Tool Strip Header */}
+                  <div className="flex items-center justify-between px-2 py-1.5 bg-muted/50 border-b border-border/30">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary transition-colors"
+                          onClick={(e) => handleTermClick(term, e)}
+                          onMouseDownCapture={(e) => e.stopPropagation()}
+                        >
+                          <Type className="h-3 w-3 text-primary" />
+                          Insert
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        Insert term at cursor
+                      </TooltipContent>
+                    </Tooltip>
+                    
+                    <div className="flex items-center gap-1">
+                      {/* Highlight button */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            className={cn(
+                              "flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors",
+                              isHighlighted 
+                                ? "bg-amber-500/30 text-amber-600 dark:text-amber-400" 
+                                : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
+                            )}
+                            onMouseDownCapture={(e) => e.stopPropagation()}
+                            onClick={(e) => handleHighlightTerm(term, e)}
+                          >
+                            <Highlighter className="h-3 w-3" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {isHighlighted ? 'Turn off highlighting' : 'Highlight in document'}
+                        </TooltipContent>
+                      </Tooltip>
+                      
+                      {/* View usages button */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            className={cn(
+                              "flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors",
+                              totalUsages > 0
+                                ? "text-accent hover:bg-accent/20"
+                                : "text-muted-foreground/50 cursor-not-allowed"
+                            )}
+                            onMouseDownCapture={(e) => e.stopPropagation()}
+                            onClick={(e) => totalUsages > 0 && handleViewUsages(term, e)}
+                            disabled={totalUsages === 0}
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span className="text-[10px]">{totalUsages}</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {totalUsages > 0 ? 'View all usages' : 'No usages found'}
+                        </TooltipContent>
+                      </Tooltip>
+                      
+                      {/* Expand chevron */}
+                      {hasUsages && (
+                        <button
+                          className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                          onMouseDownCapture={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next = new Set(expandedTerms);
+                            if (isExpanded) next.delete(term.id);
+                            else next.add(term.id);
+                            setExpandedTerms(next);
+                          }}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Card Content */}
                   <Collapsible
                     open={isExpanded}
                     onOpenChange={(open) => {
@@ -459,76 +544,19 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                       setExpandedTerms(next);
                     }}
                   >
-                    <CollapsibleTrigger asChild>
-                      <button 
-                        className="w-full p-2 text-left"
-                        onMouseDownCapture={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium text-xs text-foreground">{term.term}</div>
-                          <div className="flex items-center gap-1">
-                            {/* Highlight button */}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  className={cn(
-                                    "p-1 rounded transition-colors",
-                                    isHighlighted 
-                                      ? "bg-amber-500/30 text-amber-600 dark:text-amber-400" 
-                                      : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
-                                  )}
-                                  onMouseDownCapture={(e) => e.stopPropagation()}
-                                  onClick={(e) => handleHighlightTerm(term, e)}
-                                >
-                                  <Highlighter className="h-3 w-3" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="left" className="text-xs">
-                                {isHighlighted ? 'Turn off highlighting' : 'Highlight this term'}
-                              </TooltipContent>
-                            </Tooltip>
-                            
-                            {/* View usages button */}
-                            {totalUsages > 0 && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    className="flex items-center gap-1 text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded hover:bg-accent/30 transition-colors"
-                                    onMouseDownCapture={(e) => e.stopPropagation()}
-                                    onClick={(e) => handleViewUsages(term, e)}
-                                  >
-                                    <Eye className="h-2.5 w-2.5" />
-                                    {totalUsages}
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" className="text-xs">
-                                  View all usages
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            
-                            {/* Expand chevron */}
-                            {hasUsages && (
-                              isExpanded ? (
-                                <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                              )
-                            )}
-                          </div>
+                    <div className="p-2">
+                      <div className="font-medium text-xs text-foreground">{term.term}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                        {term.definition}
+                      </div>
+                      {term.sourceLocation && (
+                        <div className="grid grid-cols-[auto_auto_1fr] gap-1.5 mt-2 text-xs text-primary items-start">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          <span className="font-mono font-medium whitespace-nowrap">{term.sourceLocation.prefix}</span>
+                          <span className="min-w-0 break-words">{term.sourceLocation.label}</span>
                         </div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-                          {term.definition}
-                        </div>
-                        {term.sourceLocation && (
-                          <div className="grid grid-cols-[auto_auto_1fr] gap-1.5 mt-2 text-xs text-primary items-start">
-                            <MapPin className="h-3.5 w-3.5 shrink-0" />
-                            <span className="font-mono font-medium whitespace-nowrap">{term.sourceLocation.prefix}</span>
-                            <span className="min-w-0 break-words">{term.sourceLocation.label}</span>
-                          </div>
-                        )}
-                      </button>
-                    </CollapsibleTrigger>
+                      )}
+                    </div>
                     
                     <CollapsibleContent>
                       {hasUsages && (
