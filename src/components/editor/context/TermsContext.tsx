@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
-import { HierarchyBlockData } from '@/types/document';
+import { HierarchyNode } from '@/types/node';
 import { scanForTermUsages } from '@/lib/termScanner';
 
 // Highlight mode for terms in document
@@ -48,7 +48,7 @@ interface TermsContextValue {
   addExtractedTerms: (terms: Array<{ term: string; definition: string; sourceLabel: string }>) => void;
 
   // Recalculate usages for all terms by scanning hierarchy blocks
-  recalculateUsages: (hierarchyBlocks: Record<string, HierarchyBlockData>) => void;
+  recalculateUsages: (hierarchyBlocks: Record<string, HierarchyNode[]>) => void;
 }
 
 const TermsContext = createContext<TermsContextValue>({
@@ -115,10 +115,10 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
   }, [setTerms]);
 
   // Recalculate usages for all terms by scanning hierarchy blocks
-  const recalculateUsages = useCallback((hierarchyBlocks: Record<string, HierarchyBlockData>) => {
-    const blocks = Object.entries(hierarchyBlocks).map(([id, data]) => ({
+  const recalculateUsages = useCallback((hierarchyBlocks: Record<string, HierarchyNode[]>) => {
+    const blocks = Object.entries(hierarchyBlocks).map(([id, tree]) => ({
       id,
-      tree: data.tree,
+      tree,
     }));
 
     setTerms(prev => prev.map(term => ({
