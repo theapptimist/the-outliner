@@ -113,13 +113,13 @@ export function TermUsagesPane({ term, onClose }: TermUsagesPaneProps) {
       
       {/* Usages List */}
       <ScrollArea className="flex-1">
-        <div className="p-2 flex flex-wrap gap-1">
+        <div className="p-2 flex flex-col gap-0.5">
           {hasUsages ? (
             usages.map((usage, idx) => (
               <button
                 key={`${usage.nodeId}-${idx}`}
                 className={cn(
-                  "px-2 py-1 rounded text-xs font-mono font-medium transition-colors",
+                  "w-full text-left px-2 py-1 rounded text-xs font-mono font-medium transition-colors",
                   "hover:bg-accent/20",
                   idx === currentIndex 
                     ? "bg-primary/20 text-primary border border-primary/30" 
@@ -130,7 +130,7 @@ export function TermUsagesPane({ term, onClose }: TermUsagesPaneProps) {
               >
                 {usage.nodePrefix || '—'}
                 {usage.count > 1 && (
-                  <span className="ml-0.5 text-[10px] opacity-60">×{usage.count}</span>
+                  <span className="ml-1 text-[10px] opacity-60">×{usage.count}</span>
                 )}
               </button>
             ))
