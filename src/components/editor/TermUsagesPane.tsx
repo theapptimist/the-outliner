@@ -113,7 +113,7 @@ export function TermUsagesPane({ term, onClose }: TermUsagesPaneProps) {
       
       {/* Usages List */}
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="p-2 space-y-0.5">
           {hasUsages ? (
             usages.map((usage, idx) => (
               <button
@@ -127,8 +127,14 @@ export function TermUsagesPane({ term, onClose }: TermUsagesPaneProps) {
                 )}
                 onClick={() => handleUsageClick(idx)}
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center">
+                  {/* Prefix column */}
+                  <span className="font-mono text-[11px] font-medium text-primary shrink-0">
+                    {usage.nodePrefix || '—'}
+                  </span>
+                  {/* Label column */}
                   <span className="truncate text-foreground">{usage.nodeLabel}</span>
+                  {/* Count + icon column */}
                   <div className="flex items-center gap-1 shrink-0">
                     {usage.count > 1 && (
                       <span className="text-[10px] text-muted-foreground">×{usage.count}</span>

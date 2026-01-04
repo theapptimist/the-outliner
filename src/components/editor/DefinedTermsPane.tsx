@@ -41,6 +41,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     setHighlightMode,
     recalculateUsages,
     hierarchyBlocks,
+    outlineStyle,
+    mixedConfig,
   } = useEditorContext();
   
   const { toast } = useToast();
@@ -69,9 +71,9 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   // Auto-recalculate usages when hierarchy blocks or terms change
   useEffect(() => {
     if (Object.keys(hierarchyBlocks).length > 0 && terms.length > 0) {
-      recalculateUsages(hierarchyBlocks);
+      recalculateUsages(hierarchyBlocks, { style: outlineStyle, mixedConfig });
     }
-  }, [hierarchyBlocks, terms.length, recalculateUsages]);
+  }, [hierarchyBlocks, terms.length, recalculateUsages, outlineStyle, mixedConfig]);
   
   // Handle clearing terms with undo capability
   const handleClearTerms = useCallback(() => {
@@ -178,7 +180,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               usages: [...t.usages, {
                 blockId: '', // Unknown from sidebar context
                 nodeId: '', // Unknown from sidebar context
-                nodeLabel: `${result.nodePrefix} ${result.nodeLabel}`.trim(),
+                nodeLabel: result.nodeLabel,
+                nodePrefix: result.nodePrefix || '',
                 count: 1
               }]
             };
@@ -199,7 +202,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   // Handle recalculating usages
   const handleRecalculate = useCallback(() => {
     if (Object.keys(hierarchyBlocks).length > 0) {
-      recalculateUsages(hierarchyBlocks);
+      recalculateUsages(hierarchyBlocks, { style: outlineStyle, mixedConfig });
       setRecalcFeedback('done');
     } else {
       // No hierarchy blocks to scan
@@ -207,7 +210,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     }
     // Reset feedback after a moment
     setTimeout(() => setRecalcFeedback('idle'), 1500);
-  }, [hierarchyBlocks, recalculateUsages]);
+  }, [hierarchyBlocks, recalculateUsages, outlineStyle, mixedConfig]);
 
   const filteredTerms = terms.filter(t =>
     t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
