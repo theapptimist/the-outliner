@@ -5,7 +5,7 @@ import { EditorProvider, useEditorContext } from '@/components/editor/EditorCont
 import { TermUsagesPane } from '@/components/editor/TermUsagesPane';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import type { ImperativePanelHandle } from 'react-resizable-panels';
+import { type ImperativePanelHandle } from 'react-resizable-panels';
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
 import { DocumentState, createEmptyDocument } from '@/types/document';
@@ -67,7 +67,7 @@ function EditorContent() {
   // Expand/collapse the usages panel when inspectedTerm changes
   useEffect(() => {
     if (inspectedTerm) {
-      usagesPanelRef.current?.expand();
+      usagesPanelRef.current?.resize(25); // Expand to 25%
     } else {
       usagesPanelRef.current?.collapse();
     }
@@ -91,9 +91,7 @@ function EditorContent() {
         >
           {inspectedTerm ? (
             <TermUsagesPane term={inspectedTerm} onClose={() => setInspectedTerm(null)} />
-          ) : (
-            <div className="h-full" />
-          )}
+          ) : null}
         </ResizablePanel>
 
         <ResizableHandle withHandle />
