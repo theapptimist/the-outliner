@@ -318,7 +318,10 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                 variant={highlightMode === 'selected' ? 'secondary' : 'ghost'}
                 size="sm"
                 className="h-7 justify-start text-xs px-2"
-                onClick={() => setHighlightMode('selected')}
+                onClick={() => {
+                  setHighlightMode('selected');
+                  setHighlightedTerm(null); // Clear any highlighted term - wait for user to select one
+                }}
               >
                 <span className="h-2 w-2 rounded-full bg-primary mr-2" />
                 Selected only
