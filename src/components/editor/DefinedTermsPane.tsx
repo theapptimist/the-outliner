@@ -40,7 +40,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     highlightMode,
     setHighlightMode,
     recalculateUsages,
-    document,
+    hierarchyBlocks,
   } = useEditorContext();
   
   const { toast } = useToast();
@@ -68,10 +68,10 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
   // Auto-recalculate usages when hierarchy blocks or terms change
   useEffect(() => {
-    if (document?.hierarchyBlocks && Object.keys(document.hierarchyBlocks).length > 0 && terms.length > 0) {
-      recalculateUsages(document.hierarchyBlocks);
+    if (Object.keys(hierarchyBlocks).length > 0 && terms.length > 0) {
+      recalculateUsages(hierarchyBlocks);
     }
-  }, [document?.hierarchyBlocks, terms.length, recalculateUsages]);
+  }, [hierarchyBlocks, terms.length, recalculateUsages]);
   
   // Handle clearing terms with undo capability
   const handleClearTerms = useCallback(() => {
@@ -198,8 +198,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
   // Handle recalculating usages
   const handleRecalculate = useCallback(() => {
-    if (document?.hierarchyBlocks && Object.keys(document.hierarchyBlocks).length > 0) {
-      recalculateUsages(document.hierarchyBlocks);
+    if (Object.keys(hierarchyBlocks).length > 0) {
+      recalculateUsages(hierarchyBlocks);
       setRecalcFeedback('done');
     } else {
       // No hierarchy blocks to scan
@@ -207,7 +207,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     }
     // Reset feedback after a moment
     setTimeout(() => setRecalcFeedback('idle'), 1500);
-  }, [document, recalculateUsages]);
+  }, [hierarchyBlocks, recalculateUsages]);
 
   const filteredTerms = terms.filter(t =>
     t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -216,7 +216,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
 
   // Detect orphaned terms (terms exist but no outline to scan)
   const hasOrphanedTerms = terms.length > 0 && 
-    (!document?.hierarchyBlocks || Object.keys(document.hierarchyBlocks).length === 0);
+    Object.keys(hierarchyBlocks).length === 0;
 
   if (collapsed) {
     return (

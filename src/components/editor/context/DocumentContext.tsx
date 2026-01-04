@@ -35,6 +35,11 @@ interface DocumentContextValue {
   documentVersion: number;
   setDocumentContent: (content: any) => void;
 
+  // Hierarchy block sync for usage scanning
+  hierarchyBlocks: Record<string, HierarchyNode[]>;
+  updateHierarchyBlock: (blockId: string, tree: HierarchyNode[]) => void;
+  removeHierarchyBlock: (blockId: string) => void;
+
   // TipTap editor
   editor: Editor | null;
   setEditor: (editor: Editor | null) => void;
@@ -80,6 +85,10 @@ const DocumentContext = createContext<DocumentContextValue>({
   document: null,
   documentVersion: 0,
   setDocumentContent: () => {},
+
+  hierarchyBlocks: {},
+  updateHierarchyBlock: () => {},
+  removeHierarchyBlock: () => {},
 
   editor: null,
   setEditor: () => {},
@@ -140,6 +149,21 @@ export function DocumentProvider({
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
+  const [hierarchyBlocks, setHierarchyBlocks] = useState<Record<string, HierarchyNode[]>>({});
+
+  const updateHierarchyBlock = useCallback((blockId: string, tree: HierarchyNode[]) => {
+    setHierarchyBlocks(prev => ({
+      ...prev,
+      [blockId]: tree,
+    }));
+  }, []);
+
+  const removeHierarchyBlock = useCallback((blockId: string) => {
+    setHierarchyBlocks(prev => {
+      const { [blockId]: _, ...rest } = prev;
+      return rest;
+    });
+  }, []);
 
   const setOnPasteHierarchy = useCallback((fn: PasteHierarchyFn | null) => {
     setPasteHierarchyFn(() => fn);
@@ -188,6 +212,9 @@ export function DocumentProvider({
         document,
         documentVersion,
         setDocumentContent: onDocumentContentChange,
+        hierarchyBlocks,
+        updateHierarchyBlock,
+        removeHierarchyBlock,
         editor,
         setEditor,
         nodeClipboard,

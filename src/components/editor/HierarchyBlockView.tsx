@@ -45,6 +45,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     registerFindReplaceProvider,
     unregisterFindReplaceProvider,
     setOnPasteHierarchy,
+    updateHierarchyBlock,
+    removeHierarchyBlock,
   } = useEditorContext();
   
   // Local hierarchy state for this block - persist to session storage
@@ -62,7 +64,16 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   useEffect(() => {
     treeRef.current = tree;
-  }, [tree]);
+    // Sync tree to document context for usage scanning
+    updateHierarchyBlock(blockId, tree);
+  }, [tree, blockId, updateHierarchyBlock]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      removeHierarchyBlock(blockId);
+    };
+  }, [blockId, removeHierarchyBlock]);
 
   // Undo/Redo history
   const historyRef = useRef<HierarchyNode[][]>([initialTree]);
