@@ -5,7 +5,6 @@ import { EditorProvider, useEditorContext } from '@/components/editor/EditorCont
 import { TermUsagesPane } from '@/components/editor/TermUsagesPane';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { type ImperativePanelHandle } from 'react-resizable-panels';
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
 import { DocumentState, createEmptyDocument } from '@/types/document';
@@ -62,42 +61,32 @@ function loadCurrentDocument(): DocumentState {
 // Inner component that uses EditorContext
 function EditorContent() {
   const { inspectedTerm, setInspectedTerm, documentVersion } = useEditorContext();
-  const usagesPanelRef = useRef<ImperativePanelHandle>(null);
 
-  // Expand/collapse the usages panel when inspectedTerm changes
-  useEffect(() => {
-    if (inspectedTerm) {
-      usagesPanelRef.current?.resize(25); // Expand to 25%
-    } else {
-      usagesPanelRef.current?.collapse();
-    }
-  }, [inspectedTerm]);
+  // Key the panel group so defaultSize recalculates when the usages pane opens/closes
+  const layoutKey = inspectedTerm ? `usages:${inspectedTerm.id}` : 'usages:none';
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* Term Usages Panel (kept mounted to avoid remounting the editor) */}
+      <ResizablePanelGroup key={layoutKey} direction="horizontal" className="flex-1">
+        {/* Term Usages Panel */}
         <ResizablePanel
-          ref={usagesPanelRef}
-          defaultSize={0}
-          minSize={15}
+          defaultSize={inspectedTerm ? 25 : 0}
+          minSize={0}
           maxSize={40}
           collapsible
           collapsedSize={0}
-          onCollapse={() => {
-            // Sync state when user manually collapses
-            if (inspectedTerm) setInspectedTerm(null);
-          }}
         >
           {inspectedTerm ? (
             <TermUsagesPane term={inspectedTerm} onClose={() => setInspectedTerm(null)} />
-          ) : null}
+          ) : (
+            <div className="h-full" />
+          )}
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         {/* Main Editor Panel */}
-        <ResizablePanel defaultSize={100} minSize={40}>
+        <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
           <main className="h-full overflow-hidden">
             {/* Force TipTap to remount on explicit document changes */}
             <DocumentEditor key={documentVersion} />
