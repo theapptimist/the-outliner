@@ -109,6 +109,22 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       deletedTermsBackup.current = null;
     }, 10000);
   }, [terms, setTerms, toast]);
+  
+  // Handle highlighting a specific term
+  const handleHighlightTerm = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // If already highlighting this term, turn off highlighting
+    if (highlightMode === 'selected' && inspectedTerm?.id === term.id) {
+      setHighlightMode('none');
+      setInspectedTerm(null);
+    } else {
+      // Set to highlight just this term
+      setHighlightMode('selected');
+      setInspectedTerm(term);
+    }
+  }, [highlightMode, inspectedTerm, setHighlightMode, setInspectedTerm]);
 
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
@@ -418,13 +434,15 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
               const isExpanded = expandedTerms.has(term.id);
               const hasUsages = term.usages.length > 0;
               const totalUsages = term.usages.reduce((sum, u) => sum + u.count, 0);
+              const isHighlighted = highlightMode === 'selected' && inspectedTerm?.id === term.id;
 
               return (
                 <div
                   key={term.id}
                   className={cn(
                     "rounded-md border border-border/50 bg-card/50 overflow-hidden",
-                    "hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer"
+                    "hover:border-accent/50 hover:bg-accent/5 transition-colors cursor-pointer",
+                    isHighlighted && "border-l-2 border-l-amber-500 bg-amber-500/5"
                   )}
                   onClick={(e) => handleTermClick(term, e)}
                   onMouseDownCapture={(e) => {
@@ -449,6 +467,28 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                         <div className="flex items-center justify-between">
                           <div className="font-medium text-xs text-foreground">{term.term}</div>
                           <div className="flex items-center gap-1">
+                            {/* Highlight button */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className={cn(
+                                    "p-1 rounded transition-colors",
+                                    isHighlighted 
+                                      ? "bg-amber-500/30 text-amber-600 dark:text-amber-400" 
+                                      : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
+                                  )}
+                                  onMouseDownCapture={(e) => e.stopPropagation()}
+                                  onClick={(e) => handleHighlightTerm(term, e)}
+                                >
+                                  <Highlighter className="h-3 w-3" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="text-xs">
+                                {isHighlighted ? 'Turn off highlighting' : 'Highlight this term'}
+                              </TooltipContent>
+                            </Tooltip>
+                            
+                            {/* View usages button */}
                             {totalUsages > 0 && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -466,6 +506,8 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                                 </TooltipContent>
                               </Tooltip>
                             )}
+                            
+                            {/* Expand chevron */}
                             {hasUsages && (
                               isExpanded ? (
                                 <ChevronDown className="h-3 w-3 text-muted-foreground" />
