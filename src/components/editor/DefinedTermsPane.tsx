@@ -19,6 +19,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   const { 
     selectionSource, 
     insertTextAtCursor, 
+    inspectedTerm,
     setInspectedTerm, 
     terms, 
     setTerms, 
@@ -219,6 +220,14 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                 <span className="h-2 w-2 rounded-full bg-primary mr-2" />
                 Selected only
               </Button>
+              {highlightMode === 'selected' && (
+                <div className="px-2 py-1 text-[10px] text-muted-foreground border-t border-border/30 mt-0.5">
+                  {inspectedTerm 
+                    ? <span>Showing: <strong className="text-primary">{inspectedTerm.term}</strong></span>
+                    : <span>Click <Eye className="inline h-2.5 w-2.5 mx-0.5" /> on a term to select</span>
+                  }
+                </div>
+              )}
               <Button
                 variant={highlightMode === 'none' ? 'secondary' : 'ghost'}
                 size="sm"
