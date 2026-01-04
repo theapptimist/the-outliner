@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { AddTermDialog } from './AddTermDialog';
 import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
@@ -169,33 +170,67 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
         </Tooltip>
 
         {/* Highlight Mode Toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={cycleHighlightMode}
-              className={cn(
-                "h-7 w-7 p-0 relative",
-                highlightMode === 'all' && "bg-accent/20 text-accent",
-                highlightMode === 'selected' && "bg-primary/20 text-primary",
-                highlightMode === 'none' && "text-muted-foreground"
-              )}
-            >
-              <Highlighter className="h-3.5 w-3.5" />
-              {/* Mode indicator dot */}
-              <span className={cn(
-                "absolute bottom-0.5 right-0.5 h-1 w-1 rounded-full",
-                highlightMode === 'all' && "bg-accent",
-                highlightMode === 'selected' && "bg-primary",
-                highlightMode === 'none' && "bg-muted-foreground"
-              )} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="text-xs">
-            Highlight: {highlightMode === 'all' ? 'All terms' : highlightMode === 'selected' ? 'Selected only' : 'Off'}
-          </TooltipContent>
-        </Tooltip>
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-7 w-7 p-0 relative",
+                    highlightMode === 'all' && "bg-accent/20 text-accent",
+                    highlightMode === 'selected' && "bg-primary/20 text-primary",
+                    highlightMode === 'none' && "text-muted-foreground"
+                  )}
+                >
+                  <Highlighter className="h-3.5 w-3.5" />
+                  {/* Mode indicator dot */}
+                  <span className={cn(
+                    "absolute bottom-0.5 right-0.5 h-1 w-1 rounded-full",
+                    highlightMode === 'all' && "bg-accent",
+                    highlightMode === 'selected' && "bg-primary",
+                    highlightMode === 'none' && "bg-muted-foreground"
+                  )} />
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              Highlight mode
+            </TooltipContent>
+          </Tooltip>
+          <PopoverContent side="right" align="start" className="w-auto p-1">
+            <div className="flex flex-col gap-0.5">
+              <Button
+                variant={highlightMode === 'all' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 justify-start text-xs px-2"
+                onClick={() => setHighlightMode('all')}
+              >
+                <span className="h-2 w-2 rounded-full bg-accent mr-2" />
+                All terms
+              </Button>
+              <Button
+                variant={highlightMode === 'selected' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 justify-start text-xs px-2"
+                onClick={() => setHighlightMode('selected')}
+              >
+                <span className="h-2 w-2 rounded-full bg-primary mr-2" />
+                Selected only
+              </Button>
+              <Button
+                variant={highlightMode === 'none' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 justify-start text-xs px-2"
+                onClick={() => setHighlightMode('none')}
+              >
+                <span className="h-2 w-2 rounded-full bg-muted-foreground mr-2" />
+                Off
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Recalculate Usages */}
         {terms.length > 0 && (
