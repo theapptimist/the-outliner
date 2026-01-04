@@ -22,8 +22,10 @@ import {
   X,
   Bug,
   Copy,
+  LogOut,
+  Cloud,
 } from 'lucide-react';
-import { getRecentDocuments, listDocuments } from '@/lib/documentStorage';
+import { getRecentCloudDocuments, CloudDocumentMetadata } from '@/lib/cloudDocumentStorage';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -40,6 +42,7 @@ interface FileMenuProps {
   onImport: () => void;
   onDelete: () => void;
   onOpenRecent: (id: string) => void;
+  onSignOut?: () => void;
   hasDocument: boolean;
   iconOnly?: boolean;
 }
@@ -72,9 +75,9 @@ function MenuItem({ icon, label, shortcut, onClick, disabled, destructive }: Men
 }
 
 interface DiagnosticsData {
-  documentsIndex: unknown[];
-  recentIds: string[];
-  resolvedRecent: { id: string; title: string }[];
+  note: string;
+  recentDocsCount: number;
+  recentDocs: { id: string; title: string }[];
 }
 
 function DiagnosticsPanel({ 
@@ -109,50 +112,26 @@ function DiagnosticsPanel({
       
       <div className="space-y-3">
         <div>
-          <div className="font-medium text-muted-foreground mb-1">
-            Documents Index ({(data.documentsIndex as unknown[]).length})
+          <div className="font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+            <Cloud className="h-3 w-3" />
+            Cloud Storage
           </div>
-          <div className="bg-muted/30 rounded p-2 max-h-24 overflow-auto">
-            {(data.documentsIndex as { id: string; title: string }[]).length === 0 ? (
-              <span className="text-muted-foreground italic">Empty</span>
-            ) : (
-              (data.documentsIndex as { id: string; title: string }[]).map((doc, i) => (
-                <div key={i} className="truncate">
-                  • {doc.title} <span className="text-muted-foreground">({doc.id?.slice(0,8)}...)</span>
-                </div>
-              ))
-            )}
+          <div className="bg-muted/30 rounded p-2">
+            <span className="text-muted-foreground">{data.note}</span>
           </div>
         </div>
         
         <div>
           <div className="font-medium text-muted-foreground mb-1">
-            Recent IDs ({data.recentIds.length})
+            Recent Documents ({data.recentDocsCount})
           </div>
-          <div className="bg-muted/30 rounded p-2 max-h-20 overflow-auto">
-            {data.recentIds.length === 0 ? (
-              <span className="text-muted-foreground italic">Empty</span>
+          <div className="bg-muted/30 rounded p-2 max-h-32 overflow-auto">
+            {data.recentDocs.length === 0 ? (
+              <span className="text-muted-foreground italic">No recent documents</span>
             ) : (
-              data.recentIds.map((id, i) => (
-                <div key={i} className="truncate text-muted-foreground">
-                  {i + 1}. {id.slice(0, 8)}...
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        
-        <div>
-          <div className="font-medium text-muted-foreground mb-1">
-            Resolved Recent ({data.resolvedRecent.length})
-          </div>
-          <div className="bg-muted/30 rounded p-2 max-h-20 overflow-auto">
-            {data.resolvedRecent.length === 0 ? (
-              <span className="text-muted-foreground italic">Empty</span>
-            ) : (
-              data.resolvedRecent.map((doc, i) => (
+              data.recentDocs.map((doc, i) => (
                 <div key={i} className="truncate">
-                  {i + 1}. {doc.title}
+                  • {doc.title} <span className="text-muted-foreground">({doc.id}...)</span>
                 </div>
               ))
             )}
@@ -175,6 +154,7 @@ export function FileMenu({
   onImport,
   onDelete,
   onOpenRecent,
+  onSignOut,
   hasDocument,
   iconOnly = false,
 }: FileMenuProps) {
@@ -185,13 +165,21 @@ export function FileMenu({
   const [draftTitle, setDraftTitle] = useState(documentTitle);
   const [showRecent, setShowRecent] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [recentDocs, setRecentDocs] = useState(() => getRecentDocuments());
+  const [recentDocs, setRecentDocs] = useState<CloudDocumentMetadata[]>([]);
   
   // Refresh recent docs list when sheet opens
   useEffect(() => {
-    if (sheetOpen) {
-      setRecentDocs(getRecentDocuments());
+    async function loadRecent() {
+      if (sheetOpen) {
+        try {
+          const docs = await getRecentCloudDocuments();
+          setRecentDocs(docs);
+        } catch (e) {
+          console.error('Failed to load recent docs:', e);
+        }
+      }
     }
+    loadRecent();
   }, [sheetOpen]);
 
   // Focus the input when entering rename mode
@@ -212,28 +200,11 @@ export function FileMenu({
   }, [sheetOpen]);
 
   const getDiagnosticsData = () => {
-    const DOCUMENTS_KEY = 'outliner:documents';
-    const RECENT_KEY = 'outliner:recent';
-    
-    let documentsIndex: unknown[] = [];
-    let recentIds: string[] = [];
-    
-    try {
-      const storedDocs = localStorage.getItem(DOCUMENTS_KEY);
-      documentsIndex = storedDocs ? JSON.parse(storedDocs) : [];
-    } catch { documentsIndex = []; }
-    
-    try {
-      const storedRecent = localStorage.getItem(RECENT_KEY);
-      recentIds = storedRecent ? JSON.parse(storedRecent) : [];
-    } catch { recentIds = []; }
-    
-    const resolvedRecent = getRecentDocuments();
-    
+    // Diagnostics now shows cloud storage info
     return {
-      documentsIndex,
-      recentIds,
-      resolvedRecent,
+      note: 'Documents are now stored in the cloud',
+      recentDocsCount: recentDocs.length,
+      recentDocs: recentDocs.map(d => ({ id: d.id.slice(0, 8), title: d.title })),
     };
   };
 
@@ -468,19 +439,24 @@ export function FileMenu({
                 destructive
               />
 
+              {onSignOut && (
+                <>
+                  <div className="h-px bg-border my-3" />
+                  
+                  <MenuItem
+                    icon={<LogOut className="h-3.5 w-3.5" />}
+                    label="Sign Out"
+                    onClick={() => handleAction(onSignOut)}
+                  />
+                </>
+              )}
+
               <div className="h-px bg-border my-3" />
 
-              <button
-                onClick={() => {
-                  setShowDiagnostics(true);
-                  setShowRecent(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50 text-muted-foreground"
-              >
-                <Bug className="h-4 w-4" />
-                <span className="flex-1">Diagnostics</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2 px-2.5 py-2 text-[10px] text-muted-foreground">
+                <Cloud className="h-3 w-3" />
+                <span>Cloud synced</span>
+              </div>
             </div>
           )}
         </SheetContent>

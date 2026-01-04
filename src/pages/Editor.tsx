@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DocumentEditor } from '@/components/editor/DocumentEditor';
 import { EditorSidebar } from '@/components/editor/EditorSidebar';
 import { EditorProvider, useEditorContext } from '@/components/editor/EditorContext';
@@ -8,15 +9,17 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
 import { DocumentState, createEmptyDocument } from '@/types/document';
+import { useAuth } from '@/contexts/AuthContext';
 import {
-  loadDocument,
-  saveDocument,
-  deleteDocument,
-  exportDocument,
-  importDocument,
-  createNewDocument,
-} from '@/lib/documentStorage';
+  loadCloudDocument,
+  saveCloudDocument,
+  deleteCloudDocument,
+  exportCloudDocument,
+  importCloudDocument,
+  createCloudDocument,
+} from '@/lib/cloudDocumentStorage';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 const MIXED_CONFIG_STORAGE_KEY = 'outline-mixed-config';
 const CURRENT_DOC_KEY = 'outliner:current-doc-id';
@@ -42,20 +45,6 @@ function saveMixedConfig(config: MixedStyleConfig) {
   } catch (e) {
     console.warn('Failed to save mixed config to localStorage:', e);
   }
-}
-
-function loadCurrentDocument(): DocumentState {
-  try {
-    const currentId = localStorage.getItem(CURRENT_DOC_KEY);
-    if (currentId) {
-      const doc = loadDocument(currentId);
-      if (doc) return doc;
-    }
-  } catch (e) {
-    console.warn('Failed to load current document:', e);
-  }
-  // Create AND save new document so it appears in storage/recent
-  return createNewDocument('Untitled');
 }
 
 // Inner component that uses EditorContext
@@ -98,17 +87,21 @@ function EditorContent() {
 }
 
 export default function Editor() {
+  const { user, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+  
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
   const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
   const [autoDescend, setAutoDescend] = useState(false);
   const [showRevealCodes, setShowRevealCodes] = useState(false);
   
   // Document state
-  const [document, setDocument] = useState<DocumentState>(loadCurrentDocument);
+  const [document, setDocument] = useState<DocumentState | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [documentVersion, setDocumentVersion] = useState(0);
   const [openDialogOpen, setOpenDialogOpen] = useState(false);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Undo/redo state passed up from document
@@ -118,6 +111,47 @@ export default function Editor() {
   // Refs for undo/redo callbacks
   const undoRef = useRef<() => void>(() => {});
   const redoRef = useRef<() => void>(() => {});
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  // Load document on mount
+  useEffect(() => {
+    async function loadInitialDocument() {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        const currentId = localStorage.getItem(CURRENT_DOC_KEY);
+        if (currentId) {
+          const doc = await loadCloudDocument(currentId);
+          if (doc) {
+            setDocument(doc);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        // No existing document, create a new one
+        const newDoc = await createCloudDocument(user.id, 'Untitled');
+        setDocument(newDoc);
+      } catch (e) {
+        console.error('Failed to load document:', e);
+        // Fallback to empty document
+        const emptyDoc = createEmptyDocument();
+        setDocument(emptyDoc);
+      }
+      setIsLoading(false);
+    }
+    
+    if (user) {
+      loadInitialDocument();
+    }
+  }, [user]);
 
   const handleUndoRedoChange = useCallback((
     undo: () => void,
@@ -133,8 +167,10 @@ export default function Editor() {
 
   // Persist current doc ID
   useEffect(() => {
-    localStorage.setItem(CURRENT_DOC_KEY, document.meta.id);
-  }, [document.meta.id]);
+    if (document?.meta?.id) {
+      localStorage.setItem(CURRENT_DOC_KEY, document.meta.id);
+    }
+  }, [document?.meta?.id]);
 
   // Save mixed config when it changes
   useEffect(() => {
@@ -173,65 +209,95 @@ export default function Editor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [document]);
 
-  const handleNew = useCallback(() => {
+  const handleNew = useCallback(async () => {
+    if (!user) return;
     if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
-    const newDoc = createNewDocument('Untitled');
-    setDocument(newDoc);
-    setDocumentVersion(v => v + 1);
-    setHasUnsavedChanges(false);
-    toast.success('New document created');
-  }, [hasUnsavedChanges]);
-
-  const handleSave = useCallback(() => {
-    const saved = saveDocument(document);
-    setDocument(saved);
-    setHasUnsavedChanges(false);
-    toast.success('Document saved');
-  }, [document]);
-
-  const handleSaveAs = useCallback((title: string) => {
-    const newDoc: DocumentState = {
-      ...document,
-      meta: {
-        ...document.meta,
-        id: crypto.randomUUID(),
-        title,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    };
-    const saved = saveDocument(newDoc);
-    setDocument(saved);
-    setDocumentVersion(v => v + 1);
-    setHasUnsavedChanges(false);
-    toast.success(`Saved as "${title}"`);
-  }, [document]);
-
-  const handleOpenDocument = useCallback((id: string) => {
-    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
-    const doc = loadDocument(id);
-    if (doc) {
-      setDocument(doc);
+    
+    try {
+      const newDoc = await createCloudDocument(user.id, 'Untitled');
+      setDocument(newDoc);
       setDocumentVersion(v => v + 1);
       setHasUnsavedChanges(false);
-      toast.success(`Opened "${doc.meta.title}"`);
-    } else {
-      toast.error('Document not found');
+      toast.success('New document created');
+    } catch (e) {
+      toast.error('Failed to create document');
+    }
+  }, [user, hasUnsavedChanges]);
+
+  const handleSave = useCallback(async () => {
+    if (!user || !document) return;
+    
+    try {
+      const saved = await saveCloudDocument(document, user.id);
+      setDocument(saved);
+      setHasUnsavedChanges(false);
+      toast.success('Saved to cloud');
+    } catch (e) {
+      toast.error('Failed to save document');
+    }
+  }, [user, document]);
+
+  const handleSaveAs = useCallback(async (title: string) => {
+    if (!user || !document) return;
+    
+    try {
+      const newDoc: DocumentState = {
+        ...document,
+        meta: {
+          ...document.meta,
+          id: crypto.randomUUID(),
+          title,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      const saved = await saveCloudDocument(newDoc, user.id);
+      setDocument(saved);
+      setDocumentVersion(v => v + 1);
+      setHasUnsavedChanges(false);
+      toast.success(`Saved as "${title}"`);
+    } catch (e) {
+      toast.error('Failed to save document');
+    }
+  }, [user, document]);
+
+  const handleOpenDocument = useCallback(async (id: string) => {
+    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+    
+    try {
+      const doc = await loadCloudDocument(id);
+      if (doc) {
+        setDocument(doc);
+        setDocumentVersion(v => v + 1);
+        setHasUnsavedChanges(false);
+        toast.success(`Opened "${doc.meta.title}"`);
+      } else {
+        toast.error('Document not found');
+      }
+    } catch (e) {
+      toast.error('Failed to open document');
     }
   }, [hasUnsavedChanges]);
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
+    if (!user || !document) return;
     if (!confirm('Delete this document permanently?')) return;
-    deleteDocument(document.meta.id);
-    const newDoc = createNewDocument('Untitled');
-    setDocument(newDoc);
-    setDocumentVersion(v => v + 1);
-    setHasUnsavedChanges(false);
-    toast.success('Document deleted');
-  }, [document.meta.id]);
+    
+    try {
+      await deleteCloudDocument(document.meta.id);
+      const newDoc = await createCloudDocument(user.id, 'Untitled');
+      setDocument(newDoc);
+      setDocumentVersion(v => v + 1);
+      setHasUnsavedChanges(false);
+      toast.success('Document deleted');
+    } catch (e) {
+      toast.error('Failed to delete document');
+    }
+  }, [user, document]);
 
   const handleExport = useCallback(() => {
-    exportDocument(document);
+    if (!document) return;
+    exportCloudDocument(document);
     toast.success('Document exported');
   }, [document]);
 
@@ -240,10 +306,12 @@ export default function Editor() {
   }, []);
 
   const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) return;
     const file = e.target.files?.[0];
     if (!file) return;
+    
     try {
-      const imported = await importDocument(file);
+      const imported = await importCloudDocument(file, user.id);
       setDocument(imported);
       setDocumentVersion(v => v + 1);
       setHasUnsavedChanges(false);
@@ -252,23 +320,37 @@ export default function Editor() {
       toast.error('Failed to import document');
     }
     e.target.value = '';
-  }, []);
+  }, [user]);
 
   const handleTitleChange = useCallback((title: string) => {
-    setDocument(prev => ({
+    setDocument(prev => prev ? {
       ...prev,
       meta: { ...prev.meta, title },
-    }));
+    } : null);
     setHasUnsavedChanges(true);
   }, []);
 
   const handleDocumentContentChange = useCallback((content: any) => {
-    setDocument(prev => ({
+    setDocument(prev => prev ? {
       ...prev,
       content,
-    }));
+    } : null);
     setHasUnsavedChanges(true);
   }, []);
+
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+    navigate('/auth');
+  }, [signOut, navigate]);
+
+  // Loading states
+  if (authLoading || isLoading || !document) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const fileMenuProps = {
     documentTitle: document.meta.title,
@@ -282,6 +364,7 @@ export default function Editor() {
     onImport: handleImport,
     onDelete: handleDelete,
     onOpenRecent: handleOpenDocument,
+    onSignOut: handleSignOut,
     hasDocument: true,
   };
 
