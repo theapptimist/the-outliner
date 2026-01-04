@@ -70,15 +70,18 @@ function findTermMatches(
 }
 
 export function createTermHighlightPlugin(initialState: TermHighlightState) {
+  // Track current state so doc changes don't lose highlight settings
+  let currentState = { ...initialState };
+  
   return new Plugin({
     key: termHighlightPluginKey,
     state: {
       init(_, { doc }) {
         const decorations = findTermMatches(
           doc,
-          initialState.terms,
-          initialState.highlightMode,
-          initialState.highlightedTerm
+          currentState.terms,
+          currentState.highlightMode,
+          currentState.highlightedTerm
         );
         return DecorationSet.create(doc, decorations);
       },
@@ -86,18 +89,17 @@ export function createTermHighlightPlugin(initialState: TermHighlightState) {
         // Check if our metadata changed
         const meta = tr.getMeta(termHighlightPluginKey) as TermHighlightState | undefined;
         
+        if (meta) {
+          // Update current state when metadata is received
+          currentState = { ...meta };
+        }
+        
         if (meta || tr.docChanged) {
-          const state = meta || {
-            terms: initialState.terms,
-            highlightMode: initialState.highlightMode,
-            highlightedTerm: initialState.highlightedTerm,
-          };
-          
           const decorations = findTermMatches(
             newState.doc,
-            state.terms,
-            state.highlightMode,
-            state.highlightedTerm
+            currentState.terms,
+            currentState.highlightMode,
+            currentState.highlightedTerm
           );
           return DecorationSet.create(newState.doc, decorations);
         }
