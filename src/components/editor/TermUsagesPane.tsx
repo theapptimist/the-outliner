@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, MapPin, ExternalLink } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -113,39 +113,29 @@ export function TermUsagesPane({ term, onClose }: TermUsagesPaneProps) {
       
       {/* Usages List */}
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-0.5">
+        <div className="p-2 flex flex-wrap gap-1">
           {hasUsages ? (
             usages.map((usage, idx) => (
               <button
                 key={`${usage.nodeId}-${idx}`}
                 className={cn(
-                  "w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors",
-                  "hover:bg-accent/10",
+                  "px-2 py-1 rounded text-xs font-mono font-medium transition-colors",
+                  "hover:bg-accent/20",
                   idx === currentIndex 
-                    ? "bg-accent/20 border border-accent/30" 
-                    : "bg-muted/30 border border-transparent"
+                    ? "bg-primary/20 text-primary border border-primary/30" 
+                    : "bg-muted/40 text-foreground border border-transparent"
                 )}
                 onClick={() => handleUsageClick(idx)}
+                title={usage.nodeLabel}
               >
-                <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center">
-                  {/* Prefix column */}
-                  <span className="font-mono text-[11px] font-medium text-primary shrink-0">
-                    {usage.nodePrefix || '—'}
-                  </span>
-                  {/* Label column */}
-                  <span className="truncate text-foreground">{usage.nodeLabel}</span>
-                  {/* Count + icon column */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {usage.count > 1 && (
-                      <span className="text-[10px] text-muted-foreground">×{usage.count}</span>
-                    )}
-                    <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                  </div>
-                </div>
+                {usage.nodePrefix || '—'}
+                {usage.count > 1 && (
+                  <span className="ml-0.5 text-[10px] opacity-60">×{usage.count}</span>
+                )}
               </button>
             ))
           ) : (
-            <div className="text-center py-8 text-xs text-muted-foreground">
+            <div className="w-full text-center py-8 text-xs text-muted-foreground">
               <p>No usages found yet.</p>
               <p className="mt-1 text-[10px]">Click on a term card to insert it.</p>
             </div>
