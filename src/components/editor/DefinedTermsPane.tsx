@@ -444,8 +444,12 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                     isHighlighted && "ring-1 ring-amber-500/50"
                   )}
                   onMouseDownCapture={(e) => {
-                    // Prevent focus theft from editor textarea
-                    e.preventDefault();
+                    // Prevent focus theft from editor textarea, but allow interactive controls
+                    const target = e.target as HTMLElement;
+                    const isInteractive = !!target.closest(
+                      'button, [role="button"], a, input, textarea, select, [contenteditable="true"], [data-allow-pointer]'
+                    );
+                    if (!isInteractive) e.preventDefault();
                   }}
                 >
                   {/* Tool Strip Header */}
@@ -494,20 +498,17 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                           <button
                             className={cn(
                               "flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors",
-                              totalUsages > 0
-                                ? "text-accent hover:bg-accent/20"
-                                : "text-muted-foreground/50 cursor-not-allowed"
+                              "text-accent hover:bg-accent/20"
                             )}
                             onMouseDownCapture={(e) => e.stopPropagation()}
-                            onClick={(e) => totalUsages > 0 && handleViewUsages(term, e)}
-                            disabled={totalUsages === 0}
+                            onClick={(e) => handleViewUsages(term, e)}
                           >
                             <Eye className="h-3 w-3" />
                             <span className="text-[10px]">{totalUsages}</span>
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-xs">
-                          {totalUsages > 0 ? 'View all usages' : 'No usages found'}
+                          View usages
                         </TooltipContent>
                       </Tooltip>
                       
