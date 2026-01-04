@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2, Highlighter, RefreshCw } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2, Highlighter, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,6 +33,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
+  const [orphanWarningDismissed, setOrphanWarningDismissed] = useState(false);
 
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
@@ -252,20 +253,30 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Orphaned terms warning */}
-        {hasOrphanedTerms && (
+        {hasOrphanedTerms && !orphanWarningDismissed && (
           <div className="p-2 border-b border-warning/30 bg-warning/10">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] text-warning-foreground">
                 No outline found. Terms are from a previous session.
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 px-2 text-[10px] text-warning-foreground hover:text-destructive hover:bg-destructive/10"
-                onClick={() => setTerms([])}
-              >
-                Clear
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-2 text-[10px] text-warning-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setTerms([])}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 text-warning-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => setOrphanWarningDismissed(true)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
