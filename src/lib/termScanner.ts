@@ -1,9 +1,11 @@
 import { HierarchyNode } from '@/types/node';
+import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 
 export interface TermUsage {
   blockId: string;
   nodeId: string;
   nodeLabel: string;
+  nodePrefix: string; // Hierarchical prefix like "1.a.i."
   count: number;
 }
 
@@ -64,15 +66,34 @@ export function extractDefinedTermsFromItems(
 /**
  * Scans hierarchy nodes for occurrences of a term.
  * Uses case-insensitive matching with word boundaries.
+ * Optionally computes hierarchical prefixes if style info is provided.
  */
 export function scanForTermUsages(
   term: string,
-  blocks: { id: string; tree: HierarchyNode[] }[]
+  blocks: { id: string; tree: HierarchyNode[] }[],
+  styleConfig?: { style: OutlineStyle; mixedConfig?: MixedStyleConfig }
 ): TermUsage[] {
   const usages: TermUsage[] = [];
   const wordBoundaryRegex = new RegExp(`\\b${escapeRegex(term)}\\b`, 'gi');
+  
+  const style = styleConfig?.style ?? 'mixed';
+  const mixedConfig = styleConfig?.mixedConfig ?? DEFAULT_MIXED_CONFIG;
 
-  function scanNode(node: HierarchyNode, blockId: string) {
+  function computePrefix(depth: number, indices: number[]): string {
+    // Build full hierarchical prefix by concatenating each level
+    const parts: string[] = [];
+    for (let d = 0; d <= depth; d++) {
+      const levelIndices = indices.slice(0, d + 1);
+      const levelPrefix = style === 'mixed'
+        ? getOutlinePrefixCustom(d, levelIndices, mixedConfig)
+        : getOutlinePrefix(style, d, levelIndices);
+      // Remove trailing punctuation for compact display
+      parts.push(levelPrefix.replace(/[.\s]+$/, '').replace(/^\(|\)$/g, ''));
+    }
+    return parts.join('');
+  }
+
+  function scanNode(node: HierarchyNode, blockId: string, depth: number, indices: number[]) {
     // Check the node's label
     const labelMatches = (node.label.match(wordBoundaryRegex) || []).length;
     
@@ -89,20 +110,21 @@ export function scanForTermUsages(
         blockId,
         nodeId: node.id,
         nodeLabel: node.label.substring(0, 50) + (node.label.length > 50 ? '...' : ''),
+        nodePrefix: computePrefix(depth, indices),
         count: totalCount,
       });
     }
 
     // Recurse into children
-    for (const child of node.children) {
-      scanNode(child, blockId);
-    }
+    node.children.forEach((child, childIndex) => {
+      scanNode(child, blockId, depth + 1, [...indices, childIndex + 1]);
+    });
   }
 
   for (const block of blocks) {
-    for (const root of block.tree) {
-      scanNode(root, block.id);
-    }
+    block.tree.forEach((root, rootIndex) => {
+      scanNode(root, block.id, 0, [rootIndex + 1]);
+    });
   }
 
   return usages;
