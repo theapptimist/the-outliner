@@ -28,8 +28,9 @@ function findTermMatches(
   }
 
   // Determine which terms to highlight
-  const termsToHighlight = highlightMode === 'selected' && highlightedTerm
-    ? [highlightedTerm]
+  // In 'selected' mode with no term chosen, highlight nothing (wait state)
+  const termsToHighlight = highlightMode === 'selected'
+    ? (highlightedTerm ? [highlightedTerm] : [])
     : terms;
 
   if (termsToHighlight.length === 0) {
