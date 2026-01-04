@@ -405,13 +405,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         // Scroll node into view
         nodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
-        // Trigger highlight animation
+        // Set persistent focus highlight (different from term highlighting)
         setHighlightedNodeId(nodeId);
-        
-        // Clear highlight after animation completes
-        setTimeout(() => {
-          setHighlightedNodeId(null);
-        }, 1500);
       }
     };
 
@@ -885,7 +880,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             }}
             className={cn(
               'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
-              highlightedNodeId === node.id && 'bg-accent/30 ring-2 ring-accent/50 rounded-md'
+              highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md'
             )}
             style={{ 
               paddingLeft: `${visualDepth * 24 + 8}px`,
