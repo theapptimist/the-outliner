@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { BookOpen, ChevronDown, ChevronRight, Plus, Search, MapPin, Eye, Trash2, Highlighter, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,9 +6,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { AddTermDialog } from './AddTermDialog';
 import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface DefinedTermsPaneProps {
   collapsed: boolean;
@@ -30,12 +41,74 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
     document,
   } = useEditorContext();
   
+  const { toast } = useToast();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
   const [orphanWarningDismissed, setOrphanWarningDismissed] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  
+  // Undo capability - store deleted terms temporarily
+  const deletedTermsBackup = useRef<DefinedTerm[] | null>(null);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Handle clearing terms with undo capability
+  const handleClearTerms = useCallback(() => {
+    // Store backup for undo
+    deletedTermsBackup.current = [...terms];
+    const count = terms.length;
+    
+    // Clear the terms
+    setTerms([]);
+    setClearConfirmOpen(false);
+    
+    // Clear any existing timeout
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+    
+    // Show toast with undo
+    const { dismiss } = toast({
+      title: `Cleared ${count} term${count !== 1 ? 's' : ''}`,
+      description: "Click Undo to restore them.",
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (deletedTermsBackup.current) {
+              setTerms(deletedTermsBackup.current);
+              deletedTermsBackup.current = null;
+              dismiss();
+              toast({
+                title: "Terms restored",
+                description: `${count} term${count !== 1 ? 's' : ''} have been restored.`,
+              });
+            }
+          }}
+        >
+          Undo
+        </Button>
+      ),
+    });
+    
+    // Clear backup after 10 seconds
+    undoTimeoutRef.current = setTimeout(() => {
+      deletedTermsBackup.current = null;
+    }, 10000);
+  }, [terms, setTerms, toast]);
 
   // Handle opening term usages pane
   const handleViewUsages = useCallback((term: DefinedTerm, e: React.MouseEvent) => {
@@ -282,7 +355,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                onClick={() => setTerms([])}
+                onClick={() => setClearConfirmOpen(true)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -308,7 +381,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
                   variant="ghost"
                   size="sm"
                   className="h-5 px-2 text-[10px] text-warning-foreground hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setTerms([])}
+                  onClick={() => setClearConfirmOpen(true)}
                 >
                   Clear
                 </Button>
@@ -471,6 +544,25 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
           addTerm(term, definition, source ?? undefined);
         }}
       />
+      
+      {/* Clear Confirmation Dialog */}
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear all defined terms?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {terms.length} term{terms.length !== 1 ? 's' : ''} from this document. 
+              You'll have a brief window to undo this action.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearTerms} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Clear {terms.length} term{terms.length !== 1 ? 's' : ''}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
