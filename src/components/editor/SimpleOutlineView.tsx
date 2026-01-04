@@ -74,7 +74,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode, editor, terms, highlightMode, inspectedTerm } = useEditorContext();
+  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode, editor, terms, highlightMode, highlightedTerm } = useEditorContext();
 
   // Track last focused position for term insertion when clicking sidebar
   const lastFocusedNodeIdRef = useRef<string | null>(null);
@@ -94,8 +94,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const termHighlightRegex = useMemo(() => {
     if (highlightMode === 'none') return null;
     
-    const termsToHighlight = highlightMode === 'selected' && inspectedTerm
-      ? [inspectedTerm]
+    // In 'selected' mode with no term chosen, highlight nothing (wait state)
+    const termsToHighlight = highlightMode === 'selected'
+      ? (highlightedTerm ? [highlightedTerm] : [])
       : terms;
     
     if (termsToHighlight.length === 0) return null;
@@ -104,7 +105,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     );
     return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
-  }, [terms, highlightMode, inspectedTerm]);
+  }, [terms, highlightMode, highlightedTerm]);
 
   // Helper to render text with term highlights
   const renderHighlightedText = useCallback((text: string) => {
