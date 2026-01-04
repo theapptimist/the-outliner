@@ -54,7 +54,8 @@ function loadCurrentDocument(): DocumentState {
   } catch (e) {
     console.warn('Failed to load current document:', e);
   }
-  return createEmptyDocument();
+  // Create AND save new document so it appears in storage/recent
+  return createNewDocument('Untitled');
 }
 
 // Inner component that uses EditorContext
