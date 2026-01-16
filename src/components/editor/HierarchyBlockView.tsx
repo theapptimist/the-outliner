@@ -25,8 +25,9 @@ import { FindReplaceMatch, FindReplaceProvider, useEditorContext } from './Edito
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, Minimize2, Maximize2, ExternalLink } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink, Upload } from 'lucide-react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { ImportOutlineDialog } from './ImportOutlineDialog';
 
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
@@ -61,6 +62,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [selectedId, setSelectedId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [autoFocusId, setAutoFocusId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -662,8 +664,24 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     <NodeViewWrapper 
       className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
     >
+      {/* Import Outline Dialog */}
+      <ImportOutlineDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handlePasteHierarchyFromContext}
+      />
+      
       {/* Floating toolbar - appears on hover */}
       <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+          onClick={() => setImportDialogOpen(true)}
+          title="Import Outline"
+        >
+          <Upload className="h-3 w-3" />
+        </Button>
         <Button
           variant="ghost"
           size="sm"
