@@ -1,7 +1,7 @@
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
 import { 
   createNode,
@@ -35,7 +35,7 @@ interface HierarchyBlockViewProps extends NodeViewProps {
 
 export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected }: HierarchyBlockViewProps) {
   const blockId = node.attrs.blockId as string;
-  
+  const navigate = useNavigate();
   // Get settings from context
   const {
     outlineStyle,
@@ -693,12 +693,10 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-          asChild
+          onClick={() => navigate('/hierarchy')}
           title="Open in Hierarchy Editor"
         >
-          <Link to="/hierarchy">
-            <ExternalLink className="h-3 w-3" />
-          </Link>
+          <ExternalLink className="h-3 w-3" />
         </Button>
         <Button
           variant="ghost"
