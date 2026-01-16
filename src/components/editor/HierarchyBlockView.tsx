@@ -48,10 +48,17 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     setOnPasteHierarchy,
     updateHierarchyBlock,
     removeHierarchyBlock,
+    document,
   } = useEditorContext();
   
-  // Local hierarchy state for this block - persist to session storage
+  // Compute initial tree: prefer saved data from document, fallback to empty node
   const [{ initialTree, firstNodeId }] = useState(() => {
+    // Check if document has saved hierarchy data for this block
+    const savedTree = document?.hierarchyBlocks?.[blockId];
+    if (savedTree && Array.isArray(savedTree) && savedTree.length > 0) {
+      return { initialTree: savedTree as HierarchyNode[], firstNodeId: savedTree[0].id };
+    }
+    // No saved data, create empty tree
     const node = createNode(null, 'default', '');
     return { initialTree: [node], firstNodeId: node.id };
   });
