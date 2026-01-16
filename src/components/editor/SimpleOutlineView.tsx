@@ -487,24 +487,25 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         pendingNewNodeIdRef.current = newId;
       }
     } else if (e.key === 'Enter' && e.shiftKey) {
-      // Shift+Enter on empty node: convert to child of previous sibling
+      // Shift+Enter:
+      // - With content: insert a literal line break inside the current item
+      // - On an empty numbered node: convert it into a BODY line under the previous sibling
       const currentValue = e.currentTarget.value;
-      if (currentValue.trim() === '') {
+      if (currentValue.trim() === '' && node.type !== 'body') {
         e.preventDefault();
         const currentIndex = nodes.findIndex(n => n.id === node.id);
         const prevNode = currentIndex > 0 ? nodes[currentIndex - 1] : null;
-        
+
         if (prevNode) {
-          // Delete current empty node
+          // Remove the empty numbered node (e.g. "2.")
           onDelete(node.id);
-          // Add child to previous sibling
-          const newId = onAddChildNode(prevNode.id);
+          // Insert an unnumbered body line right after the previous sibling (under "1.")
+          const newId = onAddBodyNode(prevNode.id);
           if (newId) {
             pendingNewNodeIdRef.current = newId;
           }
         }
       } else {
-        // Shift+Enter with content: insert a line break inside the current item
         insertLineBreak();
       }
     } else if (e.key === 'Escape') {
