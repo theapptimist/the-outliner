@@ -36,6 +36,8 @@ interface SimpleOutlineViewProps {
   onPasteNodes?: (afterId: string, nodes: HierarchyNode[]) => string | undefined;
   onPasteHierarchy?: (afterId: string, items: Array<{ label: string; depth: number }>) => void;
   autoDescend?: boolean;
+  /** Handler for navigating to a linked document */
+  onNavigateToLinkedDocument?: (documentId: string, documentTitle: string) => void;
 }
 
 export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
@@ -64,6 +66,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onPasteNodes,
     onPasteHierarchy,
     autoDescend = false,
+    onNavigateToLinkedDocument,
   },
   forwardedRef
 ) {
@@ -836,7 +839,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       {nodes.map((node) => {
         const indices = nodeIndices.get(node.id) || [1];
         const isBody = node.type === 'body';
-        const prefix = isBody ? '' : (
+        const isLink = node.type === 'link';
+        const prefix = (isBody || isLink) ? '' : (
           outlineStyle === 'mixed' 
             ? getOutlinePrefixCustom(node.depth, indices, mixedConfig)
             : getOutlinePrefix(outlineStyle, node.depth, indices)

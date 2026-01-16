@@ -4,6 +4,8 @@ import { DocumentEditor } from '@/components/editor/DocumentEditor';
 import { EditorSidebar } from '@/components/editor/EditorSidebar';
 import { EditorProvider, useEditorContext } from '@/components/editor/EditorContext';
 import { TermUsagesPane } from '@/components/editor/TermUsagesPane';
+import { NavigationBackBar } from '@/components/editor/NavigationBackBar';
+import { NavigationProvider, useNavigation } from '@/contexts/NavigationContext';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
@@ -47,41 +49,60 @@ function saveMixedConfig(config: MixedStyleConfig) {
   }
 }
 
-// Inner component that uses EditorContext
-function EditorContent() {
-  const { inspectedTerm, setInspectedTerm, documentVersion } = useEditorContext();
+// Inner component that uses EditorContext and Navigation
+function EditorContent({ onNavigateToDocument }: { onNavigateToDocument: (id: string) => void }) {
+  const { inspectedTerm, setInspectedTerm, documentVersion, setNavigateToDocument, document } = useEditorContext();
+  const { pushDocument } = useNavigation();
+
+  // Register navigation handler with context
+  useEffect(() => {
+    const handler = (documentId: string, documentTitle: string) => {
+      // Push current document onto navigation stack before navigating
+      if (document) {
+        pushDocument(document.meta.id, document.meta.title);
+      }
+      onNavigateToDocument(documentId);
+    };
+    setNavigateToDocument(handler);
+    return () => setNavigateToDocument(null);
+  }, [setNavigateToDocument, pushDocument, document, onNavigateToDocument]);
 
   // Key the panel group so defaultSize recalculates when the usages pane opens/closes
   const layoutKey = inspectedTerm ? `usages:${inspectedTerm.id}` : 'usages:none';
 
   return (
-    <div className="flex-1 flex overflow-hidden">
-      <ResizablePanelGroup key={layoutKey} direction="horizontal" className="flex-1">
-        {/* Term Usages Panel */}
-        <ResizablePanel
-          defaultSize={inspectedTerm ? 25 : 0}
-          minSize={0}
-          maxSize={40}
-          collapsible
-          collapsedSize={0}
-        >
-          {inspectedTerm ? (
-            <TermUsagesPane term={inspectedTerm} onClose={() => setInspectedTerm(null)} />
-          ) : (
-            <div className="h-full" />
-          )}
-        </ResizablePanel>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Back navigation bar */}
+      <NavigationBackBar onNavigateBack={onNavigateToDocument} />
+      
+      <div className="flex-1 flex overflow-hidden">
+        <ResizablePanelGroup key={layoutKey} direction="horizontal" className="flex-1">
+          {/* Term Usages Panel */}
+          <ResizablePanel
+            defaultSize={inspectedTerm ? 25 : 0}
+            minSize={0}
+            maxSize={40}
+            collapsible
+            collapsedSize={0}
+          >
+            {inspectedTerm ? (
+              <TermUsagesPane term={inspectedTerm} onClose={() => setInspectedTerm(null)} />
+            ) : (
+              <div className="h-full" />
+            )}
+          </ResizablePanel>
 
-        <ResizableHandle withHandle />
+          <ResizableHandle withHandle />
 
-        {/* Main Editor Panel */}
-        <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
-          <main className="h-full overflow-hidden">
-            {/* Force TipTap to remount on explicit document changes */}
-            <DocumentEditor key={documentVersion} />
-          </main>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          {/* Main Editor Panel */}
+          <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
+            <main className="h-full overflow-hidden">
+              {/* Force TipTap to remount on explicit document changes */}
+              <DocumentEditor key={documentVersion} />
+            </main>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
     </div>
   );
 }
@@ -261,8 +282,9 @@ export default function Editor() {
     }
   }, [user, document]);
 
-  const handleOpenDocument = useCallback(async (id: string) => {
-    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+  // Handle navigation to a document (for both regular open and link navigation)
+  const handleNavigateToDocument = useCallback(async (id: string, skipConfirm = false) => {
+    if (!skipConfirm && hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
     
     try {
       const doc = await loadCloudDocument(id);
@@ -270,7 +292,6 @@ export default function Editor() {
         setDocument(doc);
         setDocumentVersion(v => v + 1);
         setHasUnsavedChanges(false);
-        toast.success(`Opened "${doc.meta.title}"`);
       } else {
         toast.error('Document not found');
       }
@@ -278,6 +299,14 @@ export default function Editor() {
       toast.error('Failed to open document');
     }
   }, [hasUnsavedChanges]);
+
+  const handleOpenDocument = useCallback(async (id: string) => {
+    await handleNavigateToDocument(id);
+    const doc = await loadCloudDocument(id);
+    if (doc) {
+      toast.success(`Opened "${doc.meta.title}"`);
+    }
+  }, [handleNavigateToDocument]);
 
   const handleDelete = useCallback(async () => {
     if (!user || !document) return;
@@ -377,58 +406,60 @@ export default function Editor() {
   };
 
   return (
-    <EditorProvider
-      outlineStyle={outlineStyle}
-      mixedConfig={mixedConfig}
-      autoDescend={autoDescend}
-      showRevealCodes={showRevealCodes}
-      document={document}
-      documentVersion={documentVersion}
-      onDocumentContentChange={handleDocumentContentChange}
-      onHierarchyBlocksChange={handleHierarchyBlocksChange}
-      onUndoRedoChange={handleUndoRedoChange}
-    >
-      <div className="h-screen flex bg-background">
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept=".json"
-          onChange={handleFileSelected}
-        />
-        
-        <EditorSidebar
-          outlineStyle={outlineStyle}
-          onOutlineStyleChange={setOutlineStyle}
-          mixedConfig={mixedConfig}
-          onMixedConfigChange={setMixedConfig}
-          autoDescend={autoDescend}
-          onAutoDescendChange={setAutoDescend}
-          showRevealCodes={showRevealCodes}
-          onShowRevealCodesChange={setShowRevealCodes}
-          onUndo={() => undoRef.current()}
-          onRedo={() => redoRef.current()}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          fileMenuProps={fileMenuProps}
-        />
-        
-        <EditorContent />
+    <NavigationProvider>
+      <EditorProvider
+        outlineStyle={outlineStyle}
+        mixedConfig={mixedConfig}
+        autoDescend={autoDescend}
+        showRevealCodes={showRevealCodes}
+        document={document}
+        documentVersion={documentVersion}
+        onDocumentContentChange={handleDocumentContentChange}
+        onHierarchyBlocksChange={handleHierarchyBlocksChange}
+        onUndoRedoChange={handleUndoRedoChange}
+      >
+        <div className="h-screen flex bg-background">
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".json"
+            onChange={handleFileSelected}
+          />
+          
+          <EditorSidebar
+            outlineStyle={outlineStyle}
+            onOutlineStyleChange={setOutlineStyle}
+            mixedConfig={mixedConfig}
+            onMixedConfigChange={setMixedConfig}
+            autoDescend={autoDescend}
+            onAutoDescendChange={setAutoDescend}
+            showRevealCodes={showRevealCodes}
+            onShowRevealCodesChange={setShowRevealCodes}
+            onUndo={() => undoRef.current()}
+            onRedo={() => redoRef.current()}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            fileMenuProps={fileMenuProps}
+          />
+          
+          <EditorContent onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} />
 
-        <OpenDocumentDialog
-          open={openDialogOpen}
-          onOpenChange={setOpenDialogOpen}
-          onSelect={handleOpenDocument}
-          currentDocId={document.meta.id}
-        />
+          <OpenDocumentDialog
+            open={openDialogOpen}
+            onOpenChange={setOpenDialogOpen}
+            onSelect={handleOpenDocument}
+            currentDocId={document.meta.id}
+          />
 
-        <SaveAsDialog
-          open={saveAsDialogOpen}
-          onOpenChange={setSaveAsDialogOpen}
-          onSave={handleSaveAs}
-          defaultTitle={document.meta.title}
-        />
-      </div>
-    </EditorProvider>
+          <SaveAsDialog
+            open={saveAsDialogOpen}
+            onOpenChange={setSaveAsDialogOpen}
+            onSave={handleSaveAs}
+            defaultTitle={document.meta.title}
+          />
+        </div>
+      </EditorProvider>
+    </NavigationProvider>
   );
 }

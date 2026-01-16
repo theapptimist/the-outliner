@@ -1,4 +1,4 @@
-export type NodeType = 'default' | 'container' | 'data' | 'action' | 'reference' | 'body';
+export type NodeType = 'default' | 'container' | 'data' | 'action' | 'reference' | 'body' | 'link';
 
 export interface NodeProperty {
   key: string;
@@ -18,6 +18,10 @@ export interface HierarchyNode {
   content?: any;
   /** Visual indent level for body nodes (Block Tab feature) */
   visualIndent?: number;
+  /** For 'link' type nodes: the ID of the linked document */
+  linkedDocumentId?: string;
+  /** For 'link' type nodes: cached title of the linked document */
+  linkedDocumentTitle?: string;
 }
 
 export interface FlatNode extends Omit<HierarchyNode, 'children'> {
