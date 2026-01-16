@@ -338,6 +338,14 @@ export default function Editor() {
     setHasUnsavedChanges(true);
   }, []);
 
+  const handleHierarchyBlocksChange = useCallback((blocks: Record<string, any>) => {
+    setDocument(prev => prev ? {
+      ...prev,
+      hierarchyBlocks: blocks,
+    } : null);
+    setHasUnsavedChanges(true);
+  }, []);
+
   const handleSignOut = useCallback(async () => {
     await signOut();
     navigate('/auth');
@@ -377,6 +385,7 @@ export default function Editor() {
       document={document}
       documentVersion={documentVersion}
       onDocumentContentChange={handleDocumentContentChange}
+      onHierarchyBlocksChange={handleHierarchyBlocksChange}
       onUndoRedoChange={handleUndoRedoChange}
     >
       <div className="h-screen flex bg-background">

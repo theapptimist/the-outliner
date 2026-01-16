@@ -123,6 +123,7 @@ interface DocumentProviderProps {
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
+  onHierarchyBlocksChange?: (blocks: Record<string, HierarchyNode[]>) => void;
   onUndoRedoChange?: (
     undo: () => void,
     redo: () => void,
@@ -140,6 +141,7 @@ export function DocumentProvider({
   document,
   documentVersion,
   onDocumentContentChange,
+  onHierarchyBlocksChange,
   onUndoRedoChange,
 }: DocumentProviderProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -152,18 +154,25 @@ export function DocumentProvider({
   const [hierarchyBlocks, setHierarchyBlocks] = useState<Record<string, HierarchyNode[]>>({});
 
   const updateHierarchyBlock = useCallback((blockId: string, tree: HierarchyNode[]) => {
-    setHierarchyBlocks(prev => ({
-      ...prev,
-      [blockId]: tree,
-    }));
-  }, []);
+    setHierarchyBlocks(prev => {
+      const next = {
+        ...prev,
+        [blockId]: tree,
+      };
+      // Notify parent of hierarchy changes for cloud persistence
+      onHierarchyBlocksChange?.(next);
+      return next;
+    });
+  }, [onHierarchyBlocksChange]);
 
   const removeHierarchyBlock = useCallback((blockId: string) => {
     setHierarchyBlocks(prev => {
       const { [blockId]: _, ...rest } = prev;
+      // Notify parent of hierarchy changes for cloud persistence
+      onHierarchyBlocksChange?.(rest);
       return rest;
     });
-  }, []);
+  }, [onHierarchyBlocksChange]);
 
   const setOnPasteHierarchy = useCallback((fn: PasteHierarchyFn | null) => {
     setPasteHierarchyFn(() => fn);
