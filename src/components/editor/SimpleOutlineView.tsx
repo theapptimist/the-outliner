@@ -430,9 +430,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     const insertLineBreak = () => {
       e.preventDefault();
       const input = e.currentTarget;
-      const start = input.selectionStart ?? editValue.length;
-      const end = input.selectionEnd ?? editValue.length;
-      const nextValue = `${editValue.slice(0, start)}\n${editValue.slice(end)}`;
+      const currentValue = input.value; // Use actual textarea value to avoid race conditions
+      const start = input.selectionStart ?? currentValue.length;
+      const end = input.selectionEnd ?? currentValue.length;
+      const nextValue = `${currentValue.slice(0, start)}\n${currentValue.slice(end)}`;
       setEditValue(nextValue);
       requestAnimationFrame(() => {
         input.selectionStart = input.selectionEnd = start + 1;
