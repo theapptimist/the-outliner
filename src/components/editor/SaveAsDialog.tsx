@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,12 +17,12 @@ interface SaveAsDialogProps {
   defaultTitle?: string;
 }
 
-export function SaveAsDialog({
+export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(function SaveAsDialog({
   open,
   onOpenChange,
   onSave,
   defaultTitle = '',
-}: SaveAsDialogProps) {
+}, ref) {
   const [title, setTitle] = useState(defaultTitle);
 
   useEffect(() => {
@@ -71,4 +71,4 @@ export function SaveAsDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
