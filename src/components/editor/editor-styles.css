@@ -1,6 +1,6 @@
 /* TipTap Editor Styles */
 
-/* Term highlighting */
+/* Term highlighting (amber) */
 .term-highlight {
   background-color: hsl(var(--accent) / 0.3);
   border-radius: 2px;
@@ -19,6 +19,27 @@
 
 .dark .term-highlight:hover {
   background-color: hsl(var(--accent) / 0.4);
+}
+
+/* Date highlighting (blue) */
+.date-highlight {
+  background-color: hsl(210 100% 50% / 0.2);
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.date-highlight:hover {
+  background-color: hsl(210 100% 50% / 0.35);
+}
+
+.dark .date-highlight {
+  background-color: hsl(210 100% 60% / 0.25);
+}
+
+.dark .date-highlight:hover {
+  background-color: hsl(210 100% 60% / 0.4);
 }
 
 .ProseMirror {
