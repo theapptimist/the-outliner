@@ -21,7 +21,7 @@ interface AddDateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   prefillSelection?: string;
-  selectionSource?: { prefix: string; label: string } | null;
+  selectionSource?: { nodePrefix: string; nodeLabel: string } | null;
   onSave: (date: Date, rawText: string, description?: string) => void;
 }
 
@@ -92,8 +92,8 @@ export function AddDateDialog({
             <div className="flex items-start gap-2 px-3 py-2 bg-muted/50 rounded-md text-sm">
               <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
               <span className="text-muted-foreground break-words whitespace-normal">
-                <span className="font-mono font-medium">{selectionSource.prefix}</span>
-                {' '}{selectionSource.label}
+                <span className="font-mono font-medium">{selectionSource.nodePrefix}</span>
+                {' '}{selectionSource.nodeLabel}
               </span>
             </div>
           )}
