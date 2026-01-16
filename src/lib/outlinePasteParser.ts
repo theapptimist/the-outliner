@@ -191,6 +191,17 @@ export function stripOutlinePrefixes(result: SmartPasteResult): string {
 }
 
 /**
+ * Checks if the first line looks like a document title.
+ */
+function isDocumentTitle(text: string): boolean {
+  const trimmed = text.trim();
+  // Long lines or lines containing title keywords
+  if (trimmed.length > 30) return true;
+  if (/\b(Timeline|Outline|Project|Document|Overview|Summary|Draft|Notes)\b/i.test(trimmed)) return true;
+  return false;
+}
+
+/**
  * Converts parsed outline to a hierarchy structure for importing as nodes.
  * Enhanced to handle date-based and indentation-only hierarchies.
  * Returns an array of { label, depth } objects.
@@ -214,6 +225,8 @@ export function parseOutlineHierarchy(result: SmartPasteResult): Array<{ label: 
   if (useDateMode || useSectionMode) {
     let currentSectionDepth = -1;
     let currentDateDepth = -1;
+    let isFirstNonEmptyLine = true;
+    let hasTitle = false;
     
     for (const line of result.lines) {
       const text = line.strippedText.trim();
@@ -221,21 +234,33 @@ export function parseOutlineHierarchy(result: SmartPasteResult): Array<{ label: 
       
       let depth = 0;
       
+      // Check if first line is a document title
+      if (isFirstNonEmptyLine) {
+        isFirstNonEmptyLine = false;
+        // Title detection: long line or contains title keywords, but NOT a date or section header
+        if (!line.isDateLine && !line.isSectionHeader && isDocumentTitle(text)) {
+          hasTitle = true;
+          hierarchy.push({ label: text, depth: 0 });
+          continue;
+        }
+      }
+      
+      const titleOffset = hasTitle ? 1 : 0;
+      
       if (line.isSectionHeader) {
-        // Section headers are top-level (depth 0)
-        depth = 0;
-        currentSectionDepth = 0;
+        // Section headers: depth 0 (no title) or depth 1 (with title)
+        depth = titleOffset;
+        currentSectionDepth = depth;
         currentDateDepth = -1;
       } else if (line.isDateLine) {
-        // Dates are either depth 0 (if no sections) or depth 1 (under sections)
-        depth = currentSectionDepth >= 0 ? 1 : 0;
+        // Dates: one level deeper than sections
+        depth = currentSectionDepth >= 0 ? currentSectionDepth + 1 : titleOffset;
         currentDateDepth = depth;
       } else {
-        // Content lines: use indentation relative to current context
-        const baseDepth = currentDateDepth >= 0 ? currentDateDepth + 1 : 
-                          currentSectionDepth >= 0 ? currentSectionDepth + 1 : 0;
-        // Add extra depth based on indentation
-        depth = baseDepth + Math.min(line.indentLevel, 3);
+        // Content/bullets: one level deeper than dates or sections
+        depth = currentDateDepth >= 0 ? currentDateDepth + 1 : 
+                currentSectionDepth >= 0 ? currentSectionDepth + 1 : 
+                titleOffset;
       }
       
       hierarchy.push({
