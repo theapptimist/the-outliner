@@ -26,6 +26,7 @@ interface EditorProviderProps {
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
+  onHierarchyBlocksChange?: (blocks: Record<string, any>) => void;
   onUndoRedoChange?: (
     undo: () => void,
     redo: () => void,
@@ -43,6 +44,7 @@ export function EditorProvider({
   document,
   documentVersion,
   onDocumentContentChange,
+  onHierarchyBlocksChange,
   onUndoRedoChange,
 }: EditorProviderProps) {
   const documentId = document?.meta?.id ?? 'default';
@@ -56,6 +58,7 @@ export function EditorProvider({
       document={document}
       documentVersion={documentVersion}
       onDocumentContentChange={onDocumentContentChange}
+      onHierarchyBlocksChange={onHierarchyBlocksChange}
       onUndoRedoChange={onUndoRedoChange}
     >
       <SelectionProvider>
