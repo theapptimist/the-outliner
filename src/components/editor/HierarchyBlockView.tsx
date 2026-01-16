@@ -25,9 +25,10 @@ import { FindReplaceMatch, FindReplaceProvider, useEditorContext } from './Edito
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, Minimize2, Maximize2, ExternalLink, Upload } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink, Upload, Link2 } from 'lucide-react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { ImportOutlineDialog } from './ImportOutlineDialog';
+import { LinkDocumentDialog } from './LinkDocumentDialog';
 
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
@@ -70,6 +71,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [autoFocusId, setAutoFocusId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -678,8 +680,35 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         onImport={handlePasteHierarchyFromContext}
       />
       
+      {/* Link Document Dialog */}
+      <LinkDocumentDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        onSelect={(docId, docTitle) => {
+          const anchorId = selectedId || flatNodes[flatNodes.length - 1]?.id;
+          if (anchorId) {
+            const anchor = flatNodes.find(n => n.id === anchorId);
+            const newNode = createNode(anchor?.parentId ?? null, 'link', docTitle);
+            newNode.linkedDocumentId = docId;
+            newNode.linkedDocumentTitle = docTitle;
+            setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
+            setSelectedId(newNode.id);
+          }
+        }}
+        currentDocId={document?.meta?.id}
+      />
+      
       {/* Floating toolbar - appears on hover */}
       <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+          onClick={() => setLinkDialogOpen(true)}
+          title="Link to Document"
+        >
+          <Link2 className="h-3 w-3" />
+        </Button>
         <Button
           variant="ghost"
           size="sm"

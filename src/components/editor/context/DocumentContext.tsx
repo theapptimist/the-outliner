@@ -23,6 +23,9 @@ export type PasteHierarchyFn = (items: Array<{ label: string; depth: number }>) 
 // Callback type for scrolling to and highlighting a node
 export type ScrollToNodeFn = (nodeId: string) => void;
 
+// Callback type for navigating to a linked document
+export type NavigateToDocumentFn = (documentId: string, documentTitle: string) => void;
+
 interface DocumentContextValue {
   // Style settings
   outlineStyle: OutlineStyle;
@@ -51,6 +54,10 @@ interface DocumentContextValue {
   // Scroll to and highlight a node
   scrollToNode: ScrollToNodeFn | null;
   setScrollToNode: (fn: ScrollToNodeFn | null) => void;
+
+  // Navigate to a linked document
+  navigateToDocument: NavigateToDocumentFn | null;
+  setNavigateToDocument: (fn: NavigateToDocumentFn | null) => void;
 
   // AI-generated hierarchy paste handler
   onPasteHierarchy: PasteHierarchyFn | null;
@@ -98,6 +105,9 @@ const DocumentContext = createContext<DocumentContextValue>({
 
   scrollToNode: null,
   setScrollToNode: () => {},
+
+  navigateToDocument: null,
+  setNavigateToDocument: () => {},
 
   onPasteHierarchy: null,
   setOnPasteHierarchy: () => {},
@@ -147,6 +157,7 @@ export function DocumentProvider({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [nodeClipboard, setNodeClipboard] = useState<HierarchyNode[] | null>(null);
   const [scrollToNodeFn, setScrollToNodeFn] = useState<ScrollToNodeFn | null>(null);
+  const [navigateToDocumentFn, setNavigateToDocumentFn] = useState<NavigateToDocumentFn | null>(null);
   const [pasteHierarchyFn, setPasteHierarchyFn] = useState<PasteHierarchyFn | null>(null);
   const [insertHierarchyHandler, setInsertHierarchyHandlerState] = useState<() => void>(() => () => {});
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
@@ -190,6 +201,10 @@ export function DocumentProvider({
     setScrollToNodeFn(() => fn);
   }, []);
 
+  const setNavigateToDocument = useCallback((fn: NavigateToDocumentFn | null) => {
+    setNavigateToDocumentFn(() => fn);
+  }, []);
+
   const registerFindReplaceProvider = useCallback((provider: FindReplaceProvider) => {
     setFindReplaceProviders(prev => {
       const next = prev.filter(p => p.id !== provider.id);
@@ -230,6 +245,8 @@ export function DocumentProvider({
         setNodeClipboard,
         scrollToNode: scrollToNodeFn,
         setScrollToNode,
+        navigateToDocument: navigateToDocumentFn,
+        setNavigateToDocument,
         onPasteHierarchy: pasteHierarchyFn,
         setOnPasteHierarchy,
         onInsertHierarchy: insertHierarchyHandler,
