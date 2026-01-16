@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { analyzeOutlineText, parseOutlineHierarchy } from '@/lib/outlinePasteParser';
-import { Upload, FileText, ChevronRight, AlertCircle } from 'lucide-react';
+import { Upload, FileText, ChevronRight, AlertCircle, File, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface ImportOutlineDialogProps {
   open: boolean;
@@ -26,6 +27,9 @@ export function ImportOutlineDialog({
   onImport,
 }: ImportOutlineDialogProps) {
   const [inputText, setInputText] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showPasteOption, setShowPasteOption] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Parse the input text whenever it changes
   const parseResult = useMemo(() => {
@@ -39,17 +43,51 @@ export function ImportOutlineDialog({
     };
   }, [inputText]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setInputText(text);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleChooseFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleClearFile = () => {
+    setSelectedFile(null);
+    setInputText('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleImport = () => {
     if (parseResult && parseResult.hierarchy.length > 0) {
       onImport(parseResult.hierarchy);
-      setInputText('');
+      handleReset();
       onOpenChange(false);
     }
   };
 
   const handleCancel = () => {
-    setInputText('');
+    handleReset();
     onOpenChange(false);
+  };
+
+  const handleReset = () => {
+    setInputText('');
+    setSelectedFile(null);
+    setShowPasteOption(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // Render a preview item with visual depth indicator
@@ -82,33 +120,110 @@ export function ImportOutlineDialog({
             Import Outline
           </DialogTitle>
           <DialogDescription>
-            Paste an outline from ChatGPT, Google Docs, or any text source. 
+            Upload a text file containing an outline from ChatGPT, Google Docs, or any source.
             The system will detect structure from dates, indentation, or numbered lists.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.md,.text"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
 
         <div className="grid grid-cols-2 gap-4 flex-1 min-h-0 overflow-hidden">
           {/* Input area */}
           <div className="flex flex-col gap-2 min-h-0 overflow-hidden">
             <div className="text-sm font-medium flex items-center gap-2 shrink-0">
               <FileText className="h-4 w-4" />
-              Paste Your Outline
+              Select File
             </div>
-            <ScrollArea className="flex-1 min-h-0 border rounded-md">
-              <Textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Paste your outline here...
+            
+            <div className="flex-1 min-h-0 border rounded-md bg-muted/30 flex flex-col">
+              {!selectedFile && !showPasteOption ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                    <File className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <Button onClick={handleChooseFile} variant="outline" className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    Choose File...
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Supports .txt and .md files
+                  </p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs text-muted-foreground"
+                    onClick={() => setShowPasteOption(true)}
+                  >
+                    Or paste text instead
+                  </Button>
+                </div>
+              ) : selectedFile ? (
+                <div className="flex-1 flex flex-col p-3 gap-2">
+                  <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                    <File className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-sm truncate flex-1">{selectedFile.name}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 shrink-0"
+                      onClick={handleClearFile}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {inputText.split('\n').length} lines • {inputText.length} characters
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-fit gap-2"
+                    onClick={handleChooseFile}
+                  >
+                    <Upload className="h-3 w-3" />
+                    Choose Different File
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <div className="flex items-center justify-between p-2 border-b shrink-0">
+                    <span className="text-xs text-muted-foreground">Paste text</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 text-xs"
+                      onClick={() => {
+                        setShowPasteOption(false);
+                        setInputText('');
+                      }}
+                    >
+                      Use file instead
+                    </Button>
+                  </div>
+                  <ScrollArea className="flex-1 min-h-0">
+                    <Textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={`Paste your outline here...
 
 Example formats supported:
 • Numbered lists (1. 2. 3.)
 • Bulleted lists (- or *)
 • Date-based timelines
-• Indented hierarchies
-• Section headers`}
-                className="min-h-[300px] h-full font-mono text-xs resize-none border-0 focus-visible:ring-0"
-              />
-            </ScrollArea>
+• Indented hierarchies`}
+                      className="min-h-[250px] h-full font-mono text-xs resize-none border-0 focus-visible:ring-0 rounded-none"
+                    />
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Preview area */}
@@ -125,7 +240,7 @@ Example formats supported:
               <div className="p-2">
                 {!inputText.trim() ? (
                   <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
-                    Paste content to see preview
+                    Select a file to see preview
                   </div>
                 ) : parseResult && parseResult.hierarchy.length > 0 ? (
                   <div className="space-y-0.5">
