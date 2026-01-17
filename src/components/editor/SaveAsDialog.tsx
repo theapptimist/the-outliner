@@ -9,12 +9,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface SaveAsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (title: string) => void;
+  onSave: (title: string, isMaster: boolean) => void;
   defaultTitle?: string;
+  defaultIsMaster?: boolean;
 }
 
 export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(function SaveAsDialog({
@@ -22,19 +24,22 @@ export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(functi
   onOpenChange,
   onSave,
   defaultTitle = '',
+  defaultIsMaster = false,
 }, ref) {
   const [title, setTitle] = useState(defaultTitle);
+  const [isMaster, setIsMaster] = useState(defaultIsMaster);
 
   useEffect(() => {
     if (open) {
       setTitle(defaultTitle);
+      setIsMaster(defaultIsMaster);
     }
-  }, [open, defaultTitle]);
+  }, [open, defaultTitle, defaultIsMaster]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      onSave(title.trim());
+      onSave(title.trim(), isMaster);
       onOpenChange(false);
     }
   };
@@ -47,16 +52,35 @@ export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(functi
             <DialogTitle>Save As</DialogTitle>
           </DialogHeader>
 
-          <div className="py-4">
-            <Label htmlFor="doc-title">Document Title</Label>
-            <Input
-              id="doc-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter document title..."
-              className="mt-2"
-              autoFocus
-            />
+          <div className="py-4 space-y-4">
+            <div>
+              <Label htmlFor="doc-title">Document Title</Label>
+              <Input
+                id="doc-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter document title..."
+                className="mt-2"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is-master"
+                checked={isMaster}
+                onCheckedChange={(checked) => setIsMaster(checked === true)}
+              />
+              <Label 
+                htmlFor="is-master" 
+                className="text-sm font-normal cursor-pointer"
+              >
+                Mark as Master Outline
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Master outlines provide a navigation hub when viewing linked sub-outlines.
+            </p>
           </div>
 
           <DialogFooter>

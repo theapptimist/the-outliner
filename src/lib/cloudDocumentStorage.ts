@@ -56,6 +56,7 @@ export async function loadCloudDocument(id: string): Promise<DocumentState | nul
       title: data.title,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
+      isMaster: data.is_master ?? false,
     },
     content: data.content || {},
     hierarchyBlocks: parseHierarchyBlocks(data.hierarchy_blocks),
@@ -84,6 +85,7 @@ export async function saveCloudDocument(doc: DocumentState, userId: string): Pro
         content: doc.content as unknown as Json,
         hierarchy_blocks: doc.hierarchyBlocks as unknown as Json,
         updated_at: now,
+        is_master: doc.meta.isMaster ?? false,
       })
       .eq('id', doc.meta.id)
       .select()
@@ -106,6 +108,7 @@ export async function saveCloudDocument(doc: DocumentState, userId: string): Pro
         hierarchy_blocks: doc.hierarchyBlocks as unknown as Json,
         created_at: doc.meta.createdAt,
         updated_at: now,
+        is_master: doc.meta.isMaster ?? false,
       })
       .select()
       .single();
@@ -124,6 +127,7 @@ export async function saveCloudDocument(doc: DocumentState, userId: string): Pro
     meta: {
       ...doc.meta,
       updatedAt: result.updated_at,
+      isMaster: result.is_master ?? false,
     },
   };
 }

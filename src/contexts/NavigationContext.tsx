@@ -5,6 +5,18 @@ export interface NavigationEntry {
   title: string;
 }
 
+export interface MasterDocumentLink {
+  nodeId: string;
+  linkedDocumentId: string;
+  linkedDocumentTitle: string;
+}
+
+export interface MasterDocumentInfo {
+  id: string;
+  title: string;
+  links: MasterDocumentLink[];
+}
+
 interface NavigationContextValue {
   /** Stack of documents we've navigated through */
   stack: NavigationEntry[];
@@ -18,6 +30,16 @@ interface NavigationContextValue {
   popDocument: () => NavigationEntry | null;
   /** Clear the entire navigation stack */
   clearStack: () => void;
+  /** Master document info for master outline mode */
+  masterDocument: MasterDocumentInfo | null;
+  /** Set or clear the master document */
+  setMasterDocument: (doc: MasterDocumentInfo | null) => void;
+  /** Whether we're currently viewing a sub-outline of a master */
+  isInMasterMode: boolean;
+  /** The currently active sub-outline ID (if in master mode) */
+  activeSubOutlineId: string | null;
+  /** Set the active sub-outline ID */
+  setActiveSubOutlineId: (id: string | null) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue>({
@@ -27,6 +49,11 @@ const NavigationContext = createContext<NavigationContextValue>({
   pushDocument: () => {},
   popDocument: () => null,
   clearStack: () => {},
+  masterDocument: null,
+  setMasterDocument: () => {},
+  isInMasterMode: false,
+  activeSubOutlineId: null,
+  setActiveSubOutlineId: () => {},
 });
 
 interface NavigationProviderProps {
@@ -35,9 +62,12 @@ interface NavigationProviderProps {
 
 export function NavigationProvider({ children }: NavigationProviderProps) {
   const [stack, setStack] = useState<NavigationEntry[]>([]);
+  const [masterDocument, setMasterDocumentState] = useState<MasterDocumentInfo | null>(null);
+  const [activeSubOutlineId, setActiveSubOutlineId] = useState<string | null>(null);
 
   const canGoBack = stack.length > 0;
   const currentOrigin = stack.length > 0 ? stack[stack.length - 1] : null;
+  const isInMasterMode = masterDocument !== null;
 
   const pushDocument = useCallback((id: string, title: string) => {
     setStack(prev => [...prev, { id, title }]);
@@ -57,6 +87,13 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setStack([]);
   }, []);
 
+  const setMasterDocument = useCallback((doc: MasterDocumentInfo | null) => {
+    setMasterDocumentState(doc);
+    if (!doc) {
+      setActiveSubOutlineId(null);
+    }
+  }, []);
+
   return (
     <NavigationContext.Provider
       value={{
@@ -66,6 +103,11 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         pushDocument,
         popDocument,
         clearStack,
+        masterDocument,
+        setMasterDocument,
+        isInMasterMode,
+        activeSubOutlineId,
+        setActiveSubOutlineId,
       }}
     >
       {children}

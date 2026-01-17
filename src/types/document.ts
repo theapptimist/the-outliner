@@ -5,6 +5,7 @@ export interface DocumentMeta {
   title: string;
   createdAt: string;
   updatedAt: string;
+  isMaster?: boolean;
 }
 
 export interface HierarchyBlockData {

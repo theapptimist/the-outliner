@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           hierarchy_blocks: Json | null
           id: string
+          is_master: boolean | null
           title: string
           updated_at: string
           user_id: string
@@ -29,6 +30,7 @@ export type Database = {
           created_at?: string
           hierarchy_blocks?: Json | null
           id?: string
+          is_master?: boolean | null
           title?: string
           updated_at?: string
           user_id: string
@@ -38,6 +40,7 @@ export type Database = {
           created_at?: string
           hierarchy_blocks?: Json | null
           id?: string
+          is_master?: boolean | null
           title?: string
           updated_at?: string
           user_id?: string
