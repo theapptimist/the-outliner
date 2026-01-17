@@ -6,7 +6,7 @@ import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
 import { toast } from '@/hooks/use-toast';
 import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
 import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
-import { FileText } from 'lucide-react';
+import { ExternalLink, FileText } from 'lucide-react';
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
   selectedId: string | null;
@@ -267,16 +267,28 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       const node = nodes.find(n => n.id === autoFocusId);
       if (node) {
         lastAutoFocusIdRef.current = autoFocusId;
-        // Skip link nodes - they can't be edited
+
+        // Link nodes are focusable (read-only), so focus their textarea rather than entering edit mode.
         if (node.type === 'link') {
+          onSelect(autoFocusId);
+          requestAnimationFrame(() => {
+            const el = inputRefs.current.get(autoFocusId);
+            if (el) {
+              el.focus();
+              const len = el.value.length;
+              el.selectionStart = len;
+              el.selectionEnd = len;
+            }
+          });
           onAutoFocusHandled?.();
           return;
         }
+
         handleStartEdit(autoFocusId, node.label, { placeCursor: 'end' });
         onAutoFocusHandled?.();
       }
     }
-  }, [autoFocusId, nodes, handleStartEdit, onAutoFocusHandled]);
+  }, [autoFocusId, nodes, handleStartEdit, onAutoFocusHandled, onSelect]);
 
   // When a new node is added after pressing Enter, auto-focus it
   useEffect(() => {
@@ -871,12 +883,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         const indices = nodeIndices.get(node.id) || [1];
         const isBody = node.type === 'body';
         const isLink = node.type === 'link';
-        const prefix = (isBody || isLink) ? '' : (
-          outlineStyle === 'mixed' 
+        const prefix = isBody ? '' : (
+          outlineStyle === 'mixed'
             ? getOutlinePrefixCustom(node.depth, indices, mixedConfig)
             : getOutlinePrefix(outlineStyle, node.depth, indices)
         );
-        
+
         // Build full hierarchical prefix for source attribution (e.g., "1.a." or "1a")
         const fullPrefix = isBody ? '' : (() => {
           if (outlineStyle === 'legal') {
@@ -891,7 +903,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             return levelPrefix.replace(/[.\s]+$/, '').replace(/^\(|\)$/g, '');
           }).join('') + '.';
         })();
-        
+
         // Get level styling for mixed mode
         const levelStyle = outlineStyle === 'mixed' && !isBody
           ? getLevelStyle(node.depth, mixedConfig)
@@ -899,10 +911,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
         // Body nodes are logically children, but should visually align under the parent's text.
         // Also add visualIndent for Block Tab feature
-        const visualDepth = isBody 
+        const visualDepth = isBody
           ? Math.max(0, node.depth - 1) + (node.visualIndent || 0)
           : node.depth;
-        
+
         return (
           <div
             key={node.id}
@@ -917,7 +929,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
               highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md'
             )}
-            style={{ 
+            style={{
               paddingLeft: `${visualDepth * 24 + 8}px`,
               gridTemplateColumns: '3.5rem 1fr'
             }}
@@ -935,12 +947,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 isDragRef.current = dx > 5 || dy > 5;
               }
               mouseDownPosRef.current = null;
-              
+
               // If it was a drag (text selection), preserve the selection - don't move cursor
               if (isDragRef.current) {
                 return;
               }
-              
+
               // True click in prefix area - focus textarea and move cursor to end
               const target = e.target as HTMLElement;
               if (target.tagName !== 'TEXTAREA') {
@@ -957,7 +969,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               e.stopPropagation();
             }}
           >
-            
+
             {/* Prefix/numbering - body nodes get empty spacer for alignment */}
             <span className={cn(
               "font-mono text-sm leading-6 text-right pr-2 whitespace-nowrap",
@@ -965,33 +977,81 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             )}>
               {prefix || ''}
             </span>
-            
-            {/* Label + suffix in single inline-grid - suffix stays glued to text */}
+
+            {/* Label */}
             {isLink ? (
-              <div 
-                data-allow-pointer
-                className={cn(
-                  "flex items-center gap-2 cursor-pointer min-h-[1.5rem]",
-                  node.linkedDocumentId 
-                    ? "text-primary hover:underline" 
-                    : "text-muted-foreground border-b border-dashed border-muted-foreground/50"
-                )}
-                onClick={() => {
-                  console.log('[link click]', { nodeId: node.id, linkedDocumentId: node.linkedDocumentId, linkedDocumentTitle: node.linkedDocumentTitle, label: node.label, hasHandler: !!onNavigateToLinkedDocument });
-                  if (!node.linkedDocumentId) {
-                    console.log('[link click] Unlinked node, calling onRequestRelink', { nodeId: node.id, hasRelinkHandler: !!onRequestRelink });
-                    toast({ title: 'Link not connected', description: 'Click to select a document to link to.' });
-                    onRequestRelink?.(node.id);
-                    return;
-                  }
-                  toast({ title: 'Opening linked document…' });
-                  onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
-                }}
-              >
+              <div className="flex items-center gap-2 min-h-[1.5rem] min-w-0">
                 <FileText className={cn("h-4 w-4 flex-shrink-0", !node.linkedDocumentId && "opacity-50")} />
-                <span className="text-sm font-mono leading-6">{node.label}</span>
-                {!node.linkedDocumentId && (
-                  <span className="text-xs text-muted-foreground/70">(unlinked)</span>
+
+                <textarea
+                  ref={getInputRefCallback(node.id)}
+                  readOnly
+                  value={node.label}
+                  rows={1}
+                  className={cn(
+                    "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono resize-none whitespace-pre-wrap break-words leading-6 select-text",
+                    node.linkedDocumentId
+                      ? "text-primary underline decoration-primary/50"
+                      : "text-muted-foreground border-b border-dashed border-muted-foreground/50"
+                  )}
+                  onFocus={() => {
+                    lastFocusedNodeIdRef.current = node.id;
+                    onSelect(node.id);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      onNavigateUp();
+                      return;
+                    }
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      onNavigateDown();
+                      return;
+                    }
+                    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      const newId = onAddNode(node.id);
+                      if (newId) pendingNewNodeIdRef.current = newId;
+                      return;
+                    }
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!node.linkedDocumentId) {
+                        toast({ title: 'Link not connected', description: 'Select a document to link to.' });
+                        onRequestRelink?.(node.id);
+                        return;
+                      }
+                      toast({ title: 'Opening linked document…' });
+                      onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
+                      return;
+                    }
+                  }}
+                />
+
+                {node.linkedDocumentId ? (
+                  <button
+                    type="button"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => {
+                      toast({ title: 'Opening linked document…' });
+                      onNavigateToLinkedDocument?.(node.linkedDocumentId!, node.linkedDocumentTitle || '');
+                    }}
+                    aria-label="Open linked document"
+                  >
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground"
+                    onClick={() => {
+                      toast({ title: 'Link not connected', description: 'Select a document to link to.' });
+                      onRequestRelink?.(node.id);
+                    }}
+                  >
+                    (relink)
+                  </button>
                 )}
               </div>
             ) : (() => {
