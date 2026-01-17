@@ -644,14 +644,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     } else if (e.key === 'ArrowUp') {
       // Navigate to previous node if cursor is on first line
       const input = e.currentTarget;
+      const currentValue = input.value; // read from DOM to avoid state lag
       const cursorPos = input.selectionStart ?? 0;
-      const textBefore = editValue.slice(0, cursorPos);
+      const textBefore = currentValue.slice(0, cursorPos);
       const isOnFirstLine = !textBefore.includes('\n');
-      
+
       if (isOnFirstLine) {
         e.preventDefault();
         // Save current value directly before navigating
-        onUpdateLabel(node.id, editValue);
+        onUpdateLabel(node.id, currentValue);
         setEditingId(null);
         onNavigateUp();
       }
@@ -659,14 +660,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     } else if (e.key === 'ArrowDown') {
       // Navigate to next node if cursor is on last line
       const input = e.currentTarget;
+      const currentValue = input.value; // read from DOM to avoid state lag
       const cursorPos = input.selectionStart ?? 0;
-      const textAfter = editValue.slice(cursorPos);
+      const textAfter = currentValue.slice(cursorPos);
       const isOnLastLine = !textAfter.includes('\n');
-      
+
       if (isOnLastLine) {
         e.preventDefault();
         // Save current value directly before navigating
-        onUpdateLabel(node.id, editValue);
+        onUpdateLabel(node.id, currentValue);
         setEditingId(null);
         onNavigateDown();
       }
