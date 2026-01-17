@@ -959,6 +959,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             {/* Label + suffix in single inline-grid - suffix stays glued to text */}
             {isLink ? (
               <div 
+                data-allow-pointer
                 className="flex items-center gap-2 cursor-pointer hover:underline text-primary min-h-[1.5rem]"
                 onClick={() => {
                   if (node.linkedDocumentId) {
