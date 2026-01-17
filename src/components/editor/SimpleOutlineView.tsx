@@ -6,6 +6,7 @@ import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
 import { toast } from '@/hooks/use-toast';
 import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
 import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
+import { FileText } from 'lucide-react';
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
   selectedId: string | null;
@@ -956,7 +957,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             </span>
             
             {/* Label + suffix in single inline-grid - suffix stays glued to text */}
-            {(() => {
+            {isLink ? (
+              <div 
+                className="flex items-center gap-2 cursor-pointer hover:underline text-primary min-h-[1.5rem]"
+                onClick={() => {
+                  if (node.linkedDocumentId) {
+                    onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
+                  }
+                }}
+              >
+                <FileText className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm font-mono leading-6">{node.label}</span>
+              </div>
+            ) : (() => {
               const isEditing = editingId === node.id;
               const displayValue = isEditing ? editValue : node.label;
               const suffix = levelStyle.suffix && node.label ? levelStyle.suffix : '';
