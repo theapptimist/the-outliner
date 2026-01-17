@@ -244,6 +244,10 @@ export function flattenTree(
       hasChildren: node.children.length > 0,
       isLastChild,
       ancestorIds,
+      // Preserve optional fields for link nodes and rich content
+      linkedDocumentId: node.linkedDocumentId,
+      linkedDocumentTitle: node.linkedDocumentTitle,
+      content: node.content,
     };
 
     result.push(flatNode);
