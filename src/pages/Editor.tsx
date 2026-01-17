@@ -20,6 +20,7 @@ import {
   exportCloudDocument,
   importCloudDocument,
   createCloudDocument,
+  createLocalDocument,
 } from '@/lib/cloudDocumentStorage';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -201,14 +202,14 @@ export default function Editor() {
           }
         }
         
-        // No existing document, create a new one
-        const newDoc = await createCloudDocument(user.id, 'Untitled');
-        setDocument(newDoc);
+        // No existing document - create LOCAL-ONLY document (not persisted until save)
+        const localDoc = createLocalDocument('Untitled');
+        setDocument(localDoc);
       } catch (e) {
         console.error('Failed to load document:', e);
-        // Fallback to empty document
-        const emptyDoc = createEmptyDocument();
-        setDocument(emptyDoc);
+        // Fallback to local-only empty document
+        const localDoc = createLocalDocument('Untitled');
+        setDocument(localDoc);
       }
       setIsLoading(false);
     }
@@ -274,20 +275,16 @@ export default function Editor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [document]);
 
-  const handleNew = useCallback(async () => {
-    if (!user) return;
+  const handleNew = useCallback(() => {
     if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
     
-    try {
-      const newDoc = await createCloudDocument(user.id, 'Untitled');
-      setDocument(newDoc);
-      setDocumentVersion(v => v + 1);
-      setHasUnsavedChanges(false);
-      toast.success('New document created');
-    } catch (e) {
-      toast.error('Failed to create document');
-    }
-  }, [user, hasUnsavedChanges]);
+    // Create LOCAL-ONLY document - not persisted until explicit save
+    const localDoc = createLocalDocument('Untitled');
+    setDocument(localDoc);
+    setDocumentVersion(v => v + 1);
+    setHasUnsavedChanges(true); // Mark as unsaved so user knows to save
+    toast.success('New document created (not yet saved)');
+  }, [hasUnsavedChanges]);
 
   const handleSave = useCallback(async () => {
     if (!user || !document) return;
@@ -369,8 +366,11 @@ export default function Editor() {
     
     try {
       await deleteCloudDocument(document.meta.id);
-      const newDoc = await createCloudDocument(user.id, 'Untitled');
-      setDocument(newDoc);
+      // Clear current doc ID from localStorage
+      localStorage.removeItem(CURRENT_DOC_KEY);
+      // Create a new local-only document instead of auto-persisting
+      const localDoc = createLocalDocument('Untitled');
+      setDocument(localDoc);
       setDocumentVersion(v => v + 1);
       setHasUnsavedChanges(false);
       toast.success('Document deleted');

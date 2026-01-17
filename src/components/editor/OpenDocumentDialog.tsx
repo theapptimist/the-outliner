@@ -8,8 +8,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, FileText, Search, Loader2 } from 'lucide-react';
-import { CloudDocumentMetadata, listCloudDocuments, deleteCloudDocument } from '@/lib/cloudDocumentStorage';
+import { Trash2, FileText, Search, Loader2, AlertTriangle } from 'lucide-react';
+import { CloudDocumentMetadata, listCloudDocuments, deleteCloudDocument, bulkDeleteByTitle } from '@/lib/cloudDocumentStorage';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
 interface OpenDocumentDialogProps {
@@ -29,27 +41,43 @@ export const OpenDocumentDialog = forwardRef<HTMLDivElement, OpenDocumentDialogP
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cleaningUp, setCleaningUp] = useState(false);
+
+  const loadDocuments = async () => {
+    setLoading(true);
+    try {
+      const docs = await listCloudDocuments();
+      setDocuments(docs);
+    } catch (e) {
+      console.error('Failed to list documents:', e);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    async function load() {
-      if (open) {
-        setLoading(true);
-        try {
-          const docs = await listCloudDocuments();
-          setDocuments(docs);
-        } catch (e) {
-          console.error('Failed to list documents:', e);
-        }
-        setLoading(false);
-        setSearch('');
-      }
+    if (open) {
+      loadDocuments();
+      setSearch('');
     }
-    load();
   }, [open]);
 
   const filtered = documents.filter(d =>
     d.title.toLowerCase().includes(search.toLowerCase())
   );
+
+  const untitledCount = documents.filter(d => d.title === 'Untitled').length;
+
+  const handleCleanupUntitled = async () => {
+    setCleaningUp(true);
+    try {
+      const deleted = await bulkDeleteByTitle('Untitled');
+      toast.success(`Deleted ${deleted} Untitled document${deleted !== 1 ? 's' : ''}`);
+      await loadDocuments();
+    } catch (e) {
+      toast.error('Failed to delete documents');
+    }
+    setCleaningUp(false);
+  };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,6 +115,42 @@ export const OpenDocumentDialog = forwardRef<HTMLDivElement, OpenDocumentDialogP
             className="pl-9"
           />
         </div>
+
+        {/* Cleanup button for Untitled documents */}
+        {untitledCount > 1 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-destructive border-destructive/50 hover:bg-destructive/10"
+                disabled={cleaningUp}
+              >
+                {cleaningUp ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                )}
+                Delete {untitledCount} "Untitled" documents
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete all Untitled documents?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete {untitledCount} documents with the title "Untitled".
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleCleanupUntitled}>
+                  Delete All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
 
         <ScrollArea className="h-[300px] -mx-2">
           {loading ? (
