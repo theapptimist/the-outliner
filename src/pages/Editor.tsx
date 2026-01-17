@@ -412,7 +412,7 @@ export default function Editor() {
     setHasUnsavedChanges(true);
   }, []);
 
-  const handleHierarchyBlocksChange = useCallback((blocks: Record<string, any>) => {
+  const handleHierarchyBlocksChange = useCallback((blocks: Record<string, { id: string; tree: HierarchyNode[] }>) => {
     setDocument(prev => prev ? {
       ...prev,
       hierarchyBlocks: blocks,

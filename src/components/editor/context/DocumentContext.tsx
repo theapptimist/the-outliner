@@ -133,7 +133,7 @@ interface DocumentProviderProps {
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
-  onHierarchyBlocksChange?: (blocks: Record<string, HierarchyNode[]>) => void;
+  onHierarchyBlocksChange?: (blocks: Record<string, { id: string; tree: HierarchyNode[] }>) => void;
   onUndoRedoChange?: (
     undo: () => void,
     redo: () => void,
@@ -171,7 +171,12 @@ export function DocumentProvider({
         [blockId]: tree,
       };
       // Notify parent of hierarchy changes for cloud persistence
-      onHierarchyBlocksChange?.(next);
+      // Convert to HierarchyBlockData format: { id, tree }
+      const blocksData: Record<string, { id: string; tree: HierarchyNode[] }> = {};
+      for (const [id, t] of Object.entries(next)) {
+        blocksData[id] = { id, tree: t };
+      }
+      onHierarchyBlocksChange?.(blocksData);
       return next;
     });
   }, [onHierarchyBlocksChange]);
@@ -180,7 +185,12 @@ export function DocumentProvider({
     setHierarchyBlocks(prev => {
       const { [blockId]: _, ...rest } = prev;
       // Notify parent of hierarchy changes for cloud persistence
-      onHierarchyBlocksChange?.(rest);
+      // Convert to HierarchyBlockData format: { id, tree }
+      const blocksData: Record<string, { id: string; tree: HierarchyNode[] }> = {};
+      for (const [id, t] of Object.entries(rest)) {
+        blocksData[id] = { id, tree: t };
+      }
+      onHierarchyBlocksChange?.(blocksData);
       return rest;
     });
   }, [onHierarchyBlocksChange]);
