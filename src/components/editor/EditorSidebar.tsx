@@ -36,8 +36,7 @@ interface EditorSidebarProps {
   canUndo: boolean;
   canRedo: boolean;
   fileMenuProps: React.ComponentProps<typeof FileMenu>;
-  onNavigateToDocument?: (id: string, title: string) => void;
-  onReturnToMaster?: () => void;
+  onNavigateToDocument?: (id: string) => void;
 }
 
 export function EditorSidebar({
@@ -55,7 +54,6 @@ export function EditorSidebar({
   canRedo,
   fileMenuProps,
   onNavigateToDocument,
-  onReturnToMaster,
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('tools');
@@ -290,8 +288,7 @@ export function EditorSidebar({
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           <MasterOutlinePane
             collapsed={collapsed}
-            onNavigateToDocument={(id, title) => onNavigateToDocument?.(id, title)}
-            onReturnToMaster={() => onReturnToMaster?.()}
+            onNavigateToDocument={(id) => onNavigateToDocument?.(id)}
           />
         </div>
       )}
