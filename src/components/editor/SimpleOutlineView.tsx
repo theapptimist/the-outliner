@@ -999,6 +999,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     onSelect(node.id);
                   }}
                   onKeyDown={(e) => {
+                    // Arrow navigation
                     if (e.key === 'ArrowUp') {
                       e.preventDefault();
                       onNavigateUp();
@@ -1009,12 +1010,30 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       onNavigateDown();
                       return;
                     }
-                    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                    
+                    // Tab: indent/outdent
+                    if (e.key === 'Tab') {
                       e.preventDefault();
-                      const newId = onAddNode(node.id);
+                      if (e.shiftKey) {
+                        onOutdent(node.id);
+                      } else {
+                        onIndent(node.id);
+                      }
+                      requestAnimationFrame(() => {
+                        inputRefs.current.get(node.id)?.focus();
+                      });
+                      return;
+                    }
+                    
+                    // Shift+Enter: create body node (hanging element)
+                    if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      const newId = onAddBodyNode?.(node.id);
                       if (newId) pendingNewNodeIdRef.current = newId;
                       return;
                     }
+                    
+                    // Ctrl/Cmd+Enter: open linked document
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
                       e.preventDefault();
                       if (!node.linkedDocumentId) {
@@ -1024,6 +1043,71 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       }
                       toast({ title: 'Opening linked document…' });
                       onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
+                      return;
+                    }
+                    
+                    // Enter: create new sibling node
+                    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      const newId = onAddNode(node.id);
+                      if (newId) pendingNewNodeIdRef.current = newId;
+                      return;
+                    }
+                    
+                    // Backspace: delete link node, focus previous
+                    if (e.key === 'Backspace') {
+                      e.preventDefault();
+                      const currentIndex = nodes.findIndex(n => n.id === node.id);
+                      const prevNode = currentIndex > 0 ? nodes[currentIndex - 1] : null;
+                      onDelete(node.id);
+                      if (prevNode) {
+                        requestAnimationFrame(() => {
+                          const prevInput = inputRefs.current.get(prevNode.id);
+                          if (prevInput) {
+                            prevInput.focus();
+                            prevInput.selectionStart = prevInput.selectionEnd = prevInput.value.length;
+                          }
+                        });
+                      }
+                      return;
+                    }
+                    
+                    // Delete key: delete link node, focus next
+                    if (e.key === 'Delete') {
+                      e.preventDefault();
+                      const currentIndex = nodes.findIndex(n => n.id === node.id);
+                      const nextNode = currentIndex < nodes.length - 1 ? nodes[currentIndex + 1] : null;
+                      const prevNode = currentIndex > 0 ? nodes[currentIndex - 1] : null;
+                      onDelete(node.id);
+                      const focusTarget = nextNode || prevNode;
+                      if (focusTarget) {
+                        requestAnimationFrame(() => {
+                          const targetInput = inputRefs.current.get(focusTarget.id);
+                          if (targetInput) {
+                            targetInput.focus();
+                          }
+                        });
+                      }
+                      return;
+                    }
+                    
+                    // Ctrl+C: copy link node
+                    if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      if (onCopyNode) {
+                        const copied = onCopyNode(node.id);
+                        if (copied) {
+                          setNodeClipboard([copied]);
+                          toast({ title: 'Copied', description: `Link: "${node.label.slice(0, 30)}${node.label.length > 30 ? '...' : ''}"` });
+                        }
+                      }
+                      return;
+                    }
+                    
+                    // Escape: return to TipTap editor
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      editor?.chain().focus().run();
                       return;
                     }
                   }}
