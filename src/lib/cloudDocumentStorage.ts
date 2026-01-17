@@ -173,6 +173,14 @@ export async function deleteCloudDocument(id: string): Promise<void> {
   }
 }
 
+// Create a new document
+export async function createCloudDocument(userId: string, title: string = 'Untitled'): Promise<DocumentState> {
+  const doc = createEmptyDocument();
+  doc.meta.title = title;
+  
+  return saveCloudDocument(doc, userId);
+}
+
 const RECENT_CLOUD_KEY = 'outliner:recent-cloud';
 const MAX_RECENT = 5;
 
