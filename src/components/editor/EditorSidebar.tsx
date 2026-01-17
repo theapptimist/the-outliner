@@ -6,18 +6,21 @@ import {
   BookOpen,
   Plus,
   Sparkles,
+  Network,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { useEditorContext } from './EditorContext';
+import { useNavigation } from '@/contexts/NavigationContext';
 import { DefinedTermsPane } from './DefinedTermsPane';
 import { AIGeneratePane } from './AIGeneratePane';
 import { ToolsPane } from './ToolsPane';
+import { MasterOutlinePane } from './MasterOutlinePane';
 import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
-type SidebarTab = 'tools' | 'terms' | 'ai';
+type SidebarTab = 'tools' | 'terms' | 'ai' | 'master';
 
 interface EditorSidebarProps {
   outlineStyle: OutlineStyle;
@@ -33,6 +36,8 @@ interface EditorSidebarProps {
   canUndo: boolean;
   canRedo: boolean;
   fileMenuProps: React.ComponentProps<typeof FileMenu>;
+  onNavigateToDocument?: (id: string, title: string) => void;
+  onReturnToMaster?: () => void;
 }
 
 export function EditorSidebar({
@@ -49,6 +54,8 @@ export function EditorSidebar({
   canUndo,
   canRedo,
   fileMenuProps,
+  onNavigateToDocument,
+  onReturnToMaster,
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('tools');
@@ -56,6 +63,7 @@ export function EditorSidebar({
     document.documentElement.classList.contains('dark')
   );
   const { editor, onInsertHierarchy, onFindReplace, selectedText, onPasteHierarchy } = useEditorContext();
+  const { isInMasterMode } = useNavigation();
 
   // Ref to hold pending AI items when we need to create an outline block first
   const pendingAIItemsRef = useRef<Array<{ label: string; depth: number }> | null>(null);
@@ -81,6 +89,13 @@ export function EditorSidebar({
       });
     }
   }, [onPasteHierarchy]);
+
+  // Auto-switch to master tab when entering master mode
+  useEffect(() => {
+    if (isInMasterMode) {
+      setActiveTab('master');
+    }
+  }, [isInMasterMode]);
 
   useEffect(() => {
     if (isDark) {
@@ -232,6 +247,27 @@ export function EditorSidebar({
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>Add Term</TooltipContent>
           </Tooltip>
+          
+          {/* Master Outline button - only visible when in master mode */}
+          {isInMasterMode && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  data-allow-pointer
+                  onClick={() => setActiveTab('master')}
+                  className={cn(
+                    "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+                    activeTab === 'master'
+                      ? "bg-warning/15 text-warning"
+                      : "hover:bg-muted/50 text-muted-foreground"
+                  )}
+                >
+                  <Network className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={collapsed ? "right" : "bottom"}>Master Outline</TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 
@@ -246,6 +282,16 @@ export function EditorSidebar({
         <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
           <AIGeneratePane 
             onInsertHierarchy={handleAIInsertHierarchy}
+          />
+        </div>
+      )}
+      
+      {activeTab === 'master' && (
+        <div className="relative flex-1 overflow-y-auto scrollbar-thin">
+          <MasterOutlinePane
+            collapsed={collapsed}
+            onNavigateToDocument={(id, title) => onNavigateToDocument?.(id, title)}
+            onReturnToMaster={() => onReturnToMaster?.()}
           />
         </div>
       )}

@@ -5,12 +5,13 @@ import { EditorSidebar } from '@/components/editor/EditorSidebar';
 import { EditorProvider, useEditorContext } from '@/components/editor/EditorContext';
 import { TermUsagesPane } from '@/components/editor/TermUsagesPane';
 import { NavigationBackBar } from '@/components/editor/NavigationBackBar';
-import { NavigationProvider, useNavigation } from '@/contexts/NavigationContext';
+import { NavigationProvider, useNavigation, MasterDocumentLink } from '@/contexts/NavigationContext';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
-import { DocumentState, createEmptyDocument } from '@/types/document';
+import { DocumentState, createEmptyDocument, HierarchyBlockData } from '@/types/document';
+import { HierarchyNode } from '@/types/node';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   loadCloudDocument,
@@ -49,10 +50,40 @@ function saveMixedConfig(config: MixedStyleConfig) {
   }
 }
 
+// Helper to extract link nodes from hierarchy blocks
+function extractLinkNodes(hierarchyBlocks: Record<string, HierarchyBlockData>): MasterDocumentLink[] {
+  const links: MasterDocumentLink[] = [];
+  
+  function traverse(nodes: HierarchyNode[]) {
+    for (const node of nodes) {
+      if (node.type === 'link' && node.linkedDocumentId) {
+        links.push({
+          nodeId: node.id,
+          linkedDocumentId: node.linkedDocumentId,
+          linkedDocumentTitle: node.linkedDocumentTitle || 'Untitled',
+        });
+      }
+      if (node.children?.length) {
+        traverse(node.children);
+      }
+    }
+  }
+  
+  for (const block of Object.values(hierarchyBlocks)) {
+    traverse(block.tree);
+  }
+  
+  return links;
+}
+
 // Inner component that uses EditorContext and Navigation
-function EditorContent({ onNavigateToDocument }: { onNavigateToDocument: (id: string) => void }) {
+function EditorContent({ 
+  onNavigateToDocument,
+}: { 
+  onNavigateToDocument: (id: string) => void;
+}) {
   const { inspectedTerm, setInspectedTerm, documentVersion, setNavigateToDocument, document } = useEditorContext();
-  const { pushDocument } = useNavigation();
+  const { pushDocument, setMasterDocument, setActiveSubOutlineId } = useNavigation();
 
   // Register navigation handler with context
   useEffect(() => {
@@ -60,12 +91,23 @@ function EditorContent({ onNavigateToDocument }: { onNavigateToDocument: (id: st
       // Push current document onto navigation stack before navigating
       if (document) {
         pushDocument(document.meta.id, document.meta.title);
+        
+        // If current document is a master, set up master mode
+        if (document.meta.isMaster) {
+          const links = extractLinkNodes(document.hierarchyBlocks);
+          setMasterDocument({
+            id: document.meta.id,
+            title: document.meta.title,
+            links,
+          });
+          setActiveSubOutlineId(documentId);
+        }
       }
       onNavigateToDocument(documentId);
     };
     setNavigateToDocument(handler);
     return () => setNavigateToDocument(null);
-  }, [setNavigateToDocument, pushDocument, document, onNavigateToDocument]);
+  }, [setNavigateToDocument, pushDocument, document, onNavigateToDocument, setMasterDocument, setActiveSubOutlineId]);
 
   // Key the panel group so defaultSize recalculates when the usages pane opens/closes
   const layoutKey = inspectedTerm ? `usages:${inspectedTerm.id}` : 'usages:none';
@@ -258,7 +300,7 @@ export default function Editor() {
     }
   }, [user, document]);
 
-  const handleSaveAs = useCallback(async (title: string) => {
+  const handleSaveAs = useCallback(async (title: string, isMaster: boolean = false) => {
     if (!user || !document) return;
     
     try {
@@ -268,6 +310,7 @@ export default function Editor() {
           ...document.meta,
           id: crypto.randomUUID(),
           title,
+          isMaster,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -276,7 +319,7 @@ export default function Editor() {
       setDocument(saved);
       setDocumentVersion(v => v + 1);
       setHasUnsavedChanges(false);
-      toast.success(`Saved as "${title}"`);
+      toast.success(`Saved as "${title}"${isMaster ? ' (Master)' : ''}`);
     } catch (e) {
       toast.error('Failed to save document');
     }
@@ -429,6 +472,7 @@ export default function Editor() {
           
           <EditorSidebar
             outlineStyle={outlineStyle}
+            outlineStyle={outlineStyle}
             onOutlineStyleChange={setOutlineStyle}
             mixedConfig={mixedConfig}
             onMixedConfigChange={setMixedConfig}
@@ -441,6 +485,12 @@ export default function Editor() {
             canUndo={canUndo}
             canRedo={canRedo}
             fileMenuProps={fileMenuProps}
+            onNavigateToDocument={(id, title) => handleNavigateToDocument(id, true)}
+            onReturnToMaster={async () => {
+              // Navigate back to master document and clear master mode
+              const { popDocument, setMasterDocument } = require('@/contexts/NavigationContext');
+              // This will be handled by the NavigationBackBar
+            }}
           />
           
           <EditorContent onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} />
@@ -457,6 +507,7 @@ export default function Editor() {
             onOpenChange={setSaveAsDialogOpen}
             onSave={handleSaveAs}
             defaultTitle={document.meta.title}
+            defaultIsMaster={document.meta.isMaster}
           />
         </div>
       </EditorProvider>
