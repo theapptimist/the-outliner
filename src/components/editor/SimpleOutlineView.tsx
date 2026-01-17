@@ -39,6 +39,8 @@ interface SimpleOutlineViewProps {
   autoDescend?: boolean;
   /** Handler for navigating to a linked document */
   onNavigateToLinkedDocument?: (documentId: string, documentTitle: string) => void;
+  /** Handler for requesting to relink a broken link node */
+  onRequestRelink?: (nodeId: string) => void;
 }
 
 export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
@@ -68,6 +70,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onPasteHierarchy,
     autoDescend = false,
     onNavigateToLinkedDocument,
+    onRequestRelink,
   },
   forwardedRef
 ) {
@@ -960,19 +963,28 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             {isLink ? (
               <div 
                 data-allow-pointer
-                className="flex items-center gap-2 cursor-pointer hover:underline text-primary min-h-[1.5rem]"
+                className={cn(
+                  "flex items-center gap-2 cursor-pointer min-h-[1.5rem]",
+                  node.linkedDocumentId 
+                    ? "text-primary hover:underline" 
+                    : "text-muted-foreground border-b border-dashed border-muted-foreground/50"
+                )}
                 onClick={() => {
                   console.log('[link click]', { nodeId: node.id, linkedDocumentId: node.linkedDocumentId, linkedDocumentTitle: node.linkedDocumentTitle, label: node.label, hasHandler: !!onNavigateToLinkedDocument });
                   if (!node.linkedDocumentId) {
-                    toast({ title: 'No linked document', description: 'This link isn\'t connected to a document yet.', variant: 'destructive' });
+                    toast({ title: 'Link not connected', description: 'Click to select a document to link to.' });
+                    onRequestRelink?.(node.id);
                     return;
                   }
                   toast({ title: 'Opening linked document…' });
                   onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
                 }}
               >
-                <FileText className="h-4 w-4 flex-shrink-0" />
+                <FileText className={cn("h-4 w-4 flex-shrink-0", !node.linkedDocumentId && "opacity-50")} />
                 <span className="text-sm font-mono leading-6">{node.label}</span>
+                {!node.linkedDocumentId && (
+                  <span className="text-xs text-muted-foreground/70">(unlinked)</span>
+                )}
               </div>
             ) : (() => {
               const isEditing = editingId === node.id;

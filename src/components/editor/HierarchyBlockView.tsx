@@ -75,6 +75,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [autoFocusId, setAutoFocusId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  // Relink dialog state for fixing broken link nodes
+  const [relinkDialogOpen, setRelinkDialogOpen] = useState(false);
+  const [relinkNodeId, setRelinkNodeId] = useState<string | null>(null);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -694,7 +697,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         }}
       />
       
-      {/* Link Document Dialog */}
+      {/* Link Document Dialog - for creating new links */}
       <LinkDocumentDialog
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
@@ -708,6 +711,30 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
             setSelectedId(newNode.id);
           }
+        }}
+        currentDocId={document?.meta?.id}
+      />
+      
+      {/* Relink Document Dialog - for fixing broken link nodes */}
+      <LinkDocumentDialog
+        open={relinkDialogOpen}
+        onOpenChange={(open) => {
+          setRelinkDialogOpen(open);
+          if (!open) setRelinkNodeId(null);
+        }}
+        onSelect={(docId, docTitle) => {
+          if (relinkNodeId) {
+            setTree(prev => updateNode(prev, relinkNodeId, { 
+              linkedDocumentId: docId, 
+              linkedDocumentTitle: docTitle,
+              label: docTitle, // Update label to match new document
+              type: 'link' 
+            }));
+            setSelectedId(relinkNodeId);
+            setAutoFocusId(relinkNodeId);
+            toast({ title: 'Link connected', description: `Now links to "${docTitle}"` });
+          }
+          setRelinkNodeId(null);
         }}
         currentDocId={document?.meta?.id}
       />
@@ -843,6 +870,10 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onPasteHierarchy={handlePasteHierarchy}
             autoDescend={autoDescend}
             onNavigateToLinkedDocument={navigateToDocument ?? undefined}
+            onRequestRelink={(nodeId) => {
+              setRelinkNodeId(nodeId);
+              setRelinkDialogOpen(true);
+            }}
           />
         </div>
       )}
