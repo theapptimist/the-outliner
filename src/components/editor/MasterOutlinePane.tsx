@@ -6,16 +6,14 @@ import { cn } from '@/lib/utils';
 
 interface MasterOutlinePaneProps {
   collapsed: boolean;
-  onNavigateToDocument: (id: string, title: string) => void;
-  onReturnToMaster: () => void;
+  onNavigateToDocument: (id: string) => void;
 }
 
 export function MasterOutlinePane({
   collapsed,
   onNavigateToDocument,
-  onReturnToMaster,
 }: MasterOutlinePaneProps) {
-  const { masterDocument, activeSubOutlineId } = useNavigation();
+  const { masterDocument, activeSubOutlineId, setActiveSubOutlineId } = useNavigation();
 
   if (!masterDocument || collapsed) {
     return (
@@ -25,6 +23,16 @@ export function MasterOutlinePane({
       </div>
     );
   }
+
+  const handleReturnToMaster = () => {
+    setActiveSubOutlineId(null);
+    onNavigateToDocument(masterDocument.id);
+  };
+
+  const handleNavigateToLinked = (link: MasterDocumentLink) => {
+    setActiveSubOutlineId(link.linkedDocumentId);
+    onNavigateToDocument(link.linkedDocumentId);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -47,7 +55,8 @@ export function MasterOutlinePane({
           variant="outline"
           size="sm"
           className="w-full justify-start gap-2 text-xs"
-          onClick={onReturnToMaster}
+          onClick={handleReturnToMaster}
+          data-allow-pointer
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Return to Master
@@ -69,7 +78,7 @@ export function MasterOutlinePane({
               <button
                 key={link.nodeId}
                 data-allow-pointer
-                onClick={() => onNavigateToDocument(link.linkedDocumentId, link.linkedDocumentTitle)}
+                onClick={() => handleNavigateToLinked(link)}
                 className={cn(
                   "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors",
                   "hover:bg-muted/50",

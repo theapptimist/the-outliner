@@ -485,9 +485,6 @@ export default function Editor() {
             canRedo={canRedo}
             fileMenuProps={fileMenuProps}
             onNavigateToDocument={(id) => handleNavigateToDocument(id, true)}
-            onReturnToMaster={() => {
-              // Return to master is handled via NavigationBackBar
-            }}
           />
           
           <EditorContent onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} />
