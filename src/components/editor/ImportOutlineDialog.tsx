@@ -22,6 +22,7 @@ interface ImportOutlineDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (items: Array<{ label: string; depth: number }>) => void;
+  onLink?: (docId: string, title: string) => void;
 }
 
 type InputMode = 'cloud' | 'disk' | 'paste';
@@ -30,6 +31,7 @@ export function ImportOutlineDialog({
   open,
   onOpenChange,
   onImport,
+  onLink,
 }: ImportOutlineDialogProps) {
   const [inputMode, setInputMode] = useState<InputMode>('cloud');
   const [inputText, setInputText] = useState('');
@@ -376,11 +378,26 @@ Example formats supported:
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
+          {inputMode === 'cloud' && selectedCloudDocId && onLink && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const doc = cloudDocs.find(d => d.id === selectedCloudDocId);
+                if (doc) {
+                  onLink(doc.id, doc.title);
+                  handleReset();
+                  onOpenChange(false);
+                }
+              }}
+            >
+              Link
+            </Button>
+          )}
           <Button 
             onClick={handleImport}
             disabled={previewItems.length === 0 || loadingCloud}
           >
-            Import {previewItems.length > 0 ? `${previewItems.length} items` : ''}
+            {inputMode === 'cloud' && selectedCloudDocId ? 'Import Content' : `Import ${previewItems.length > 0 ? `${previewItems.length} items` : ''}`}
           </Button>
         </DialogFooter>
       </DialogContent>
