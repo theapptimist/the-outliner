@@ -972,6 +972,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 onClick={() => {
                   console.log('[link click]', { nodeId: node.id, linkedDocumentId: node.linkedDocumentId, linkedDocumentTitle: node.linkedDocumentTitle, label: node.label, hasHandler: !!onNavigateToLinkedDocument });
                   if (!node.linkedDocumentId) {
+                    console.log('[link click] Unlinked node, calling onRequestRelink', { nodeId: node.id, hasRelinkHandler: !!onRequestRelink });
                     toast({ title: 'Link not connected', description: 'Click to select a document to link to.' });
                     onRequestRelink?.(node.id);
                     return;

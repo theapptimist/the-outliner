@@ -871,6 +871,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             autoDescend={autoDescend}
             onNavigateToLinkedDocument={navigateToDocument ?? undefined}
             onRequestRelink={(nodeId) => {
+              console.log('[HierarchyBlockView] onRequestRelink called', { nodeId });
               setRelinkNodeId(nodeId);
               setRelinkDialogOpen(true);
             }}
