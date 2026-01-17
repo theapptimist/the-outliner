@@ -50,6 +50,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     updateHierarchyBlock,
     removeHierarchyBlock,
     document,
+    navigateToDocument,
   } = useEditorContext();
   
   // Compute initial tree: prefer saved data from document, fallback to empty node
@@ -839,6 +840,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onPasteNodes={handlePasteNodes}
             onPasteHierarchy={handlePasteHierarchy}
             autoDescend={autoDescend}
+            onNavigateToLinkedDocument={navigateToDocument ?? undefined}
           />
         </div>
       )}
