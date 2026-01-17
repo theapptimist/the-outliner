@@ -87,7 +87,9 @@ function EditorContent({
 
   // Register navigation handler with context
   useEffect(() => {
+    console.log('[nav] registering navigateToDocument handler', { currentDocId: document?.meta?.id, isMaster: document?.meta?.isMaster });
     const handler = (documentId: string, documentTitle: string) => {
+      console.log('[nav] navigating to', { from: document?.meta?.id, to: documentId, title: documentTitle });
       // Push current document onto navigation stack before navigating
       if (document) {
         pushDocument(document.meta.id, document.meta.title);
