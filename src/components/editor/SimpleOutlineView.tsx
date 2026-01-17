@@ -989,14 +989,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   value={node.label}
                   rows={1}
                   className={cn(
-                    "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono resize-none whitespace-pre-wrap break-words leading-6 select-text",
+                    "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono resize-none whitespace-pre-wrap break-words leading-6 select-text caret-primary cursor-text",
                     node.linkedDocumentId
                       ? "text-primary underline decoration-primary/50"
                       : "text-muted-foreground border-b border-dashed border-muted-foreground/50"
                   )}
-                  onFocus={() => {
+                  style={{ caretColor: 'hsl(var(--primary))' }}
+                  onFocus={(e) => {
                     lastFocusedNodeIdRef.current = node.id;
                     onSelect(node.id);
+                    // Ensure caret is visible at end of text
+                    const len = e.currentTarget.value.length;
+                    e.currentTarget.selectionStart = len;
+                    e.currentTarget.selectionEnd = len;
                   }}
                   onKeyDown={(e) => {
                     // Arrow navigation
