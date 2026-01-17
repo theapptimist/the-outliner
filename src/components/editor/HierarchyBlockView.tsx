@@ -389,15 +389,22 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   const navigateUp = useCallback(() => {
     if (!selectedId) {
-      if (flatNodes.length > 0) {
-        setSelectedId(flatNodes[0].id);
-        setAutoFocusId(flatNodes[0].id);
+      // Find first non-link node
+      const firstEditable = flatNodes.find(n => n.type !== 'link');
+      if (firstEditable) {
+        setSelectedId(firstEditable.id);
+        setAutoFocusId(firstEditable.id);
       }
       return;
     }
     const currentIndex = flatNodes.findIndex(n => n.id === selectedId);
-    if (currentIndex > 0) {
-      const nextId = flatNodes[currentIndex - 1].id;
+    // Find previous non-link node
+    let prevIndex = currentIndex - 1;
+    while (prevIndex >= 0 && flatNodes[prevIndex].type === 'link') {
+      prevIndex--;
+    }
+    if (prevIndex >= 0) {
+      const nextId = flatNodes[prevIndex].id;
       setSelectedId(nextId);
       setAutoFocusId(nextId);
     }
@@ -405,15 +412,22 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   const navigateDown = useCallback(() => {
     if (!selectedId) {
-      if (flatNodes.length > 0) {
-        setSelectedId(flatNodes[0].id);
-        setAutoFocusId(flatNodes[0].id);
+      // Find first non-link node
+      const firstEditable = flatNodes.find(n => n.type !== 'link');
+      if (firstEditable) {
+        setSelectedId(firstEditable.id);
+        setAutoFocusId(firstEditable.id);
       }
       return;
     }
     const currentIndex = flatNodes.findIndex(n => n.id === selectedId);
-    if (currentIndex < flatNodes.length - 1) {
-      const nextId = flatNodes[currentIndex + 1].id;
+    // Find next non-link node
+    let nextIndex = currentIndex + 1;
+    while (nextIndex < flatNodes.length && flatNodes[nextIndex].type === 'link') {
+      nextIndex++;
+    }
+    if (nextIndex < flatNodes.length) {
+      const nextId = flatNodes[nextIndex].id;
       setSelectedId(nextId);
       setAutoFocusId(nextId);
     }
