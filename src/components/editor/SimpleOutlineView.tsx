@@ -758,6 +758,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     if (!containerRef.current) return;
     
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // If a textarea/input is focused, let the row-level handlers own the keystroke.
+      // This prevents double-navigation (e.g., link node onKeyDown + global handler).
+      const active = document.activeElement as HTMLElement | null;
+      if (active && containerRef.current?.contains(active)) {
+        const tag = active.tagName;
+        if (tag === 'TEXTAREA' || tag === 'INPUT' || active.getAttribute('contenteditable') === 'true') {
+          return;
+        }
+      }
+
       if (editingId) return;
       if (!containerRef.current?.contains(document.activeElement) && document.activeElement !== containerRef.current) return;
 
@@ -1007,11 +1017,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     // Arrow navigation
                     if (e.key === 'ArrowUp') {
                       e.preventDefault();
+                      e.stopPropagation();
                       onNavigateUp();
                       return;
                     }
                     if (e.key === 'ArrowDown') {
                       e.preventDefault();
+                      e.stopPropagation();
                       onNavigateDown();
                       return;
                     }
