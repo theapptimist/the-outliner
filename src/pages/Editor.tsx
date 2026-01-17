@@ -472,7 +472,6 @@ export default function Editor() {
           
           <EditorSidebar
             outlineStyle={outlineStyle}
-            outlineStyle={outlineStyle}
             onOutlineStyleChange={setOutlineStyle}
             mixedConfig={mixedConfig}
             onMixedConfigChange={setMixedConfig}
@@ -485,11 +484,9 @@ export default function Editor() {
             canUndo={canUndo}
             canRedo={canRedo}
             fileMenuProps={fileMenuProps}
-            onNavigateToDocument={(id, title) => handleNavigateToDocument(id, true)}
-            onReturnToMaster={async () => {
-              // Navigate back to master document and clear master mode
-              const { popDocument, setMasterDocument } = require('@/contexts/NavigationContext');
-              // This will be handled by the NavigationBackBar
+            onNavigateToDocument={(id) => handleNavigateToDocument(id, true)}
+            onReturnToMaster={() => {
+              // Return to master is handled via NavigationBackBar
             }}
           />
           
