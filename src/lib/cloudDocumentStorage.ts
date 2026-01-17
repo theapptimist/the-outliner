@@ -173,12 +173,35 @@ export async function deleteCloudDocument(id: string): Promise<void> {
   }
 }
 
-// Create a new document
+// Create a new document (persists to cloud immediately)
 export async function createCloudDocument(userId: string, title: string = 'Untitled'): Promise<DocumentState> {
   const doc = createEmptyDocument();
   doc.meta.title = title;
   
   return saveCloudDocument(doc, userId);
+}
+
+// Create a local-only document (NOT persisted until explicit save)
+export function createLocalDocument(title: string = 'Untitled'): DocumentState {
+  const doc = createEmptyDocument();
+  doc.meta.title = title;
+  return doc;
+}
+
+// Bulk delete documents by title (for cleanup)
+export async function bulkDeleteByTitle(title: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('documents')
+    .delete()
+    .eq('title', title)
+    .select('id');
+
+  if (error) {
+    console.error('[CloudStorage] Failed to bulk delete:', error);
+    throw error;
+  }
+
+  return data?.length ?? 0;
 }
 
 const RECENT_CLOUD_KEY = 'outliner:recent-cloud';
