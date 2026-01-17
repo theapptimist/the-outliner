@@ -1088,9 +1088,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       lastFocusedNodeIdRef.current = node.id;
                       onSelect(node.id);
 
-                      if (editIntentRef.current === 'program') {
+                      // Always enter edit mode when textarea is focused (mouse click or programmatic)
+                      if (editingId !== node.id) {
                         setEditingId(node.id);
                         setEditValue(node.label);
+                      }
+                      
+                      if (editIntentRef.current === 'program') {
                         editIntentRef.current = null;
                       }
 
