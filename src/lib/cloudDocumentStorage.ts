@@ -9,12 +9,37 @@ export interface CloudDocumentMetadata {
   updatedAt: string;
 }
 
-// Type guard to safely cast Json to HierarchyBlockData record
+// Type guard + migration helper to safely convert stored JSON into HierarchyBlockData.
+// Supports legacy shape where a block value was stored as HierarchyNode[] directly.
 function parseHierarchyBlocks(json: Json | null): Record<string, HierarchyBlockData> {
   if (!json || typeof json !== 'object' || Array.isArray(json)) {
     return {};
   }
-  return json as unknown as Record<string, HierarchyBlockData>;
+
+  const obj = json as Record<string, unknown>;
+  const blocks: Record<string, HierarchyBlockData> = {};
+
+  for (const [blockId, value] of Object.entries(obj)) {
+    // Legacy: { [blockId]: HierarchyNode[] }
+    if (Array.isArray(value)) {
+      blocks[blockId] = { id: blockId, tree: value as any };
+      continue;
+    }
+
+    // Current: { [blockId]: { id: string; tree: HierarchyNode[] } }
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const v = value as Record<string, unknown>;
+      const tree = v.tree;
+      if (Array.isArray(tree)) {
+        blocks[blockId] = {
+          id: (typeof v.id === 'string' ? v.id : blockId) as string,
+          tree: tree as any,
+        };
+      }
+    }
+  }
+
+  return blocks;
 }
 
 // List all documents for the current user
@@ -49,6 +74,9 @@ export async function loadCloudDocument(id: string): Promise<DocumentState | nul
     console.error('[CloudStorage] Failed to load document:', error);
     return null;
   }
+
+  // Track "recent" by opens (not just saves)
+  addToRecentCloudDocuments(data.id);
 
   return {
     meta: {
@@ -145,16 +173,56 @@ export async function deleteCloudDocument(id: string): Promise<void> {
   }
 }
 
-// Create a new document
-export async function createCloudDocument(userId: string, title: string = 'Untitled'): Promise<DocumentState> {
-  const doc = createEmptyDocument();
-  doc.meta.title = title;
-  
-  return saveCloudDocument(doc, userId);
+const RECENT_CLOUD_KEY = 'outliner:recent-cloud';
+const MAX_RECENT = 5;
+
+function getRecentCloudIds(): string[] {
+  try {
+    const stored = localStorage.getItem(RECENT_CLOUD_KEY);
+    return stored ? (JSON.parse(stored) as string[]) : [];
+  } catch {
+    return [];
+  }
 }
 
-// Get recent documents (just the first 5)
+function addToRecentCloudDocuments(id: string) {
+  const recent = getRecentCloudIds().filter(r => r !== id);
+  recent.unshift(id);
+  try {
+    localStorage.setItem(RECENT_CLOUD_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+  } catch {
+    // ignore
+  }
+}
+
+// Get recent documents (last opened). Falls back to "last updated" if no recent list exists.
 export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]> {
+  const recentIds = getRecentCloudIds();
+
+  if (recentIds.length > 0) {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('id, title, created_at, updated_at')
+      .in('id', recentIds);
+
+    if (error) {
+      console.error('[CloudStorage] Failed to get recent documents:', error);
+      return [];
+    }
+
+    const byId = new Map(data.map(d => [d.id, d]));
+    return recentIds
+      .map(id => byId.get(id))
+      .filter((d): d is NonNullable<typeof d> => Boolean(d))
+      .map(d => ({
+        id: d.id,
+        title: d.title,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at,
+      }));
+  }
+
+  // Fallback: most recently updated
   const { data, error } = await supabase
     .from('documents')
     .select('id, title, created_at, updated_at')

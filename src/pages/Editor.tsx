@@ -346,12 +346,22 @@ export default function Editor() {
   }, [hasUnsavedChanges]);
 
   const handleOpenDocument = useCallback(async (id: string) => {
-    await handleNavigateToDocument(id);
-    const doc = await loadCloudDocument(id);
-    if (doc) {
-      toast.success(`Opened "${doc.meta.title}"`);
+    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+
+    try {
+      const doc = await loadCloudDocument(id);
+      if (doc) {
+        setDocument(doc);
+        setDocumentVersion(v => v + 1);
+        setHasUnsavedChanges(false);
+        toast.success(`Opened "${doc.meta.title}"`);
+      } else {
+        toast.error('Document not found');
+      }
+    } catch (e) {
+      toast.error('Failed to open document');
     }
-  }, [handleNavigateToDocument]);
+  }, [hasUnsavedChanges]);
 
   const handleDelete = useCallback(async () => {
     if (!user || !document) return;
