@@ -6,17 +6,19 @@ import { HierarchyNode } from '@/types/node';
  * Returns array of { label, depth } for import into another outline
  */
 export function extractOutlineFromHierarchyBlock(
-  block: HierarchyBlockData
+  block: HierarchyBlockData | HierarchyNode[]
 ): Array<{ label: string; depth: number }> {
-  if (!block || !block.tree || !Array.isArray(block.tree)) {
+  // Handle both formats: direct array or { id, tree } wrapper
+  const nodes: HierarchyNode[] = Array.isArray(block) ? block : block?.tree;
+
+  if (!nodes || !Array.isArray(nodes)) {
     return [];
   }
 
   const result: Array<{ label: string; depth: number }> = [];
 
-  // Recursive traversal of the tree
-  function traverse(nodes: HierarchyNode[], depth: number) {
-    for (const node of nodes) {
+  function traverse(nodeList: HierarchyNode[], depth: number) {
+    for (const node of nodeList) {
       if (node.label) {
         result.push({ label: node.label, depth });
       }
@@ -27,6 +29,6 @@ export function extractOutlineFromHierarchyBlock(
     }
   }
 
-  traverse(block.tree, 0);
+  traverse(nodes, 0);
   return result;
 }
