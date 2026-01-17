@@ -267,6 +267,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       const node = nodes.find(n => n.id === autoFocusId);
       if (node) {
         lastAutoFocusIdRef.current = autoFocusId;
+        // Skip link nodes - they can't be edited
+        if (node.type === 'link') {
+          onAutoFocusHandled?.();
+          return;
+        }
         handleStartEdit(autoFocusId, node.label, { placeCursor: 'end' });
         onAutoFocusHandled?.();
       }
