@@ -56,7 +56,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   // Compute initial tree: prefer saved data from document, fallback to empty node
   const [{ initialTree, firstNodeId }] = useState(() => {
     // Check if document has saved hierarchy data for this block
-    const savedTree = document?.hierarchyBlocks?.[blockId];
+    // hierarchyBlocks stores HierarchyBlockData: { id, tree }
+    const savedBlock = document?.hierarchyBlocks?.[blockId];
+    const savedTree = savedBlock?.tree;
     if (savedTree && Array.isArray(savedTree) && savedTree.length > 0) {
       return { initialTree: savedTree as HierarchyNode[], firstNodeId: savedTree[0].id };
     }
