@@ -962,9 +962,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 data-allow-pointer
                 className="flex items-center gap-2 cursor-pointer hover:underline text-primary min-h-[1.5rem]"
                 onClick={() => {
-                  if (node.linkedDocumentId) {
-                    onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
+                  console.log('[link click]', { nodeId: node.id, linkedDocumentId: node.linkedDocumentId, linkedDocumentTitle: node.linkedDocumentTitle, label: node.label, hasHandler: !!onNavigateToLinkedDocument });
+                  if (!node.linkedDocumentId) {
+                    toast({ title: 'No linked document', description: 'This link isn\'t connected to a document yet.', variant: 'destructive' });
+                    return;
                   }
+                  toast({ title: 'Opening linked document…' });
+                  onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
                 }}
               >
                 <FileText className="h-4 w-4 flex-shrink-0" />
