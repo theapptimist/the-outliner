@@ -49,19 +49,21 @@ export function MasterOutlinePane({
         </h3>
       </div>
 
-      {/* Return to Master Button */}
-      <div className="p-2 border-b border-border/20">
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full justify-start gap-2 text-xs"
-          onClick={handleReturnToMaster}
-          data-allow-pointer
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Return to Master
-        </Button>
-      </div>
+      {/* Return to Master Button - only show when viewing a sub-outline */}
+      {activeSubOutlineId && (
+        <div className="p-2 border-b border-border/20">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start gap-2 text-xs"
+            onClick={handleReturnToMaster}
+            data-allow-pointer
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Return to Master
+          </Button>
+        </div>
+      )}
 
       {/* Sub-Outline Links */}
       <ScrollArea className="flex-1">
