@@ -1,17 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useNavigation } from '@/contexts/NavigationContext';
+import { loadEntitiesForDocuments } from '@/lib/cloudEntityStorage';
 import { Person, PersonUsage } from '@/components/editor/context/PeopleContext';
 import { Place, PlaceUsage } from '@/components/editor/context/PlacesContext';
 import { TaggedDate, DateUsage } from '@/components/editor/context/DatesContext';
 import { DefinedTerm, TermUsage } from '@/components/editor/context/TermsContext';
-
-const STORAGE_PREFIX = 'outliner-session';
-
-interface AggregatedEntity<T> {
-  entity: T;
-  sourceDocId: string;
-  sourceDocTitle: string;
-}
 
 export interface AggregatedPerson extends Person {
   sourceDocId: string;
@@ -33,141 +26,132 @@ export interface AggregatedTerm extends DefinedTerm {
   sourceDocTitle: string;
 }
 
-function loadEntitiesFromStorage<T>(key: string): T[] {
-  try {
-    const storageKey = `${STORAGE_PREFIX}:${key}`;
-    const item = localStorage.getItem(storageKey);
-    if (item) {
-      return JSON.parse(item) as T[];
-    }
-  } catch (e) {
-    console.warn(`Failed to load ${key} from localStorage:`, e);
-  }
-  return [];
-}
-
 export function useAggregatedEntities() {
   const { masterDocument, activeSubOutlineId, isInMasterMode } = useNavigation();
 
   // Only aggregate when viewing master doc itself (not a sub-doc)
   const shouldAggregate = isInMasterMode && !activeSubOutlineId && masterDocument;
 
-  const aggregatedPeople = useMemo(() => {
-    if (!shouldAggregate || !masterDocument) return [];
+  const [aggregatedPeople, setAggregatedPeople] = useState<AggregatedPerson[]>([]);
+  const [aggregatedPlaces, setAggregatedPlaces] = useState<AggregatedPlace[]>([]);
+  const [aggregatedDates, setAggregatedDates] = useState<AggregatedDate[]>([]);
+  const [aggregatedTerms, setAggregatedTerms] = useState<AggregatedTerm[]>([]);
+  const [loading, setLoading] = useState(false);
 
-    const result: AggregatedPerson[] = [];
-    const seenNames = new Set<string>();
-
+  // Get linked document IDs and their titles
+  const linkMap = useMemo(() => {
+    if (!masterDocument) return new Map<string, string>();
+    const map = new Map<string, string>();
     for (const link of masterDocument.links) {
-      const people = loadEntitiesFromStorage<Person>(`tagged-people:${link.linkedDocumentId}`);
-      for (const person of people) {
-        // Skip invalid entries
-        if (!person || !person.name) continue;
-        
-        // Dedupe by name (case-insensitive)
-        const normalizedName = person.name.toLowerCase();
-        if (!seenNames.has(normalizedName)) {
-          seenNames.add(normalizedName);
-          result.push({
-            ...person,
-            sourceDocId: link.linkedDocumentId,
-            sourceDocTitle: link.linkedDocumentTitle,
-          });
+      map.set(link.linkedDocumentId, link.linkedDocumentTitle);
+    }
+    return map;
+  }, [masterDocument]);
+
+  const documentIds = useMemo(() => Array.from(linkMap.keys()), [linkMap]);
+
+  // Load entities from cloud when in master mode
+  useEffect(() => {
+    if (!shouldAggregate || documentIds.length === 0) {
+      setAggregatedPeople([]);
+      setAggregatedPlaces([]);
+      setAggregatedDates([]);
+      setAggregatedTerms([]);
+      return;
+    }
+
+    async function loadAllEntities() {
+      setLoading(true);
+      try {
+        // Load all entity types in parallel
+        const [people, places, dates, terms] = await Promise.all([
+          loadEntitiesForDocuments<Person>(documentIds, 'person'),
+          loadEntitiesForDocuments<Place>(documentIds, 'place'),
+          loadEntitiesForDocuments<TaggedDate>(documentIds, 'date'),
+          loadEntitiesForDocuments<DefinedTerm>(documentIds, 'term'),
+        ]);
+
+        // Process people with deduplication
+        const seenPeopleNames = new Set<string>();
+        const processedPeople: AggregatedPerson[] = [];
+        for (const person of people) {
+          if (!person || !person.name) continue;
+          const normalizedName = person.name.toLowerCase();
+          if (!seenPeopleNames.has(normalizedName)) {
+            seenPeopleNames.add(normalizedName);
+            processedPeople.push({
+              ...person,
+              sourceDocTitle: linkMap.get(person.sourceDocId) || 'Unknown',
+            });
+          }
         }
+        setAggregatedPeople(processedPeople);
+
+        // Process places with deduplication
+        const seenPlaceNames = new Set<string>();
+        const processedPlaces: AggregatedPlace[] = [];
+        for (const place of places) {
+          if (!place || !place.name) continue;
+          const normalizedName = place.name.toLowerCase();
+          if (!seenPlaceNames.has(normalizedName)) {
+            seenPlaceNames.add(normalizedName);
+            processedPlaces.push({
+              ...place,
+              sourceDocTitle: linkMap.get(place.sourceDocId) || 'Unknown',
+            });
+          }
+        }
+        setAggregatedPlaces(processedPlaces);
+
+        // Process dates with deduplication and sorting
+        const seenDateTexts = new Set<string>();
+        const processedDates: AggregatedDate[] = [];
+        for (const date of dates) {
+          if (!date || !date.rawText) continue;
+          const key = date.rawText.toLowerCase();
+          if (!seenDateTexts.has(key)) {
+            seenDateTexts.add(key);
+            processedDates.push({
+              ...date,
+              // Ensure date is a Date object
+              date: date.date instanceof Date ? date.date : new Date(date.date as unknown as string),
+              sourceDocTitle: linkMap.get(date.sourceDocId) || 'Unknown',
+            });
+          }
+        }
+        // Sort by date
+        processedDates.sort((a, b) => {
+          const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+          const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+          return dateA.getTime() - dateB.getTime();
+        });
+        setAggregatedDates(processedDates);
+
+        // Process terms with deduplication
+        const seenTerms = new Set<string>();
+        const processedTerms: AggregatedTerm[] = [];
+        for (const term of terms) {
+          if (!term || !term.term) continue;
+          const key = term.term.toLowerCase();
+          if (!seenTerms.has(key)) {
+            seenTerms.add(key);
+            processedTerms.push({
+              ...term,
+              sourceDocTitle: linkMap.get(term.sourceDocId) || 'Unknown',
+            });
+          }
+        }
+        setAggregatedTerms(processedTerms);
+
+      } catch (error) {
+        console.error('Failed to load aggregated entities:', error);
+      } finally {
+        setLoading(false);
       }
     }
 
-    return result;
-  }, [shouldAggregate, masterDocument]);
-
-  const aggregatedPlaces = useMemo(() => {
-    if (!shouldAggregate || !masterDocument) return [];
-
-    const result: AggregatedPlace[] = [];
-    const seenNames = new Set<string>();
-
-    for (const link of masterDocument.links) {
-      const places = loadEntitiesFromStorage<Place>(`tagged-places:${link.linkedDocumentId}`);
-      for (const place of places) {
-        // Skip invalid entries
-        if (!place || !place.name) continue;
-        
-        const normalizedName = place.name.toLowerCase();
-        if (!seenNames.has(normalizedName)) {
-          seenNames.add(normalizedName);
-          result.push({
-            ...place,
-            sourceDocId: link.linkedDocumentId,
-            sourceDocTitle: link.linkedDocumentTitle,
-          });
-        }
-      }
-    }
-
-    return result;
-  }, [shouldAggregate, masterDocument]);
-
-  const aggregatedDates = useMemo(() => {
-    if (!shouldAggregate || !masterDocument) return [];
-
-    const result: AggregatedDate[] = [];
-    const seenRawText = new Set<string>();
-
-    for (const link of masterDocument.links) {
-      const dates = loadEntitiesFromStorage<TaggedDate>(`tagged-dates:${link.linkedDocumentId}`);
-      for (const date of dates) {
-        // Skip invalid entries
-        if (!date || !date.rawText) continue;
-        
-        // Dedupe by raw text
-        const key = date.rawText.toLowerCase();
-        if (!seenRawText.has(key)) {
-          seenRawText.add(key);
-          result.push({
-            ...date,
-            sourceDocId: link.linkedDocumentId,
-            sourceDocTitle: link.linkedDocumentTitle,
-          });
-        }
-      }
-    }
-
-    // Sort by date
-    result.sort((a, b) => {
-      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-      return dateA.getTime() - dateB.getTime();
-    });
-
-    return result;
-  }, [shouldAggregate, masterDocument]);
-
-  const aggregatedTerms = useMemo(() => {
-    if (!shouldAggregate || !masterDocument) return [];
-
-    const result: AggregatedTerm[] = [];
-    const seenTerms = new Set<string>();
-
-    for (const link of masterDocument.links) {
-      const terms = loadEntitiesFromStorage<DefinedTerm>(`defined-terms:${link.linkedDocumentId}`);
-      for (const term of terms) {
-        // Skip invalid entries
-        if (!term || !term.term) continue;
-        
-        const key = term.term.toLowerCase();
-        if (!seenTerms.has(key)) {
-          seenTerms.add(key);
-          result.push({
-            ...term,
-            sourceDocId: link.linkedDocumentId,
-            sourceDocTitle: link.linkedDocumentTitle,
-          });
-        }
-      }
-    }
-
-    return result;
-  }, [shouldAggregate, masterDocument]);
+    loadAllEntities();
+  }, [shouldAggregate, documentIds, linkMap]);
 
   return {
     shouldAggregate,
@@ -175,5 +159,6 @@ export function useAggregatedEntities() {
     aggregatedPlaces,
     aggregatedDates,
     aggregatedTerms,
+    loading,
   };
 }

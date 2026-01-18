@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
-import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { scanForTermUsages } from '@/lib/termScanner';
@@ -54,6 +54,8 @@ interface TermsContextValue {
     hierarchyBlocks: Record<string, HierarchyNode[]>,
     styleConfig?: { style: OutlineStyle; mixedConfig?: MixedStyleConfig }
   ) => void;
+
+  loading: boolean;
 }
 
 const TermsContext = createContext<TermsContextValue>({
@@ -68,6 +70,7 @@ const TermsContext = createContext<TermsContextValue>({
   setHighlightMode: () => {},
   addExtractedTerms: () => {},
   recalculateUsages: () => {},
+  loading: false,
 });
 
 interface TermsProviderProps {
@@ -77,8 +80,17 @@ interface TermsProviderProps {
 }
 
 export function TermsProvider({ children, documentId, documentVersion }: TermsProviderProps) {
-  // Use document-specific storage key so terms are scoped to each document
-  const [terms, setTerms] = useSessionStorage<DefinedTerm[]>(`defined-terms:${documentId}`, []);
+  // Use cloud storage for terms
+  const { 
+    entities: terms, 
+    setEntities: setTerms, 
+    loading 
+  } = useCloudEntities<DefinedTerm>({
+    documentId,
+    entityType: 'term',
+    localStorageKey: `defined-terms:${documentId}`,
+  });
+
   const [inspectedTerm, setInspectedTerm] = useState<DefinedTerm | null>(null);
   const [highlightedTerm, setHighlightedTerm] = useState<DefinedTerm | null>(null);
   const [highlightMode, setHighlightMode] = useState<HighlightMode>('all');
@@ -149,6 +161,7 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
         setHighlightMode,
         addExtractedTerms,
         recalculateUsages,
+        loading,
       }}
     >
       {children}

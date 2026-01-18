@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
-import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { TaggedDate, DateUsage, scanForDateUsages } from '@/lib/dateScanner';
@@ -9,6 +9,28 @@ export type { TaggedDate, DateUsage } from '@/lib/dateScanner';
 
 // Highlight mode for dates in document
 export type DateHighlightMode = 'all' | 'selected' | 'none';
+
+// Storage format with serialized date
+interface StoredTaggedDate {
+  id: string;
+  date: string; // ISO string
+  rawText: string;
+  description?: string;
+  usages: DateUsage[];
+}
+
+// Convert stored format to runtime format
+function deserializeDates(json: string): TaggedDate[] {
+  try {
+    const parsed: StoredTaggedDate[] = JSON.parse(json);
+    return parsed.map(d => ({
+      ...d,
+      date: new Date(d.date),
+    }));
+  } catch {
+    return [];
+  }
+}
 
 interface DatesContextValue {
   // Dates data
@@ -35,6 +57,8 @@ interface DatesContextValue {
     hierarchyBlocks: Record<string, HierarchyNode[]>,
     styleConfig?: { style: OutlineStyle; mixedConfig?: MixedStyleConfig }
   ) => void;
+
+  loading: boolean;
 }
 
 const DatesContext = createContext<DatesContextValue>({
@@ -50,6 +74,7 @@ const DatesContext = createContext<DatesContextValue>({
   dateHighlightMode: 'all',
   setDateHighlightMode: () => {},
   recalculateDateUsages: () => {},
+  loading: false,
 });
 
 interface DatesProviderProps {
@@ -58,39 +83,34 @@ interface DatesProviderProps {
   documentVersion: number;
 }
 
-// Helper to serialize dates for session storage
-function serializeDates(dates: TaggedDate[]): string {
-  return JSON.stringify(dates.map(d => ({
-    ...d,
-    date: d.date.toISOString(),
-  })));
-}
-
-// Helper to deserialize dates from session storage
-function deserializeDates(json: string): TaggedDate[] {
-  try {
-    const parsed = JSON.parse(json);
-    return parsed.map((d: any) => ({
-      ...d,
-      date: new Date(d.date),
-    }));
-  } catch {
-    return [];
-  }
-}
-
 export function DatesProvider({ children, documentId, documentVersion }: DatesProviderProps) {
-  // Use document-specific storage key so dates are scoped to each document
-  const [datesJson, setDatesJson] = useSessionStorage<string>(`tagged-dates:${documentId}`, '[]');
-  const dates = deserializeDates(datesJson);
-  
+  // Use cloud storage with custom deserializer for Date objects
+  const { 
+    entities: rawDates, 
+    setEntities: setRawDates, 
+    loading 
+  } = useCloudEntities<TaggedDate>({
+    documentId,
+    entityType: 'date',
+    localStorageKey: `tagged-dates:${documentId}`,
+    deserialize: deserializeDates,
+  });
+
+  // Convert Date objects properly (cloud storage stores as ISO strings)
+  const dates = rawDates.map(d => ({
+    ...d,
+    date: d.date instanceof Date ? d.date : new Date(d.date as unknown as string),
+  }));
+
   const setDates: React.Dispatch<React.SetStateAction<TaggedDate[]>> = useCallback((action) => {
-    setDatesJson(prev => {
-      const currentDates = deserializeDates(prev);
-      const newDates = typeof action === 'function' ? action(currentDates) : action;
-      return serializeDates(newDates);
+    setRawDates(prev => {
+      const currentDates = prev.map(d => ({
+        ...d,
+        date: d.date instanceof Date ? d.date : new Date(d.date as unknown as string),
+      }));
+      return typeof action === 'function' ? action(currentDates) : action;
     });
-  }, [setDatesJson]);
+  }, [setRawDates]);
 
   const [inspectedDate, setInspectedDate] = useState<TaggedDate | null>(null);
   const [highlightedDate, setHighlightedDate] = useState<TaggedDate | null>(null);
@@ -160,6 +180,7 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
         dateHighlightMode,
         setDateHighlightMode,
         recalculateDateUsages,
+        loading,
       }}
     >
       {children}
