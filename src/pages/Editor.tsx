@@ -89,12 +89,50 @@ interface PendingNavigation {
 function EditorContent({ 
   onNavigateToDocument,
   onPromptSaveAsMaster,
+  pendingNavigation,
+  onClearPendingNavigation,
+  onSaveDocumentAsMaster,
 }: { 
   onNavigateToDocument: (id: string) => void;
   onPromptSaveAsMaster: (pending: PendingNavigation) => void;
+  pendingNavigation: PendingNavigation | null;
+  onClearPendingNavigation: () => void;
+  onSaveDocumentAsMaster: () => Promise<DocumentState | null>;
 }) {
   const { inspectedTerm, setInspectedTerm, documentVersion, setNavigateToDocument, document } = useEditorContext();
   const { pushDocument, setMasterDocument, setActiveSubOutlineId } = useNavigation();
+
+  // Handle save as master and then navigate (needs navigation context access)
+  const handleSaveAsMasterAndNavigate = useCallback(async () => {
+    if (!pendingNavigation) return;
+    
+    try {
+      // Save via parent - returns the saved document
+      const saved = await onSaveDocumentAsMaster();
+      if (!saved) return;
+      
+      // Now set up navigation context with master mode
+      pushDocument(saved.meta.id, saved.meta.title);
+      setMasterDocument({
+        id: saved.meta.id,
+        title: saved.meta.title,
+        links: pendingNavigation.links,
+      });
+      setActiveSubOutlineId(pendingNavigation.documentId);
+      
+      // Navigate to sub-document
+      onNavigateToDocument(pendingNavigation.documentId);
+    } finally {
+      onClearPendingNavigation();
+    }
+  }, [pendingNavigation, onSaveDocumentAsMaster, pushDocument, setMasterDocument, setActiveSubOutlineId, onNavigateToDocument, onClearPendingNavigation]);
+
+  // Handle just navigate without saving as master
+  const handleJustNavigate = useCallback(() => {
+    if (!pendingNavigation) return;
+    onNavigateToDocument(pendingNavigation.documentId);
+    onClearPendingNavigation();
+  }, [pendingNavigation, onNavigateToDocument, onClearPendingNavigation]);
 
   // Register navigation handler with context
   useEffect(() => {
@@ -140,39 +178,50 @@ function EditorContent({
   const layoutKey = inspectedTerm ? `usages:${inspectedTerm.id}` : 'usages:none';
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Back navigation bar */}
-      <NavigationBackBar onNavigateBack={onNavigateToDocument} />
-      
-      <div className="flex-1 flex overflow-hidden">
-        <ResizablePanelGroup key={layoutKey} direction="horizontal" className="flex-1">
-          {/* Term Usages Panel */}
-          <ResizablePanel
-            defaultSize={inspectedTerm ? 25 : 0}
-            minSize={0}
-            maxSize={40}
-            collapsible
-            collapsedSize={0}
-          >
-            {inspectedTerm ? (
-              <TermUsagesPane term={inspectedTerm} onClose={() => setInspectedTerm(null)} />
-            ) : (
-              <div className="h-full" />
-            )}
-          </ResizablePanel>
+    <>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Back navigation bar */}
+        <NavigationBackBar onNavigateBack={onNavigateToDocument} />
+        
+        <div className="flex-1 flex overflow-hidden">
+          <ResizablePanelGroup key={layoutKey} direction="horizontal" className="flex-1">
+            {/* Term Usages Panel */}
+            <ResizablePanel
+              defaultSize={inspectedTerm ? 25 : 0}
+              minSize={0}
+              maxSize={40}
+              collapsible
+              collapsedSize={0}
+            >
+              {inspectedTerm ? (
+                <TermUsagesPane term={inspectedTerm} onClose={() => setInspectedTerm(null)} />
+              ) : (
+                <div className="h-full" />
+              )}
+            </ResizablePanel>
 
-          <ResizableHandle withHandle />
+            <ResizableHandle withHandle />
 
-          {/* Main Editor Panel */}
-          <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
-            <main className="h-full overflow-hidden">
-              {/* Force TipTap to remount on explicit document changes */}
-              <DocumentEditor key={documentVersion} />
-            </main>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+            {/* Main Editor Panel */}
+            <ResizablePanel defaultSize={inspectedTerm ? 75 : 100} minSize={40}>
+              <main className="h-full overflow-hidden">
+                {/* Force TipTap to remount on explicit document changes */}
+                <DocumentEditor key={documentVersion} />
+              </main>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
       </div>
-    </div>
+
+      {/* SaveAsMasterDialog needs navigation context */}
+      <SaveAsMasterDialog
+        open={!!pendingNavigation}
+        onOpenChange={(open) => !open && onClearPendingNavigation()}
+        onSaveAsMaster={handleSaveAsMasterAndNavigate}
+        onJustNavigate={handleJustNavigate}
+        documentTitle={document?.meta?.title || 'Untitled'}
+      />
+    </>
   );
 }
 
@@ -195,7 +244,6 @@ export default function Editor() {
   const [documentVersion, setDocumentVersion] = useState(0);
   const [openDialogOpen, setOpenDialogOpen] = useState(false);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
-  const [saveAsMasterDialogOpen, setSaveAsMasterDialogOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -372,18 +420,16 @@ export default function Editor() {
     }
   }, [hasUnsavedChanges]);
 
-  // Handle prompt to save as master
+  // Handle prompt to save as master (just sets pending - dialog controlled by pendingNavigation)
   const handlePromptSaveAsMaster = useCallback((pending: PendingNavigation) => {
     setPendingNavigation(pending);
-    setSaveAsMasterDialogOpen(true);
   }, []);
 
-  // Handle save as master and then navigate
-  const handleSaveAsMasterAndNavigate = useCallback(async () => {
-    if (!user || !document || !pendingNavigation) return;
+  // Save document as master (returns saved doc for EditorContent to use)
+  const handleSaveDocumentAsMaster = useCallback(async (): Promise<DocumentState | null> => {
+    if (!user || !document) return null;
     
     try {
-      // Save current document as master
       const updatedDoc: DocumentState = {
         ...document,
         meta: {
@@ -396,22 +442,12 @@ export default function Editor() {
       setDocument(saved);
       setHasUnsavedChanges(false);
       toast.success(`Saved "${saved.meta.title}" as Master`);
-      
-      // Now navigate
-      handleNavigateToDocument(pendingNavigation.documentId, true);
+      return saved;
     } catch (e) {
       toast.error('Failed to save document');
-    } finally {
-      setPendingNavigation(null);
+      return null;
     }
-  }, [user, document, pendingNavigation, handleNavigateToDocument]);
-
-  // Handle just navigate without saving as master
-  const handleJustNavigate = useCallback(() => {
-    if (!pendingNavigation) return;
-    handleNavigateToDocument(pendingNavigation.documentId, true);
-    setPendingNavigation(null);
-  }, [pendingNavigation, handleNavigateToDocument]);
+  }, [user, document]);
 
   const handleOpenDocument = useCallback(async (id: string) => {
     if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
@@ -579,6 +615,9 @@ export default function Editor() {
           <EditorContent 
             onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} 
             onPromptSaveAsMaster={handlePromptSaveAsMaster}
+            pendingNavigation={pendingNavigation}
+            onClearPendingNavigation={() => setPendingNavigation(null)}
+            onSaveDocumentAsMaster={handleSaveDocumentAsMaster}
           />
 
           <OpenDocumentDialog
@@ -594,14 +633,6 @@ export default function Editor() {
             onSave={handleSaveAs}
             defaultTitle={document.meta.title}
             defaultIsMaster={document.meta.isMaster}
-          />
-
-          <SaveAsMasterDialog
-            open={saveAsMasterDialogOpen}
-            onOpenChange={setSaveAsMasterDialogOpen}
-            onSaveAsMaster={handleSaveAsMasterAndNavigate}
-            onJustNavigate={handleJustNavigate}
-            documentTitle={document.meta.title}
           />
         </div>
       </EditorProvider>
