@@ -15,6 +15,7 @@ import {
   Type,
   X,
   FileText,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,11 +37,13 @@ import { useEditorContext } from './EditorContext';
 import { useNavigation, EntityTab } from '@/contexts/NavigationContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAggregatedEntities } from '@/hooks/useAggregatedEntities';
+import { useEntitySuggestions, PersonSuggestion, PlaceSuggestion, DateSuggestion, TermSuggestion } from '@/hooks/useEntitySuggestions';
 import { AddTermDialog } from './AddTermDialog';
 import { AddDateDialog } from './AddDateDialog';
 import { AddPersonDialog } from './AddPersonDialog';
 import { AddPlaceDialog } from './AddPlaceDialog';
 import { EntityUsagesPane } from './EntityUsagesPane';
+import { EntitySuggestionsPanel } from './EntitySuggestionsPanel';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 
 // EntityTab type is imported from NavigationContext
@@ -146,6 +149,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     outlineStyle,
     mixedConfig,
   } = useEditorContext();
+
+  // Entity suggestions from AI scan
+  const entitySuggestions = useEntitySuggestions({
+    existingPeople: people,
+    existingPlaces: places,
+    existingDates: dates,
+    existingTerms: terms,
+  });
 
   // Backup refs for undo
   const backupRef = useRef<any>(null);
@@ -467,6 +478,39 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
           </TooltipContent>
         </Tooltip>
 
+        {/* AI Scan */}
+        {!shouldAggregate && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => entitySuggestions.scanDocument(hierarchyBlocks)}
+                disabled={entitySuggestions.state === 'scanning'}
+                className={cn(
+                  "h-7 w-7 p-0 relative",
+                  entitySuggestions.state === 'scanning' && "animate-pulse",
+                  entitySuggestions.getTotalSuggestionCount() > 0 && "text-primary"
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {entitySuggestions.getTotalSuggestionCount() > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-3 min-w-[12px] px-0.5 text-[8px] font-bold bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+                    {entitySuggestions.getTotalSuggestionCount()}
+                  </span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              {entitySuggestions.state === 'scanning' 
+                ? 'Scanning...' 
+                : entitySuggestions.getTotalSuggestionCount() > 0
+                  ? `${entitySuggestions.getTotalSuggestionCount()} suggestions`
+                  : 'AI Scan for entities'}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {/* Highlight Mode */}
         <Popover>
           <Tooltip>
@@ -652,6 +696,81 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                 </div>
               )}
               
+              {/* AI Suggestions Panel */}
+              {!shouldAggregate && entitySuggestions.state !== 'idle' && (
+                <EntitySuggestionsPanel
+                  type={activeTab}
+                  state={entitySuggestions.state}
+                  people={entitySuggestions.suggestions.people}
+                  places={entitySuggestions.suggestions.places}
+                  dates={entitySuggestions.suggestions.dates}
+                  terms={entitySuggestions.suggestions.terms}
+                  onAcceptPerson={(index, suggestion) => {
+                    addPerson(suggestion.name, suggestion.role || '');
+                    entitySuggestions.acceptPerson(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onAcceptPlace={(index, suggestion) => {
+                    addPlace(suggestion.name, suggestion.significance || '');
+                    entitySuggestions.acceptPlace(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onAcceptDate={(index, suggestion) => {
+                    // Try to parse date from rawText, fallback to current date
+                    const parsed = new Date(suggestion.rawText);
+                    const dateValue = isNaN(parsed.getTime()) ? new Date() : parsed;
+                    addDate(dateValue, suggestion.rawText, suggestion.description || '');
+                    entitySuggestions.acceptDate(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onAcceptTerm={(index, suggestion) => {
+                    addTerm(suggestion.term, suggestion.definition);
+                    entitySuggestions.acceptTerm(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onDismissPerson={(index) => {
+                    entitySuggestions.dismissPerson(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onDismissPlace={(index) => {
+                    entitySuggestions.dismissPlace(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onDismissDate={(index) => {
+                    entitySuggestions.dismissDate(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onDismissTerm={(index) => {
+                    entitySuggestions.dismissTerm(index);
+                    entitySuggestions.checkAndCloseReview();
+                  }}
+                  onDismissAll={() => entitySuggestions.dismissAll()}
+                  onAcceptAll={() => {
+                    // Accept all suggestions for current tab
+                    if (activeTab === 'people') {
+                      entitySuggestions.suggestions.people.forEach((s, i) => {
+                        addPerson(s.name, s.role || '');
+                      });
+                    } else if (activeTab === 'places') {
+                      entitySuggestions.suggestions.places.forEach((s, i) => {
+                        addPlace(s.name, s.significance || '');
+                      });
+                    } else if (activeTab === 'dates') {
+                      entitySuggestions.suggestions.dates.forEach((s, i) => {
+                        const parsed = new Date(s.rawText);
+                        const dateValue = isNaN(parsed.getTime()) ? new Date() : parsed;
+                        addDate(dateValue, s.rawText, s.description || '');
+                      });
+                    } else if (activeTab === 'terms') {
+                      entitySuggestions.suggestions.terms.forEach((s, i) => {
+                        addTerm(s.term, s.definition);
+                      });
+                    }
+                    entitySuggestions.dismissAll();
+                  }}
+                />
+              )}
+
               {filteredItems.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-xs">
                   {currentCount === 0 ? (
