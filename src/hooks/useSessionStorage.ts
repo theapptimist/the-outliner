@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const STORAGE_PREFIX = 'outliner-session';
 
 export function useSessionStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
   const storageKey = `${STORAGE_PREFIX}:${key}`;
+  const prevKeyRef = useRef(storageKey);
 
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
@@ -16,6 +17,24 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, (value: 
     }
     return initialValue;
   });
+
+  // Re-read from storage when key changes
+  useEffect(() => {
+    if (prevKeyRef.current !== storageKey) {
+      prevKeyRef.current = storageKey;
+      try {
+        const item = localStorage.getItem(storageKey);
+        if (item) {
+          setStoredValue(JSON.parse(item));
+        } else {
+          setStoredValue(initialValue);
+        }
+      } catch (e) {
+        console.warn(`Failed to load ${key} from localStorage:`, e);
+        setStoredValue(initialValue);
+      }
+    }
+  }, [storageKey, initialValue, key]);
 
   // Persist whenever value changes
   useEffect(() => {

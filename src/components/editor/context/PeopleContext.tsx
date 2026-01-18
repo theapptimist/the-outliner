@@ -147,12 +147,12 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
   const [peopleHighlightMode, setPeopleHighlightMode] = useState<PeopleHighlightMode>('all');
   
   // Track whether we've normalized existing people for this document
-  const normalizedRef = useRef(false);
+  const normalizedRef = useRef<string | null>(null);
 
-  // One-time normalization of existing stored people on mount
+  // One-time normalization of existing stored people per document
   useEffect(() => {
-    if (normalizedRef.current) return;
-    normalizedRef.current = true;
+    if (normalizedRef.current === documentId) return;
+    normalizedRef.current = documentId;
     
     setPeople(prev => {
       let changed = false;
@@ -166,7 +166,7 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
       });
       return changed ? normalized : prev;
     });
-  }, [setPeople]);
+  }, [documentId, setPeople]);
 
   useEffect(() => {
     setInspectedPerson(null);
