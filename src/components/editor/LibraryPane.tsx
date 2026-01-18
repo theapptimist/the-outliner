@@ -43,7 +43,7 @@ import { AddDateDialog } from './AddDateDialog';
 import { AddPersonDialog } from './AddPersonDialog';
 import { AddPlaceDialog } from './AddPlaceDialog';
 import { EntityUsagesPane } from './EntityUsagesPane';
-import { EntitySuggestionsPanel } from './EntitySuggestionsPanel';
+import { EntitySuggestionsDialog } from './EntitySuggestionsDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 
 // EntityTab type is imported from NavigationContext
@@ -73,6 +73,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
   const [capturedSelection, setCapturedSelection] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
   
   const { toast } = useToast();
@@ -485,7 +486,16 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => entitySuggestions.scanDocument(hierarchyBlocks)}
+                onClick={async () => {
+                  if (entitySuggestions.getTotalSuggestionCount() > 0) {
+                    // If we already have suggestions, just open the dialog
+                    setSuggestionsDialogOpen(true);
+                  } else {
+                    // Scan and open dialog when done
+                    await entitySuggestions.scanDocument(hierarchyBlocks);
+                    setSuggestionsDialogOpen(true);
+                  }
+                }}
                 disabled={entitySuggestions.state === 'scanning'}
                 className={cn(
                   "h-7 w-7 p-0 relative",
@@ -694,81 +704,6 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                   <FileText className="h-3 w-3" />
                   <span>Aggregated from sub-documents</span>
                 </div>
-              )}
-              
-              {/* AI Suggestions Panel */}
-              {!shouldAggregate && entitySuggestions.state !== 'idle' && (
-                <EntitySuggestionsPanel
-                  type={activeTab}
-                  state={entitySuggestions.state}
-                  people={entitySuggestions.suggestions.people}
-                  places={entitySuggestions.suggestions.places}
-                  dates={entitySuggestions.suggestions.dates}
-                  terms={entitySuggestions.suggestions.terms}
-                  onAcceptPerson={(index, suggestion) => {
-                    addPerson(suggestion.name, suggestion.role || '');
-                    entitySuggestions.acceptPerson(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onAcceptPlace={(index, suggestion) => {
-                    addPlace(suggestion.name, suggestion.significance || '');
-                    entitySuggestions.acceptPlace(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onAcceptDate={(index, suggestion) => {
-                    // Try to parse date from rawText, fallback to current date
-                    const parsed = new Date(suggestion.rawText);
-                    const dateValue = isNaN(parsed.getTime()) ? new Date() : parsed;
-                    addDate(dateValue, suggestion.rawText, suggestion.description || '');
-                    entitySuggestions.acceptDate(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onAcceptTerm={(index, suggestion) => {
-                    addTerm(suggestion.term, suggestion.definition);
-                    entitySuggestions.acceptTerm(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onDismissPerson={(index) => {
-                    entitySuggestions.dismissPerson(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onDismissPlace={(index) => {
-                    entitySuggestions.dismissPlace(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onDismissDate={(index) => {
-                    entitySuggestions.dismissDate(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onDismissTerm={(index) => {
-                    entitySuggestions.dismissTerm(index);
-                    entitySuggestions.checkAndCloseReview();
-                  }}
-                  onDismissAll={() => entitySuggestions.dismissAll()}
-                  onAcceptAll={() => {
-                    // Accept all suggestions for current tab
-                    if (activeTab === 'people') {
-                      entitySuggestions.suggestions.people.forEach((s, i) => {
-                        addPerson(s.name, s.role || '');
-                      });
-                    } else if (activeTab === 'places') {
-                      entitySuggestions.suggestions.places.forEach((s, i) => {
-                        addPlace(s.name, s.significance || '');
-                      });
-                    } else if (activeTab === 'dates') {
-                      entitySuggestions.suggestions.dates.forEach((s, i) => {
-                        const parsed = new Date(s.rawText);
-                        const dateValue = isNaN(parsed.getTime()) ? new Date() : parsed;
-                        addDate(dateValue, s.rawText, s.description || '');
-                      });
-                    } else if (activeTab === 'terms') {
-                      entitySuggestions.suggestions.terms.forEach((s, i) => {
-                        addTerm(s.term, s.definition);
-                      });
-                    }
-                    entitySuggestions.dismissAll();
-                  }}
-                />
               )}
 
               {filteredItems.length === 0 ? (
@@ -1064,6 +999,65 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
         onSave={(name, significance) => {
           addPlace(name, significance);
         }}
+      />
+
+      {/* AI Suggestions Dialog */}
+      <EntitySuggestionsDialog
+        open={suggestionsDialogOpen}
+        onOpenChange={setSuggestionsDialogOpen}
+        people={entitySuggestions.suggestions.people}
+        places={entitySuggestions.suggestions.places}
+        dates={entitySuggestions.suggestions.dates}
+        terms={entitySuggestions.suggestions.terms}
+        onAcceptPerson={(index, suggestion) => {
+          addPerson(suggestion.name, suggestion.role || '');
+          entitySuggestions.acceptPerson(index);
+        }}
+        onAcceptPlace={(index, suggestion) => {
+          addPlace(suggestion.name, suggestion.significance || '');
+          entitySuggestions.acceptPlace(index);
+        }}
+        onAcceptDate={(index, suggestion) => {
+          const parsed = new Date(suggestion.rawText);
+          const dateValue = isNaN(parsed.getTime()) ? new Date() : parsed;
+          addDate(dateValue, suggestion.rawText, suggestion.description || '');
+          entitySuggestions.acceptDate(index);
+        }}
+        onAcceptTerm={(index, suggestion) => {
+          addTerm(suggestion.term, suggestion.definition);
+          entitySuggestions.acceptTerm(index);
+        }}
+        onDismissPerson={(index) => entitySuggestions.dismissPerson(index)}
+        onDismissPlace={(index) => entitySuggestions.dismissPlace(index)}
+        onDismissDate={(index) => entitySuggestions.dismissDate(index)}
+        onDismissTerm={(index) => entitySuggestions.dismissTerm(index)}
+        onAcceptAllPeople={() => {
+          entitySuggestions.suggestions.people.forEach((s) => {
+            addPerson(s.name, s.role || '');
+          });
+          entitySuggestions.suggestions.people.forEach((_, i) => entitySuggestions.dismissPerson(0));
+        }}
+        onAcceptAllPlaces={() => {
+          entitySuggestions.suggestions.places.forEach((s) => {
+            addPlace(s.name, s.significance || '');
+          });
+          entitySuggestions.suggestions.places.forEach((_, i) => entitySuggestions.dismissPlace(0));
+        }}
+        onAcceptAllDates={() => {
+          entitySuggestions.suggestions.dates.forEach((s) => {
+            const parsed = new Date(s.rawText);
+            const dateValue = isNaN(parsed.getTime()) ? new Date() : parsed;
+            addDate(dateValue, s.rawText, s.description || '');
+          });
+          entitySuggestions.suggestions.dates.forEach((_, i) => entitySuggestions.dismissDate(0));
+        }}
+        onAcceptAllTerms={() => {
+          entitySuggestions.suggestions.terms.forEach((s) => {
+            addTerm(s.term, s.definition);
+          });
+          entitySuggestions.suggestions.terms.forEach((_, i) => entitySuggestions.dismissTerm(0));
+        }}
+        onDismissAll={() => entitySuggestions.dismissAll()}
       />
 
       {/* Clear Confirmation */}
