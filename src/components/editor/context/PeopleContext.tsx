@@ -1,7 +1,8 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
+import { normalizeEntityName } from '@/lib/entityNameUtils';
 
 // Highlight mode for people in document
 export type PeopleHighlightMode = 'all' | 'selected' | 'none';
@@ -144,6 +145,28 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
   const [inspectedPerson, setInspectedPerson] = useState<Person | null>(null);
   const [highlightedPerson, setHighlightedPerson] = useState<Person | null>(null);
   const [peopleHighlightMode, setPeopleHighlightMode] = useState<PeopleHighlightMode>('all');
+  
+  // Track whether we've normalized existing people for this document
+  const normalizedRef = useRef(false);
+
+  // One-time normalization of existing stored people on mount
+  useEffect(() => {
+    if (normalizedRef.current) return;
+    normalizedRef.current = true;
+    
+    setPeople(prev => {
+      let changed = false;
+      const normalized = prev.map(p => {
+        const normalizedName = normalizeEntityName(p.name);
+        if (normalizedName !== p.name) {
+          changed = true;
+          return { ...p, name: normalizedName };
+        }
+        return p;
+      });
+      return changed ? normalized : prev;
+    });
+  }, [setPeople]);
 
   useEffect(() => {
     setInspectedPerson(null);
@@ -151,9 +174,12 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
   }, [documentVersion]);
 
   const addPerson = useCallback((name: string, role?: string, description?: string) => {
+    const normalizedName = normalizeEntityName(name);
+    if (!normalizedName) return; // Don't add empty names
+    
     const newPerson: Person = {
       id: crypto.randomUUID(),
-      name,
+      name: normalizedName,
       role,
       description,
       usages: [],
@@ -168,9 +194,13 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
   }, [setPeople]);
 
   const updatePerson = useCallback((id: string, updates: Partial<Pick<Person, 'name' | 'role' | 'description'>>) => {
-    setPeople(prev => prev.map(p => 
-      p.id === id ? { ...p, ...updates } : p
-    ));
+    setPeople(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const normalizedUpdates = updates.name 
+        ? { ...updates, name: normalizeEntityName(updates.name) }
+        : updates;
+      return { ...p, ...normalizedUpdates };
+    }));
   }, [setPeople]);
 
   const recalculatePeopleUsages = useCallback((

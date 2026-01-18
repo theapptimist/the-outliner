@@ -1,6 +1,7 @@
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { Extension } from '@tiptap/react';
+import { normalizeEntityName } from '@/lib/entityNameUtils';
 
 export const placesHighlightPluginKey = new PluginKey('placesHighlight');
 
@@ -53,10 +54,11 @@ function findPlacesMatches(
   }
 
   // Build regex pattern for all place names (case-insensitive, word boundaries)
+  // Normalize names to ensure consistent matching
   const patterns = placesToHighlight.map(p => ({
     place: p,
-    regex: new RegExp(`\\b${escapeRegex(p.name)}\\b`, 'gi')
-  }));
+    regex: new RegExp(`\\b${escapeRegex(normalizeEntityName(p.name))}\\b`, 'gi')
+  })).filter(({ regex }) => regex.source !== '\\b\\b'); // Filter out empty names
 
   // Walk through all text nodes
   doc.descendants((node: any, pos: number) => {
