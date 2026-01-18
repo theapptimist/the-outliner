@@ -516,10 +516,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       }
     } else if (e.key === 'Enter' && e.shiftKey) {
       // Shift+Enter:
-      // - With content: insert a literal line break inside the current item
       // - On an empty numbered node: convert it into a BODY line under the previous sibling
+      // - On a line with a suffix (colon): create a BODY sibling (don't insert newline which would push colon down)
+      // - Otherwise: insert a literal line break inside the current item
       const currentValue = e.currentTarget.value;
+      
+      // Check if this node has a suffix (e.g., header with colon)
+      const nodeLevelStyle = outlineStyle === 'mixed' && node.type !== 'body'
+        ? getLevelStyle(node.depth, mixedConfig)
+        : { suffix: '' };
+      const hasSuffix = Boolean(nodeLevelStyle.suffix && currentValue.trim());
+      
       if (currentValue.trim() === '' && node.type !== 'body') {
+        // Empty numbered node: delete it and create BODY under previous sibling
         e.preventDefault();
         const currentIndex = nodes.findIndex(n => n.id === node.id);
         const prevNode = currentIndex > 0 ? nodes[currentIndex - 1] : null;
@@ -532,6 +541,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           if (newId) {
             pendingNewNodeIdRef.current = newId;
           }
+        }
+      } else if (hasSuffix) {
+        // Line with suffix (colon): create BODY sibling instead of inserting newline
+        // This prevents the colon from being pushed down to the next line
+        e.preventDefault();
+        handleEndEdit(node.id); // Save current content first
+        const newId = onAddNode(node.id, 'body');
+        if (newId) {
+          pendingNewNodeIdRef.current = newId;
         }
       } else {
         insertLineBreak();
@@ -709,7 +727,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       }
       // Otherwise let arrow work normally within multi-line text
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard, onNavigateUp, onNavigateDown]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard, onNavigateUp, onNavigateDown, outlineStyle, mixedConfig]);
 
   // Handle paste event to detect outline patterns
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>, nodeId: string) => {
@@ -1194,8 +1212,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               </div>
             ) : (() => {
               const isEditing = editingId === node.id;
-              const displayValue = isEditing ? editValue : node.label;
-              const suffix = levelStyle.suffix && node.label ? levelStyle.suffix : '';
+              const baseValue = isEditing ? editValue : node.label;
+              const suffix = levelStyle.suffix && (isEditing ? editValue : node.label) ? levelStyle.suffix : '';
+              // Include suffix in display value so caret can appear after colon
+              const displayValue = baseValue + (suffix || '');
               const shouldUnderline = levelStyle.underline && (isEditing ? editValue : node.label);
 
               return (
@@ -1209,17 +1229,18 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     style={{ gridArea: '1 / 1' }}
                     aria-hidden="true"
                   >
-                    {displayValue || ' '}{suffix}
+                    {displayValue || ' '}
                   </span>
                   
-                  {/* Visible layer - text (maybe underlined) + suffix (never underlined) */}
+                  {/* Visible layer - text (maybe underlined), suffix is now part of displayValue */}
                   <span 
                     className="whitespace-pre-wrap break-words text-sm font-mono leading-6 min-w-0 pointer-events-none"
                     style={{ gridArea: '1 / 1' }}
                     aria-hidden="true"
                   >
+                    {/* Underline only the base text, not the suffix */}
                     <span className={cn(shouldUnderline && "underline decoration-foreground")}>
-                      {renderHighlightedText(displayValue)}
+                      {renderHighlightedText(baseValue)}
                     </span>
                     {suffix && <span className="select-none">{suffix}</span>}
                   </span>
@@ -1229,11 +1250,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     ref={getInputRefCallback(node.id)}
                     value={displayValue}
                     onChange={(e) => {
+                      let newValue = e.target.value;
+                      // Strip suffix if user hasn't removed it (suffix is auto-appended for display)
+                      if (suffix && newValue.endsWith(suffix)) {
+                        newValue = newValue.slice(0, -suffix.length);
+                      }
                       if (editingId !== node.id) {
                         setEditingId(node.id);
-                        setEditValue(e.target.value);
+                        setEditValue(newValue);
                       } else {
-                        setEditValue(e.target.value);
+                        setEditValue(newValue);
                       }
                       e.target.style.height = 'auto';
                       e.target.style.height = `${e.target.scrollHeight}px`;
