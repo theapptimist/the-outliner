@@ -1,6 +1,7 @@
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { Extension } from '@tiptap/react';
+import { normalizeEntityName } from '@/lib/entityNameUtils';
 
 export const peopleHighlightPluginKey = new PluginKey('peopleHighlight');
 
@@ -54,10 +55,11 @@ function findPeopleMatches(
   }
 
   // Build regex pattern for all person names (case-insensitive, word boundaries)
+  // Normalize names to ensure consistent matching
   const patterns = peopleToHighlight.map(p => ({
     person: p,
-    regex: new RegExp(`\\b${escapeRegex(p.name)}\\b`, 'gi')
-  }));
+    regex: new RegExp(`\\b${escapeRegex(normalizeEntityName(p.name))}\\b`, 'gi')
+  })).filter(({ regex }) => regex.source !== '\\b\\b'); // Filter out empty names
 
   // Walk through all text nodes
   doc.descendants((node: any, pos: number) => {

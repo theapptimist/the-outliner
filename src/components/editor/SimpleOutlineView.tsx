@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
 import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
 import { ExternalLink, FileText } from 'lucide-react';
+import { normalizeEntityName } from '@/lib/entityNameUtils';
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
   selectedId: string | null;
@@ -154,7 +155,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     
     if (peopleToHighlight.length === 0) return null;
     
-    const escaped = peopleToHighlight.map(p => escapeRegex(p.name));
+    // Use normalized names for consistent matching
+    const escaped = peopleToHighlight
+      .map(p => normalizeEntityName(p.name))
+      .filter(name => name.length > 0)
+      .map(name => escapeRegex(name));
+    
+    if (escaped.length === 0) return null;
+    
     return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
   }, [people, peopleHighlightMode, highlightedPerson?.id, escapeRegex]);
 
@@ -169,7 +177,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     
     if (placesToHighlight.length === 0) return null;
     
-    const escaped = placesToHighlight.map(p => escapeRegex(p.name));
+    // Use normalized names for consistent matching
+    const escaped = placesToHighlight
+      .map(p => normalizeEntityName(p.name))
+      .filter(name => name.length > 0)
+      .map(name => escapeRegex(name));
+    
+    if (escaped.length === 0) return null;
+    
     return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
   }, [places, placesHighlightMode, highlightedPlace?.id, escapeRegex]);
 
