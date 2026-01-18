@@ -1005,6 +1005,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
       <EntitySuggestionsDialog
         open={suggestionsDialogOpen}
         onOpenChange={setSuggestionsDialogOpen}
+        scanState={entitySuggestions.state}
         people={entitySuggestions.suggestions.people}
         places={entitySuggestions.suggestions.places}
         dates={entitySuggestions.suggestions.dates}
