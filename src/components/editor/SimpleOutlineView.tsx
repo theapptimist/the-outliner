@@ -543,12 +543,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           }
         }
       } else if (hasSuffix) {
-        // Line with suffix (colon): create BODY child node (indented under this header)
+        // Line with suffix (colon): create BODY sibling node (same level, unnumbered)
         // This prevents the colon from being pushed down to the next line
-        // and creates a proper "hanging" element under the header
+        // and creates a proper "hanging" element at the same depth
         e.preventDefault();
         handleEndEdit(node.id); // Save current content first
-        const newId = onAddBodyNode(node.id);
+        const newId = onAddNode(node.id, 'body');
         if (newId) {
           pendingNewNodeIdRef.current = newId;
         }
