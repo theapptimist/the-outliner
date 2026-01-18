@@ -1228,14 +1228,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   onFocus={(e) => {
                     lastFocusedNodeIdRef.current = node.id;
                     onSelect(node.id);
+                    // Capture target before async operations (currentTarget is only valid during event)
+                    const target = e.currentTarget;
+                    if (!target) return;
                     // Ensure caret is visible at end of text
-                    const len = e.currentTarget.value.length;
-                    e.currentTarget.selectionStart = len;
-                    e.currentTarget.selectionEnd = len;
+                    const len = target.value.length;
+                    target.selectionStart = len;
+                    target.selectionEnd = len;
                     // Double rAF to stabilize caret
                     requestAnimationFrame(() => {
-                      e.currentTarget.selectionStart = len;
-                      e.currentTarget.selectionEnd = len;
+                      if (target) {
+                        target.selectionStart = len;
+                        target.selectionEnd = len;
+                      }
                     });
                   }}
                   onKeyDown={(e) => {
