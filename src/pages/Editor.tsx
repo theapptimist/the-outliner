@@ -58,7 +58,8 @@ function extractLinkNodes(hierarchyBlocks: Record<string, HierarchyBlockData>): 
   
   function traverse(nodes: HierarchyNode[]) {
     for (const node of nodes) {
-      if (node.type === 'link' && node.linkedDocumentId) {
+      // A node is link-like if it has linkedDocumentId (type can be 'link' OR 'body')
+      if (node.linkedDocumentId) {
         links.push({
           nodeId: node.id,
           linkedDocumentId: node.linkedDocumentId,
