@@ -74,24 +74,26 @@ export function EntityUsagesPane({
   return (
     <div className="flex flex-col h-full bg-background border-t border-border">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0 bg-muted/30">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <Icon className={cn("h-4 w-4 shrink-0", color)} />
-          <span className="font-medium text-sm break-words">{title}</span>
+      <div className="flex items-start justify-between px-3 py-2 border-b border-border shrink-0 bg-muted/30 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <Icon className={cn("h-4 w-4 shrink-0 mt-0.5", color)} />
+          <span className="font-medium text-sm break-words whitespace-pre-wrap min-w-0">{title}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           {totalCount > 0 && (
-            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {totalCount} use{totalCount !== 1 && 's'}
             </span>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-6 w-6 p-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          className="h-6 w-6 p-0 shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
       </div>
 
       {/* Navigation */}
