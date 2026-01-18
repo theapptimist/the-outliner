@@ -19,10 +19,10 @@ interface SuggestionCardProps {
 function SuggestionCard({ title, subtitle, onAccept, onDismiss }: SuggestionCardProps) {
   return (
     <div className="flex items-start gap-2 p-2 bg-primary/5 border border-primary/20 rounded-md group hover:bg-primary/10 transition-colors">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{title}</p>
+      <div className="flex-1 min-w-0 break-words">
+        <p className="text-sm font-medium break-words">{title}</p>
         {subtitle && (
-          <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+          <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">{subtitle}</p>
         )}
       </div>
       <div className="flex gap-1 shrink-0">
