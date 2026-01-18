@@ -543,12 +543,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           }
         }
       } else if (hasSuffix) {
-        // Line with suffix (colon): create BODY sibling node (same level, unnumbered)
+        // Line with suffix (colon): create BODY child node (indented under this header)
         // This prevents the colon from being pushed down to the next line
-        // and creates a proper "hanging" element at the same depth
+        // and creates a proper "hanging" element that will remain unnumbered
         e.preventDefault();
         handleEndEdit(node.id); // Save current content first
-        const newId = onAddNode(node.id, 'body');
+        const newId = onAddBodyNode(node.id);
         if (newId) {
           pendingNewNodeIdRef.current = newId;
         }
@@ -934,7 +934,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       {nodes.map((node) => {
         const indices = nodeIndices.get(node.id) || [1];
         const isBody = node.type === 'body';
-        const isLink = node.type === 'link';
+        // A node is "link-like" if it has link properties (even if type is 'body' for hanging links)
+        const isLinkLike = node.type === 'link' || !!node.linkedDocumentId;
         const prefix = isBody ? '' : (
           outlineStyle === 'mixed'
             ? getOutlinePrefixCustom(node.depth, indices, mixedConfig)
@@ -1032,7 +1033,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             </span>
 
             {/* Label */}
-            {isLink ? (
+            {isLinkLike ? (
               <div className="flex items-center gap-2 min-h-[1.5rem] min-w-0">
                 <FileText className={cn("h-4 w-4 flex-shrink-0", !node.linkedDocumentId && "opacity-50")} />
 
