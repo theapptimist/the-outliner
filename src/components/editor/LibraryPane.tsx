@@ -14,6 +14,7 @@ import {
   Eye,
   Type,
   X,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { useEditorContext } from './EditorContext';
 import { useNavigation, EntityTab } from '@/contexts/NavigationContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAggregatedEntities } from '@/hooks/useAggregatedEntities';
 import { AddTermDialog } from './AddTermDialog';
 import { AddDateDialog } from './AddDateDialog';
 import { AddPersonDialog } from './AddPersonDialog';
@@ -49,7 +51,16 @@ interface LibraryPaneProps {
 }
 
 export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
-  const { isInMasterMode, activeEntityTab, setActiveEntityTab } = useNavigation();
+  const { isInMasterMode, activeEntityTab, setActiveEntityTab, activeSubOutlineId } = useNavigation();
+  
+  // Aggregated entities from sub-docs when viewing master
+  const { 
+    shouldAggregate, 
+    aggregatedPeople, 
+    aggregatedPlaces, 
+    aggregatedDates, 
+    aggregatedTerms 
+  } = useAggregatedEntities();
   
   // Local state for entity tab, synced with NavigationContext in master mode
   const [localActiveTab, setLocalActiveTab] = useState<EntityTab>('terms');
@@ -182,15 +193,23 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     }
   }, [hierarchyBlocksKey, placesKey, outlineStyle, mixedConfig, hierarchyBlocks, recalculatePlaceUsages]);
 
-  // Get current entity count
+  // Get current entity count (use aggregated counts when viewing master)
   const getCount = useCallback((tab: EntityTab) => {
+    if (shouldAggregate) {
+      switch (tab) {
+        case 'people': return aggregatedPeople.length;
+        case 'places': return aggregatedPlaces.length;
+        case 'dates': return aggregatedDates.length;
+        case 'terms': return aggregatedTerms.length;
+      }
+    }
     switch (tab) {
       case 'people': return people.length;
       case 'places': return places.length;
       case 'dates': return dates.length;
       case 'terms': return terms.length;
     }
-  }, [people.length, places.length, dates.length, terms.length]);
+  }, [shouldAggregate, aggregatedPeople.length, aggregatedPlaces.length, aggregatedDates.length, aggregatedTerms.length, people.length, places.length, dates.length, terms.length]);
 
   // Use context selection, falling back to prop
   const effectiveSelectedText = contextSelectedText || selectedText || '';
@@ -311,9 +330,36 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     });
   }, []);
 
-  // Filter items based on search
+  // Filter items based on search (use aggregated when viewing master)
   const getFilteredItems = useCallback(() => {
     const q = searchQuery.toLowerCase();
+    
+    if (shouldAggregate) {
+      switch (activeTab) {
+        case 'people':
+          return aggregatedPeople.filter(p => 
+            p.name.toLowerCase().includes(q) || 
+            p.role?.toLowerCase().includes(q) ||
+            p.description?.toLowerCase().includes(q)
+          );
+        case 'places':
+          return aggregatedPlaces.filter(p => 
+            p.name.toLowerCase().includes(q) || 
+            p.significance?.toLowerCase().includes(q)
+          );
+        case 'dates':
+          return aggregatedDates.filter(d => 
+            d.rawText.toLowerCase().includes(q) ||
+            d.description?.toLowerCase().includes(q)
+          );
+        case 'terms':
+          return aggregatedTerms.filter(t => 
+            t.term.toLowerCase().includes(q) ||
+            t.definition.toLowerCase().includes(q)
+          );
+      }
+    }
+    
     switch (activeTab) {
       case 'people':
         return people.filter(p => 
@@ -337,7 +383,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
           t.definition.toLowerCase().includes(q)
         );
     }
-  }, [activeTab, searchQuery, people, places, dates, terms]);
+  }, [activeTab, searchQuery, shouldAggregate, aggregatedPeople, aggregatedPlaces, aggregatedDates, aggregatedTerms, people, places, dates, terms]);
 
   const filteredItems = getFilteredItems();
   const currentCount = getCount(activeTab);
@@ -598,6 +644,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
            (inspectedPlace && activeTab === 'places')) && (
           <ScrollArea className="flex-1 px-1">
             <div className="space-y-1.5 py-2">
+              {/* Aggregated view header when viewing master */}
+              {shouldAggregate && (
+                <div className="flex items-center gap-1.5 px-2 py-1 mb-2 bg-muted/30 rounded text-xs text-muted-foreground">
+                  <FileText className="h-3 w-3" />
+                  <span>Aggregated from sub-documents</span>
+                </div>
+              )}
+              
               {filteredItems.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-xs">
                   {currentCount === 0 ? (
@@ -611,13 +665,92 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                         </div>
                       )}
                       <p>No {activeTab} tagged yet</p>
-                      <p className="text-[10px]">Select text and click + to add</p>
+                      {shouldAggregate ? (
+                        <p className="text-[10px]">Tag {activeTab} in sub-documents to see them here</p>
+                      ) : (
+                        <p className="text-[10px]">Select text and click + to add</p>
+                      )}
                     </div>
                   ) : (
                     <p>No matching {activeTab}</p>
                   )}
                 </div>
+              ) : shouldAggregate ? (
+                // Aggregated read-only view
+                <>
+                  {activeTab === 'terms' && aggregatedTerms.filter(t => 
+                    t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.definition.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(term => (
+                    <AggregatedEntityCard
+                      key={`${term.sourceDocId}-${term.id}`}
+                      title={term.term}
+                      subtitle={term.definition}
+                      icon={Quote}
+                      iconColor="text-amber-500"
+                      sourceDocTitle={term.sourceDocTitle}
+                      usageCount={term.usages?.reduce((sum, u) => sum + u.count, 0) ?? 0}
+                      isExpanded={expandedItems.has(term.id)}
+                      onToggleExpand={() => toggleExpand(term.id)}
+                    />
+                  ))}
+                  
+                  {activeTab === 'dates' && aggregatedDates.filter(d => 
+                    d.rawText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    d.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(date => (
+                    <AggregatedEntityCard
+                      key={`${date.sourceDocId}-${date.id}`}
+                      title={formatDateForDisplay(date.date)}
+                      subtitle={date.rawText}
+                      description={date.description}
+                      icon={Calendar}
+                      iconColor="text-blue-500"
+                      sourceDocTitle={date.sourceDocTitle}
+                      usageCount={date.usages?.reduce((sum, u) => sum + u.count, 0) ?? 0}
+                      isExpanded={expandedItems.has(date.id)}
+                      onToggleExpand={() => toggleExpand(date.id)}
+                    />
+                  ))}
+                  
+                  {activeTab === 'people' && aggregatedPeople.filter(p => 
+                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(person => (
+                    <AggregatedEntityCard
+                      key={`${person.sourceDocId}-${person.id}`}
+                      title={person.name}
+                      subtitle={person.role}
+                      description={person.description}
+                      icon={User}
+                      iconColor="text-purple-500"
+                      sourceDocTitle={person.sourceDocTitle}
+                      usageCount={person.usages?.reduce((sum, u) => sum + u.count, 0) ?? 0}
+                      isExpanded={expandedItems.has(person.id)}
+                      onToggleExpand={() => toggleExpand(person.id)}
+                    />
+                  ))}
+                  
+                  {activeTab === 'places' && aggregatedPlaces.filter(p => 
+                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.significance?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(place => (
+                    <AggregatedEntityCard
+                      key={`${place.sourceDocId}-${place.id}`}
+                      title={place.name}
+                      subtitle={place.significance}
+                      icon={MapPin}
+                      iconColor="text-green-500"
+                      sourceDocTitle={place.sourceDocTitle}
+                      usageCount={place.usages?.reduce((sum, u) => sum + u.count, 0) ?? 0}
+                      isExpanded={expandedItems.has(place.id)}
+                      onToggleExpand={() => toggleExpand(place.id)}
+                    />
+                  ))}
+                </>
               ) : (
+                // Normal editable view
                 <>
                   {activeTab === 'terms' && terms.filter(t => 
                     t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -956,6 +1089,77 @@ function EntityCard({
                 )}
               </div>
             </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Read-only card for aggregated entities from sub-documents
+interface AggregatedEntityCardProps {
+  title: string;
+  subtitle?: string;
+  description?: string;
+  icon: typeof User;
+  iconColor: string;
+  sourceDocTitle: string;
+  usageCount: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+}
+
+function AggregatedEntityCard({
+  title,
+  subtitle,
+  description,
+  icon: Icon,
+  iconColor,
+  sourceDocTitle,
+  usageCount,
+  isExpanded,
+  onToggleExpand,
+}: AggregatedEntityCardProps) {
+  return (
+    <div className="rounded-md border border-border/50 bg-card/50 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-1.5 px-2 py-1.5">
+        <button
+          onClick={onToggleExpand}
+          className="text-muted-foreground hover:text-foreground shrink-0"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )}
+        </button>
+
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", iconColor)} />
+
+        <span className="text-xs font-medium truncate flex-1">{title}</span>
+
+        {usageCount > 0 && (
+          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            {usageCount}
+          </span>
+        )}
+      </div>
+
+      {/* Source indicator */}
+      <div className="flex items-center gap-1 px-2 pb-1.5">
+        <FileText className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] text-muted-foreground truncate">{sourceDocTitle}</span>
+      </div>
+
+      {/* Expanded content */}
+      {isExpanded && (
+        <div className="px-2 pb-2 pt-1 border-t border-border/30 space-y-1">
+          {subtitle && (
+            <p className="text-[10px] text-muted-foreground break-words">{subtitle}</p>
+          )}
+          {description && (
+            <p className="text-[10px] text-muted-foreground italic break-words">{description}</p>
           )}
         </div>
       )}
