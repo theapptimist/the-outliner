@@ -129,8 +129,8 @@ export function EntitySuggestionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             AI-Detected Entities
@@ -140,8 +140,8 @@ export function EntitySuggestionsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid grid-cols-4 w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <TabsList className="grid grid-cols-4 w-full shrink-0">
             {tabs.map(tab => (
               <TabsTrigger 
                 key={tab.id} 
@@ -160,16 +160,16 @@ export function EntitySuggestionsDialog({
             ))}
           </TabsList>
 
-          <div className="flex-1 min-h-0 mt-4">
-            <TabsContent value="people" className="h-full m-0">
+          <div className="flex-1 min-h-0 overflow-hidden mt-4">
+            <TabsContent value="people" className="h-full m-0 flex flex-col">
               {people.length > 0 ? (
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-end gap-2 mb-2">
+                <>
+                  <div className="flex justify-end gap-2 mb-2 shrink-0">
                     <Button size="sm" variant="outline" onClick={onAcceptAllPeople} className="text-green-600">
                       <Check className="h-3.5 w-3.5 mr-1" /> Accept All
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1">
+                  <ScrollArea className="flex-1 min-h-0">
                     <div className="space-y-2 pr-2">
                       {people.map((person, index) => (
                         <SuggestionCard
@@ -182,21 +182,21 @@ export function EntitySuggestionsDialog({
                       ))}
                     </div>
                   </ScrollArea>
-                </div>
+                </>
               ) : (
                 <div className="text-center text-muted-foreground py-8">No people suggestions</div>
               )}
             </TabsContent>
 
-            <TabsContent value="places" className="h-full m-0">
+            <TabsContent value="places" className="h-full m-0 flex flex-col">
               {places.length > 0 ? (
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-end gap-2 mb-2">
+                <>
+                  <div className="flex justify-end gap-2 mb-2 shrink-0">
                     <Button size="sm" variant="outline" onClick={onAcceptAllPlaces} className="text-green-600">
                       <Check className="h-3.5 w-3.5 mr-1" /> Accept All
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1">
+                  <ScrollArea className="flex-1 min-h-0">
                     <div className="space-y-2 pr-2">
                       {places.map((place, index) => (
                         <SuggestionCard
@@ -209,21 +209,21 @@ export function EntitySuggestionsDialog({
                       ))}
                     </div>
                   </ScrollArea>
-                </div>
+                </>
               ) : (
                 <div className="text-center text-muted-foreground py-8">No place suggestions</div>
               )}
             </TabsContent>
 
-            <TabsContent value="dates" className="h-full m-0">
+            <TabsContent value="dates" className="h-full m-0 flex flex-col">
               {dates.length > 0 ? (
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-end gap-2 mb-2">
+                <>
+                  <div className="flex justify-end gap-2 mb-2 shrink-0">
                     <Button size="sm" variant="outline" onClick={onAcceptAllDates} className="text-green-600">
                       <Check className="h-3.5 w-3.5 mr-1" /> Accept All
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1">
+                  <ScrollArea className="flex-1 min-h-0">
                     <div className="space-y-2 pr-2">
                       {dates.map((date, index) => (
                         <SuggestionCard
@@ -236,21 +236,21 @@ export function EntitySuggestionsDialog({
                       ))}
                     </div>
                   </ScrollArea>
-                </div>
+                </>
               ) : (
                 <div className="text-center text-muted-foreground py-8">No date suggestions</div>
               )}
             </TabsContent>
 
-            <TabsContent value="terms" className="h-full m-0">
+            <TabsContent value="terms" className="h-full m-0 flex flex-col">
               {terms.length > 0 ? (
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-end gap-2 mb-2">
+                <>
+                  <div className="flex justify-end gap-2 mb-2 shrink-0">
                     <Button size="sm" variant="outline" onClick={onAcceptAllTerms} className="text-green-600">
                       <Check className="h-3.5 w-3.5 mr-1" /> Accept All
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1">
+                  <ScrollArea className="flex-1 min-h-0">
                     <div className="space-y-2 pr-2">
                       {terms.map((term, index) => (
                         <SuggestionCard
@@ -263,7 +263,7 @@ export function EntitySuggestionsDialog({
                       ))}
                     </div>
                   </ScrollArea>
-                </div>
+                </>
               ) : (
                 <div className="text-center text-muted-foreground py-8">No term suggestions</div>
               )}
@@ -271,7 +271,7 @@ export function EntitySuggestionsDialog({
           </div>
         </Tabs>
 
-        <div className="flex justify-between pt-4 border-t">
+        <div className="flex justify-between pt-4 border-t shrink-0">
           <Button variant="ghost" onClick={onDismissAll} className="text-muted-foreground">
             Dismiss All
           </Button>
