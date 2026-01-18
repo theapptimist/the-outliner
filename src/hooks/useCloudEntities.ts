@@ -1,23 +1,58 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  loadEntities, 
-  saveEntities, 
+import {
   deleteAllEntities,
   migrateLocalToCloud,
-  EntityType 
+  saveEntities,
+  EntityType,
 } from '@/lib/cloudEntityStorage';
 import { toast } from 'sonner';
+
+const STORAGE_PREFIX = 'outliner-session';
 
 interface UseCloudEntitiesOptions<T> {
   documentId: string;
   entityType: EntityType;
+  /**
+   * The logical key (without STORAGE_PREFIX). Example: `tagged-people:${documentId}`
+   */
   localStorageKey: string;
   deserialize?: (json: string) => T[];
 }
 
+function getPrefixedStorageKey(localStorageKey: string) {
+  return `${STORAGE_PREFIX}:${localStorageKey}`;
+}
+
+function loadFromLocal<T>(localStorageKey: string, deserialize?: (json: string) => T[]): T[] {
+  try {
+    const raw = localStorage.getItem(getPrefixedStorageKey(localStorageKey));
+    if (!raw) return [];
+    return deserialize ? deserialize(raw) : (JSON.parse(raw) as T[]);
+  } catch {
+    return [];
+  }
+}
+
+function saveToLocal<T>(localStorageKey: string, entities: T[]) {
+  try {
+    localStorage.setItem(getPrefixedStorageKey(localStorageKey), JSON.stringify(entities));
+  } catch {
+    // ignore
+  }
+}
+
+function clearLocal(localStorageKey: string) {
+  try {
+    localStorage.removeItem(getPrefixedStorageKey(localStorageKey));
+  } catch {
+    // ignore
+  }
+}
+
 /**
- * Hook for managing cloud-persisted entities with auto-save and migration
+ * Hook for managing cloud-persisted entities with auto-save and migration.
+ * Also maintains a localStorage mirror for resilience (prevents "lost tiles" if load/save fails).
  */
 export function useCloudEntities<T extends { id: string }>({
   documentId,
@@ -26,12 +61,12 @@ export function useCloudEntities<T extends { id: string }>({
   deserialize,
 }: UseCloudEntitiesOptions<T>) {
   const { user } = useAuth();
-  const [entities, setEntities] = useState<T[]>([]);
+  const [entities, setEntities] = useState<T[]>(() => loadFromLocal<T>(localStorageKey, deserialize));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  
+
   // Track pending saves for debouncing
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingEntitiesRef = useRef<T[] | null>(null);
   const lastSavedRef = useRef<string>('');
   const mountedRef = useRef(true);
@@ -39,15 +74,20 @@ export function useCloudEntities<T extends { id: string }>({
   // Load entities on mount and handle migration
   useEffect(() => {
     mountedRef.current = true;
-    
+
     async function loadAndMigrate() {
+      setLoading(true);
+      setError(null);
+
+      // If we don't have a user yet (auth still loading), show local mirror (if any)
       if (!user?.id || !documentId) {
+        const local = loadFromLocal<T>(localStorageKey, deserialize);
+        if (mountedRef.current) {
+          setEntities(local);
+        }
         setLoading(false);
         return;
       }
-
-      setLoading(true);
-      setError(null);
 
       try {
         // Try migration first (will skip if cloud already has data)
@@ -59,14 +99,21 @@ export function useCloudEntities<T extends { id: string }>({
           deserialize
         );
 
+        // If cloud returned empty, fall back to local mirror (avoids the "everything vanished" feeling)
+        const fallbackLocal = loadedEntities.length === 0
+          ? loadFromLocal<T>(localStorageKey, deserialize)
+          : loadedEntities;
+
         if (mountedRef.current) {
-          setEntities(loadedEntities);
-          lastSavedRef.current = JSON.stringify(loadedEntities);
+          setEntities(fallbackLocal);
+          lastSavedRef.current = JSON.stringify(fallbackLocal);
         }
       } catch (e) {
         console.error(`Failed to load ${entityType} entities:`, e);
         if (mountedRef.current) {
           setError(e instanceof Error ? e : new Error('Failed to load entities'));
+          // Always fall back to local mirror on errors
+          setEntities(loadFromLocal<T>(localStorageKey, deserialize));
         }
       } finally {
         if (mountedRef.current) {
@@ -108,28 +155,37 @@ export function useCloudEntities<T extends { id: string }>({
   ) => {
     setEntities(prev => {
       const newEntities = typeof action === 'function' ? action(prev) : action;
-      
-      // Schedule debounced save
+
+      // Always write-through to local mirror immediately (resilience)
+      saveToLocal(localStorageKey, newEntities);
+
+      // Schedule debounced cloud save
       pendingEntitiesRef.current = newEntities;
-      
+
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      
+
       saveTimeoutRef.current = setTimeout(() => {
         if (pendingEntitiesRef.current) {
           saveToCloud(pendingEntitiesRef.current);
           pendingEntitiesRef.current = null;
         }
       }, 1500); // 1.5 second debounce
-      
+
       return newEntities;
     });
-  }, [saveToCloud]);
+  }, [localStorageKey, saveToCloud]);
 
   // Clear all entities
   const clearAll = useCallback(async () => {
-    if (!user?.id || !documentId) return false;
+    clearLocal(localStorageKey);
+
+    if (!user?.id || !documentId) {
+      setEntities([]);
+      lastSavedRef.current = '[]';
+      return true;
+    }
 
     try {
       const success = await deleteAllEntities(documentId, entityType);
@@ -142,7 +198,7 @@ export function useCloudEntities<T extends { id: string }>({
       console.error(`Failed to clear ${entityType} entities:`, e);
     }
     return false;
-  }, [documentId, entityType, user?.id]);
+  }, [documentId, entityType, localStorageKey, user?.id]);
 
   // Force save now (flush pending changes)
   const flushSave = useCallback(async () => {
@@ -162,7 +218,7 @@ export function useCloudEntities<T extends { id: string }>({
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      // Flush pending saves on unmount
+      // Flush pending saves on unmount (best-effort)
       if (pendingEntitiesRef.current && user?.id && documentId) {
         saveEntities(documentId, entityType, pendingEntitiesRef.current, user.id);
       }
