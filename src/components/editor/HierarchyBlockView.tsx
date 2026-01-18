@@ -839,13 +839,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onIndent={handleIndent}
             onOutdent={handleOutdent}
             onVisualIndent={handleVisualIndent}
-            onAddNode={(afterId) => {
+            onAddNode={(afterId, type = 'default') => {
               const anchorId = afterId ?? selectedId;
               if (anchorId) {
                 const anchor = flatNodes.find(n => n.id === anchorId);
-                return addNode(anchor?.parentId ?? null, 'default', '', anchorId);
+                return addNode(anchor?.parentId ?? null, type as any, '', anchorId);
               } else {
-                return addNode(null, 'default', '');
+                return addNode(null, type as any, '');
               }
             }}
             onAddBodyNode={(afterId) => {
