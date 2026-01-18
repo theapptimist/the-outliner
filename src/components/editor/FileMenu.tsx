@@ -366,13 +366,15 @@ export function FileMenu({
                     setSheetOpen(false);
                     setShowRecent(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50 text-left"
+                  className="w-full flex items-start gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50 text-left"
                 >
-                  <FileText className="h-4 w-4 flex-shrink-0" />
-                  <span className="flex-1 truncate">{doc.title}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                  </span>
+                  <FileText className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="break-words">{doc.title}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
