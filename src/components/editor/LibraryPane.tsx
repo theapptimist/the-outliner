@@ -128,6 +128,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     recalculatePlaceUsages,
     // Common
     selectionSource,
+    selectedText: contextSelectedText,
     insertTextAtCursor,
     hierarchyBlocks,
     outlineStyle,
@@ -165,11 +166,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     }
   }, [people.length, places.length, dates.length, terms.length]);
 
+  // Use context selection, falling back to prop
+  const effectiveSelectedText = contextSelectedText || selectedText || '';
+  
   // Handle add action
   const handleAdd = useCallback(() => {
-    setCapturedSelection(selectedText || '');
+    setCapturedSelection(effectiveSelectedText);
     setDialogOpen(true);
-  }, [selectedText]);
+  }, [effectiveSelectedText]);
 
   // Handle clear all
   const handleClearAll = useCallback(() => {
