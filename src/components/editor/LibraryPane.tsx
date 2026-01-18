@@ -17,7 +17,6 @@ import {
   FileText,
   Sparkles,
   MoreVertical,
-  Link2,
   Merge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,6 +53,7 @@ import { AddPersonDialog } from './AddPersonDialog';
 import { AddPlaceDialog } from './AddPlaceDialog';
 import { EntityUsagesPane } from './EntityUsagesPane';
 import { EntitySuggestionsDialog } from './EntitySuggestionsDialog';
+import { EntityMergeDialog } from './EntityMergeDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 
 // EntityTab type is imported from NavigationContext
@@ -85,6 +85,8 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeSourceEntity, setMergeSourceEntity] = useState<{ id: string; title: string; subtitle?: string } | null>(null);
   
   const { toast } = useToast();
 
@@ -858,6 +860,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                         }
                       }}
                       onViewUsages={() => setInspectedTerm(inspectedTerm?.id === term.id ? null : term)}
+                      onMerge={() => {
+                        setMergeSourceEntity({ id: term.id, title: term.term, subtitle: term.definition });
+                        setMergeDialogOpen(true);
+                      }}
+                      onDelete={() => {
+                        setTerms(prev => prev.filter(t => t.id !== term.id));
+                        toast({ title: 'Term deleted' });
+                      }}
                       usages={term.usages}
                     />
                   ))}
@@ -893,6 +903,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                         }
                       }}
                       onViewUsages={() => setInspectedDate(inspectedDate?.id === date.id ? null : date)}
+                      onMerge={() => {
+                        setMergeSourceEntity({ id: date.id, title: formatDateForDisplay(date.date), subtitle: date.rawText });
+                        setMergeDialogOpen(true);
+                      }}
+                      onDelete={() => {
+                        setDates(prev => prev.filter(d => d.id !== date.id));
+                        toast({ title: 'Date deleted' });
+                      }}
                       usages={date.usages}
                     />
                   ))}
@@ -929,6 +947,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                         }
                       }}
                       onViewUsages={() => setInspectedPerson(inspectedPerson?.id === person.id ? null : person)}
+                      onMerge={() => {
+                        setMergeSourceEntity({ id: person.id, title: person.name, subtitle: person.role });
+                        setMergeDialogOpen(true);
+                      }}
+                      onDelete={() => {
+                        setPeople(prev => prev.filter(p => p.id !== person.id));
+                        toast({ title: 'Person deleted' });
+                      }}
                       usages={person.usages}
                     />
                   ))}
@@ -963,6 +989,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                         }
                       }}
                       onViewUsages={() => setInspectedPlace(inspectedPlace?.id === place.id ? null : place)}
+                      onMerge={() => {
+                        setMergeSourceEntity({ id: place.id, title: place.name, subtitle: place.significance });
+                        setMergeDialogOpen(true);
+                      }}
+                      onDelete={() => {
+                        setPlaces(prev => prev.filter(p => p.id !== place.id));
+                        toast({ title: 'Place deleted' });
+                      }}
                       usages={place.usages}
                     />
                   ))}
@@ -1086,6 +1120,45 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Merge Dialog */}
+      <EntityMergeDialog
+        open={mergeDialogOpen}
+        onOpenChange={(open) => {
+          setMergeDialogOpen(open);
+          if (!open) setMergeSourceEntity(null);
+        }}
+        sourceEntity={mergeSourceEntity ?? { id: '', title: '' }}
+        entityType={activeTab}
+        candidates={
+          activeTab === 'terms'
+            ? terms.filter(t => t.id !== mergeSourceEntity?.id).map(t => ({ id: t.id, title: t.term, subtitle: t.definition }))
+            : activeTab === 'dates'
+            ? dates.filter(d => d.id !== mergeSourceEntity?.id).map(d => ({ id: d.id, title: formatDateForDisplay(d.date), subtitle: d.rawText }))
+            : activeTab === 'people'
+            ? people.filter(p => p.id !== mergeSourceEntity?.id).map(p => ({ id: p.id, title: p.name, subtitle: p.role }))
+            : places.filter(p => p.id !== mergeSourceEntity?.id).map(p => ({ id: p.id, title: p.name, subtitle: p.significance }))
+        }
+        onMerge={(targetId) => {
+          if (!mergeSourceEntity) return;
+          
+          // Remove the source entity (the target entity absorbs it conceptually)
+          if (activeTab === 'terms') {
+            setTerms(prev => prev.filter(t => t.id !== mergeSourceEntity.id));
+          } else if (activeTab === 'dates') {
+            setDates(prev => prev.filter(d => d.id !== mergeSourceEntity.id));
+          } else if (activeTab === 'people') {
+            setPeople(prev => prev.filter(p => p.id !== mergeSourceEntity.id));
+          } else if (activeTab === 'places') {
+            setPlaces(prev => prev.filter(p => p.id !== mergeSourceEntity.id));
+          }
+          
+          toast({
+            title: 'Entities merged',
+            description: `"${mergeSourceEntity.title}" merged into target entity`,
+          });
+        }}
+      />
     </div>
   );
 }
@@ -1106,6 +1179,8 @@ interface EntityCardProps {
   onInsert: () => void;
   onHighlight: () => void;
   onViewUsages: () => void;
+  onMerge: () => void;
+  onDelete: () => void;
   usages: { nodePrefix: string; nodeLabel: string; count: number }[];
 }
 
@@ -1124,6 +1199,8 @@ function EntityCard({
   onInsert,
   onHighlight,
   onViewUsages,
+  onMerge,
+  onDelete,
   usages,
 }: EntityCardProps) {
   return (
@@ -1221,16 +1298,12 @@ function EntityCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem disabled>
-              <Link2 className="h-3.5 w-3.5 mr-2" />
-              Link entity
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled>
+            <DropdownMenuItem onClick={onMerge}>
               <Merge className="h-3.5 w-3.5 mr-2" />
               Merge with...
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled className="text-destructive">
+            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
               <Trash2 className="h-3.5 w-3.5 mr-2" />
               Delete
             </DropdownMenuItem>
