@@ -97,18 +97,18 @@ function EditorContent({
   onPromptSaveAsMaster: (pending: PendingNavigation) => void;
   pendingNavigation: PendingNavigation | null;
   onClearPendingNavigation: () => void;
-  onSaveDocumentAsMaster: () => Promise<DocumentState | null>;
+  onSaveDocumentAsMaster: (newTitle?: string) => Promise<DocumentState | null>;
 }) {
   const { inspectedTerm, setInspectedTerm, documentVersion, setNavigateToDocument, document } = useEditorContext();
   const { pushDocument, setMasterDocument, setActiveSubOutlineId } = useNavigation();
 
   // Handle save as master and then navigate (needs navigation context access)
-  const handleSaveAsMasterAndNavigate = useCallback(async () => {
+  const handleSaveAsMasterAndNavigate = useCallback(async (newTitle?: string) => {
     if (!pendingNavigation) return;
     
     try {
       // Save via parent - returns the saved document
-      const saved = await onSaveDocumentAsMaster();
+      const saved = await onSaveDocumentAsMaster(newTitle);
       if (!saved) return;
       
       // Now set up navigation context with master mode
@@ -426,7 +426,7 @@ export default function Editor() {
   }, []);
 
   // Save document as master (returns saved doc for EditorContent to use)
-  const handleSaveDocumentAsMaster = useCallback(async (): Promise<DocumentState | null> => {
+  const handleSaveDocumentAsMaster = useCallback(async (newTitle?: string): Promise<DocumentState | null> => {
     if (!user || !document) return null;
     
     try {
@@ -434,6 +434,7 @@ export default function Editor() {
         ...document,
         meta: {
           ...document.meta,
+          title: newTitle || document.meta.title,
           isMaster: true,
           updatedAt: new Date().toISOString(),
         },
