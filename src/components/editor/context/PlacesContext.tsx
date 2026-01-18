@@ -146,12 +146,12 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
   const [placesHighlightMode, setPlacesHighlightMode] = useState<PlacesHighlightMode>('all');
   
   // Track whether we've normalized existing places for this document
-  const normalizedRef = useRef(false);
+  const normalizedRef = useRef<string | null>(null);
 
-  // One-time normalization of existing stored places on mount
+  // One-time normalization of existing stored places per document
   useEffect(() => {
-    if (normalizedRef.current) return;
-    normalizedRef.current = true;
+    if (normalizedRef.current === documentId) return;
+    normalizedRef.current = documentId;
     
     setPlaces(prev => {
       let changed = false;
@@ -165,7 +165,7 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
       });
       return changed ? normalized : prev;
     });
-  }, [setPlaces]);
+  }, [documentId, setPlaces]);
 
   useEffect(() => {
     setInspectedPlace(null);
