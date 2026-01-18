@@ -7,7 +7,7 @@ interface NavigationBackBarProps {
 }
 
 export function NavigationBackBar({ onNavigateBack }: NavigationBackBarProps) {
-  const { canGoBack, currentOrigin, popDocument } = useNavigation();
+  const { canGoBack, currentOrigin, popDocument, masterDocument, setActiveSubOutlineId } = useNavigation();
 
   if (!canGoBack || !currentOrigin) {
     return null;
@@ -16,6 +16,10 @@ export function NavigationBackBar({ onNavigateBack }: NavigationBackBarProps) {
   const handleBack = () => {
     const origin = popDocument();
     if (origin) {
+      // If returning to the master document, clear sub-outline marker
+      if (masterDocument && origin.id === masterDocument.id) {
+        setActiveSubOutlineId(null);
+      }
       onNavigateBack(origin.id);
     }
   };

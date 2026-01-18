@@ -10,6 +10,7 @@ import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outl
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
+import { SaveAsMasterDialog } from '@/components/editor/SaveAsMasterDialog';
 import { DocumentState, createEmptyDocument, HierarchyBlockData } from '@/types/document';
 import { HierarchyNode } from '@/types/node';
 import { useAuth } from '@/contexts/AuthContext';
@@ -77,11 +78,19 @@ function extractLinkNodes(hierarchyBlocks: Record<string, HierarchyBlockData>): 
   return links;
 }
 
+interface PendingNavigation {
+  documentId: string;
+  documentTitle: string;
+  links: MasterDocumentLink[];
+}
+
 // Inner component that uses EditorContext and Navigation
 function EditorContent({ 
   onNavigateToDocument,
+  onPromptSaveAsMaster,
 }: { 
   onNavigateToDocument: (id: string) => void;
+  onPromptSaveAsMaster: (pending: PendingNavigation) => void;
 }) {
   const { inspectedTerm, setInspectedTerm, documentVersion, setNavigateToDocument, document } = useEditorContext();
   const { pushDocument, setMasterDocument, setActiveSubOutlineId } = useNavigation();
@@ -91,26 +100,40 @@ function EditorContent({
     console.log('[nav] registering navigateToDocument handler', { currentDocId: document?.meta?.id, isMaster: document?.meta?.isMaster });
     const handler = (documentId: string, documentTitle: string) => {
       console.log('[nav] navigating to', { from: document?.meta?.id, to: documentId, title: documentTitle });
-      // Push current document onto navigation stack before navigating
-      if (document) {
-        pushDocument(document.meta.id, document.meta.title);
-        
-        // If current document is a master, set up master mode
-        if (document.meta.isMaster) {
-          const links = extractLinkNodes(document.hierarchyBlocks);
-          setMasterDocument({
-            id: document.meta.id,
-            title: document.meta.title,
-            links,
-          });
-          setActiveSubOutlineId(documentId);
+      
+      if (!document) {
+        onNavigateToDocument(documentId);
+        return;
+      }
+
+      // If document has links but is NOT saved as master, prompt user
+      if (!document.meta.isMaster) {
+        const links = extractLinkNodes(document.hierarchyBlocks);
+        if (links.length > 0) {
+          onPromptSaveAsMaster({ documentId, documentTitle, links });
+          return;
         }
       }
+
+      // Push current document onto navigation stack before navigating
+      pushDocument(document.meta.id, document.meta.title);
+      
+      // If current document is a master, set up master mode
+      if (document.meta.isMaster) {
+        const links = extractLinkNodes(document.hierarchyBlocks);
+        setMasterDocument({
+          id: document.meta.id,
+          title: document.meta.title,
+          links,
+        });
+        setActiveSubOutlineId(documentId);
+      }
+      
       onNavigateToDocument(documentId);
     };
     setNavigateToDocument(handler);
     return () => setNavigateToDocument(null);
-  }, [setNavigateToDocument, pushDocument, document, onNavigateToDocument, setMasterDocument, setActiveSubOutlineId]);
+  }, [setNavigateToDocument, pushDocument, document, onNavigateToDocument, setMasterDocument, setActiveSubOutlineId, onPromptSaveAsMaster]);
 
   // Key the panel group so defaultSize recalculates when the usages pane opens/closes
   const layoutKey = inspectedTerm ? `usages:${inspectedTerm.id}` : 'usages:none';
@@ -171,6 +194,8 @@ export default function Editor() {
   const [documentVersion, setDocumentVersion] = useState(0);
   const [openDialogOpen, setOpenDialogOpen] = useState(false);
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
+  const [saveAsMasterDialogOpen, setSaveAsMasterDialogOpen] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -346,6 +371,47 @@ export default function Editor() {
     }
   }, [hasUnsavedChanges]);
 
+  // Handle prompt to save as master
+  const handlePromptSaveAsMaster = useCallback((pending: PendingNavigation) => {
+    setPendingNavigation(pending);
+    setSaveAsMasterDialogOpen(true);
+  }, []);
+
+  // Handle save as master and then navigate
+  const handleSaveAsMasterAndNavigate = useCallback(async () => {
+    if (!user || !document || !pendingNavigation) return;
+    
+    try {
+      // Save current document as master
+      const updatedDoc: DocumentState = {
+        ...document,
+        meta: {
+          ...document.meta,
+          isMaster: true,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      const saved = await saveCloudDocument(updatedDoc, user.id);
+      setDocument(saved);
+      setHasUnsavedChanges(false);
+      toast.success(`Saved "${saved.meta.title}" as Master`);
+      
+      // Now navigate
+      handleNavigateToDocument(pendingNavigation.documentId, true);
+    } catch (e) {
+      toast.error('Failed to save document');
+    } finally {
+      setPendingNavigation(null);
+    }
+  }, [user, document, pendingNavigation, handleNavigateToDocument]);
+
+  // Handle just navigate without saving as master
+  const handleJustNavigate = useCallback(() => {
+    if (!pendingNavigation) return;
+    handleNavigateToDocument(pendingNavigation.documentId, true);
+    setPendingNavigation(null);
+  }, [pendingNavigation, handleNavigateToDocument]);
+
   const handleOpenDocument = useCallback(async (id: string) => {
     if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
 
@@ -509,7 +575,10 @@ export default function Editor() {
             onNavigateToDocument={(id) => handleNavigateToDocument(id, true)}
           />
           
-          <EditorContent onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} />
+          <EditorContent 
+            onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} 
+            onPromptSaveAsMaster={handlePromptSaveAsMaster}
+          />
 
           <OpenDocumentDialog
             open={openDialogOpen}
@@ -524,6 +593,14 @@ export default function Editor() {
             onSave={handleSaveAs}
             defaultTitle={document.meta.title}
             defaultIsMaster={document.meta.isMaster}
+          />
+
+          <SaveAsMasterDialog
+            open={saveAsMasterDialogOpen}
+            onOpenChange={setSaveAsMasterDialogOpen}
+            onSaveAsMaster={handleSaveAsMasterAndNavigate}
+            onJustNavigate={handleJustNavigate}
+            documentTitle={document.meta.title}
           />
         </div>
       </EditorProvider>

@@ -83,14 +83,11 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   }, []);
 
   const popDocument = useCallback((): NavigationEntry | null => {
-    let popped: NavigationEntry | null = null;
-    setStack(prev => {
-      if (prev.length === 0) return prev;
-      popped = prev[prev.length - 1];
-      return prev.slice(0, -1);
-    });
+    if (stack.length === 0) return null;
+    const popped = stack[stack.length - 1];
+    setStack(prev => prev.slice(0, -1));
     return popped;
-  }, []);
+  }, [stack]);
 
   const clearStack = useCallback(() => {
     setStack([]);
