@@ -90,7 +90,7 @@ export function MasterOutlinePane({
                 )}
               >
                 <FileText className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="text-xs truncate" title={link.linkedDocumentTitle}>
+                <span className="text-xs break-words min-w-0">
                   {link.linkedDocumentTitle || 'Untitled'}
                 </span>
               </button>
