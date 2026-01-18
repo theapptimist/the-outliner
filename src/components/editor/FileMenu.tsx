@@ -166,6 +166,13 @@ export function FileMenu({
   const [showRecent, setShowRecent] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [recentDocs, setRecentDocs] = useState<CloudDocumentMetadata[]>([]);
+
+  // Sync draftTitle with documentTitle when prop changes (e.g., after save)
+  useEffect(() => {
+    if (!isRenaming) {
+      setDraftTitle(documentTitle);
+    }
+  }, [documentTitle, isRenaming]);
   
   // Refresh recent docs list when sheet opens
   useEffect(() => {
