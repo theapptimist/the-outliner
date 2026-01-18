@@ -4,7 +4,6 @@ import {
   ChevronRight, 
   Wrench,
   BookOpen,
-  Plus,
   Sparkles,
   Network,
 } from 'lucide-react';
@@ -228,29 +227,6 @@ export function EditorSidebar({
               </button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>AI Generate</TooltipContent>
-          </Tooltip>
-          {/* Always-visible Add button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                data-allow-pointer
-                onClick={() => {
-                  setActiveTab('library');
-                  // Small delay to let tab switch, then open dialog
-                  setTimeout(() => {
-                    const addBtn = document.querySelector('[data-add-term-btn]') as HTMLButtonElement;
-                    addBtn?.click();
-                  }, 50);
-                }}
-                className={cn(
-                  "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  "bg-success/15 text-success hover:bg-success/25"
-                )}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "bottom"}>Add to Library</TooltipContent>
           </Tooltip>
           
           {/* Master Outline button - only visible when in master mode */}
