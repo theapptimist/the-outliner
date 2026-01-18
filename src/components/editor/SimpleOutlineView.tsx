@@ -12,6 +12,7 @@ interface SimpleOutlineViewProps {
   selectedId: string | null;
   outlineStyle: OutlineStyle;
   mixedConfig?: MixedStyleConfig;
+  showRowHighlight?: boolean;
   autoFocusId?: string | null;
   onAutoFocusHandled?: () => void;
   onSelect: (id: string) => void;
@@ -49,6 +50,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     selectedId,
     outlineStyle,
     mixedConfig = DEFAULT_MIXED_CONFIG,
+    showRowHighlight = true,
     autoFocusId,
     onAutoFocusHandled,
     onSelect,
@@ -945,7 +947,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             className={cn(
               'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
               highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md',
-              selectedId === node.id && highlightedNodeId !== node.id && 'bg-secondary/60 rounded-sm'
+              showRowHighlight && selectedId === node.id && highlightedNodeId !== node.id && 'bg-secondary/60 rounded-sm'
             )}
             style={{
               paddingLeft: `${visualDepth * 24 + 8}px`,

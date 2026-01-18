@@ -23,6 +23,7 @@ interface EditorProviderProps {
   mixedConfig: MixedStyleConfig;
   autoDescend: boolean;
   showRevealCodes: boolean;
+  showRowHighlight: boolean;
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
@@ -41,6 +42,7 @@ export function EditorProvider({
   mixedConfig,
   autoDescend,
   showRevealCodes,
+  showRowHighlight,
   document,
   documentVersion,
   onDocumentContentChange,
@@ -55,6 +57,7 @@ export function EditorProvider({
       mixedConfig={mixedConfig}
       autoDescend={autoDescend}
       showRevealCodes={showRevealCodes}
+      showRowHighlight={showRowHighlight}
       document={document}
       documentVersion={documentVersion}
       onDocumentContentChange={onDocumentContentChange}
