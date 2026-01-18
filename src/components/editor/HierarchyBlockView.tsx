@@ -692,9 +692,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           if (anchorId) {
             const anchor = flatNodes.find(n => n.id === anchorId);
             // If the anchor node is empty, replace it with the link instead of inserting after
-            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link') {
+            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link' && !anchor.linkedDocumentId) {
+              // Preserve BODY type for hanging indent links (keeps them unnumbered)
+              const preservedType = anchor.type === 'body' ? 'body' : 'link';
               setTree(prev => updateNode(prev, anchorId, {
-                type: 'link',
+                type: preservedType,
                 label: docTitle,
                 linkedDocumentId: docId,
                 linkedDocumentTitle: docTitle,
@@ -702,7 +704,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               setSelectedId(anchorId);
               setAutoFocusId(anchorId);
             } else {
-              const newNode = createNode(anchor?.parentId ?? null, 'link', docTitle);
+              // Insert as sibling - inherit body type if anchor is body
+              const newType = anchor?.type === 'body' ? 'body' : 'link';
+              const newNode = createNode(anchor?.parentId ?? null, newType, docTitle);
               newNode.linkedDocumentId = docId;
               newNode.linkedDocumentTitle = docTitle;
               setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
@@ -722,9 +726,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           if (anchorId) {
             const anchor = flatNodes.find(n => n.id === anchorId);
             // If the anchor node is empty, replace it with the link instead of inserting after
-            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link') {
+            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link' && !anchor.linkedDocumentId) {
+              // Preserve BODY type for hanging indent links (keeps them unnumbered)
+              const preservedType = anchor.type === 'body' ? 'body' : 'link';
               setTree(prev => updateNode(prev, anchorId, {
-                type: 'link',
+                type: preservedType,
                 label: docTitle,
                 linkedDocumentId: docId,
                 linkedDocumentTitle: docTitle,
@@ -732,7 +738,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               setSelectedId(anchorId);
               setAutoFocusId(anchorId);
             } else {
-              const newNode = createNode(anchor?.parentId ?? null, 'link', docTitle);
+              // Insert as sibling - inherit body type if anchor is body
+              const newType = anchor?.type === 'body' ? 'body' : 'link';
+              const newNode = createNode(anchor?.parentId ?? null, newType, docTitle);
               newNode.linkedDocumentId = docId;
               newNode.linkedDocumentTitle = docTitle;
               setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
@@ -753,11 +761,14 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         }}
         onSelect={(docId, docTitle) => {
           if (relinkNodeId) {
+            // When relinking, preserve the existing node type (don't overwrite body with link)
+            const existingNode = flatNodes.find(n => n.id === relinkNodeId);
+            const preservedType = existingNode?.type === 'body' ? 'body' : (existingNode?.type || 'link');
             setTree(prev => updateNode(prev, relinkNodeId, { 
               linkedDocumentId: docId, 
               linkedDocumentTitle: docTitle,
-              label: docTitle, // Update label to match new document
-              type: 'link' 
+              label: docTitle,
+              type: preservedType
             }));
             setSelectedId(relinkNodeId);
             setAutoFocusId(relinkNodeId);
