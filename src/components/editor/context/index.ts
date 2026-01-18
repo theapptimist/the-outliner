@@ -7,3 +7,9 @@ export type { SelectionSource, InsertTextAtCursorFn } from './SelectionContext';
 
 export { TermsProvider, useTermsContext } from './TermsContext';
 export type { DefinedTerm, TermUsage, HighlightMode } from './TermsContext';
+
+export { PeopleProvider, usePeopleContext } from './PeopleContext';
+export type { Person, PersonUsage, PeopleHighlightMode } from './PeopleContext';
+
+export { PlacesProvider, usePlacesContext } from './PlacesContext';
+export type { Place, PlaceUsage, PlacesHighlightMode } from './PlacesContext';

@@ -13,14 +13,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { useEditorContext } from './EditorContext';
 import { useNavigation } from '@/contexts/NavigationContext';
-import { DefinedTermsPane } from './DefinedTermsPane';
+import { LibraryPane } from './LibraryPane';
 import { AIGeneratePane } from './AIGeneratePane';
 import { ToolsPane } from './ToolsPane';
 import { MasterOutlinePane } from './MasterOutlinePane';
 import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
-type SidebarTab = 'tools' | 'terms' | 'ai' | 'master';
+type SidebarTab = 'tools' | 'library' | 'ai' | 'master';
 
 interface EditorSidebarProps {
   outlineStyle: OutlineStyle;
@@ -132,7 +132,7 @@ export function EditorSidebar({
       }}
       className={cn(
         "flex flex-col border-r border-border/30 transition-all duration-300 relative overflow-hidden",
-        collapsed ? "w-12" : activeTab === 'terms' ? "w-64" : "w-56"
+        collapsed ? "w-12" : activeTab === 'library' ? "w-64" : "w-56"
       )}
     >
       {/* Subtle gradient background */}
@@ -193,10 +193,10 @@ export function EditorSidebar({
             <TooltipTrigger asChild>
               <button
                 data-allow-pointer
-                onClick={() => setActiveTab('terms')}
+                onClick={() => setActiveTab('library')}
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  activeTab === 'terms'
+                  activeTab === 'library'
                     ? "bg-accent/15 text-accent"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
@@ -204,7 +204,7 @@ export function EditorSidebar({
                 <BookOpen className="h-4 w-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "bottom"}>Defined Terms</TooltipContent>
+            <TooltipContent side={collapsed ? "right" : "bottom"}>Library</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -223,13 +223,13 @@ export function EditorSidebar({
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>AI Generate</TooltipContent>
           </Tooltip>
-          {/* Always-visible Add Term button */}
+          {/* Always-visible Add button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 data-allow-pointer
                 onClick={() => {
-                  setActiveTab('terms');
+                  setActiveTab('library');
                   // Small delay to let tab switch, then open dialog
                   setTimeout(() => {
                     const addBtn = document.querySelector('[data-add-term-btn]') as HTMLButtonElement;
@@ -244,7 +244,7 @@ export function EditorSidebar({
                 <Plus className="h-4 w-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "bottom"}>Add Term</TooltipContent>
+            <TooltipContent side={collapsed ? "right" : "bottom"}>Add to Library</TooltipContent>
           </Tooltip>
           
           {/* Master Outline button - only visible when in master mode */}
@@ -271,9 +271,9 @@ export function EditorSidebar({
       </div>
 
       {/* Conditional Content - now properly conditional rendering */}
-      {activeTab === 'terms' && (
+      {activeTab === 'library' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
-          <DefinedTermsPane collapsed={collapsed} selectedText={selectedText} />
+          <LibraryPane collapsed={collapsed} selectedText={selectedText} />
         </div>
       )}
       
