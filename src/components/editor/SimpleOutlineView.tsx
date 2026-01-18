@@ -131,57 +131,62 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const termHighlightRegex = useMemo(() => {
     if (highlightMode === 'none') return null;
     
+    // When in 'selected' mode, look up the highlighted term from the current terms array
+    // to ensure we always have a fresh reference
     const termsToHighlight = highlightMode === 'selected'
-      ? (highlightedTerm ? [highlightedTerm] : [])
+      ? (highlightedTerm ? terms.filter(t => t.id === highlightedTerm.id) : [])
       : terms;
     
     if (termsToHighlight.length === 0) return null;
     
     const escaped = termsToHighlight.map(t => escapeRegex(t.term));
     return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
-  }, [terms, highlightMode, highlightedTerm, escapeRegex]);
+  }, [terms, highlightMode, highlightedTerm?.id, escapeRegex]);
 
   // Build regex for people highlighting
   const peopleHighlightRegex = useMemo(() => {
     if (peopleHighlightMode === 'none') return null;
     
+    // When in 'selected' mode, look up the highlighted person from the current people array
     const peopleToHighlight = peopleHighlightMode === 'selected'
-      ? (highlightedPerson ? [highlightedPerson] : [])
+      ? (highlightedPerson ? people.filter(p => p.id === highlightedPerson.id) : [])
       : people;
     
     if (peopleToHighlight.length === 0) return null;
     
     const escaped = peopleToHighlight.map(p => escapeRegex(p.name));
     return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
-  }, [people, peopleHighlightMode, highlightedPerson, escapeRegex]);
+  }, [people, peopleHighlightMode, highlightedPerson?.id, escapeRegex]);
 
   // Build regex for places highlighting
   const placesHighlightRegex = useMemo(() => {
     if (placesHighlightMode === 'none') return null;
     
+    // When in 'selected' mode, look up the highlighted place from the current places array
     const placesToHighlight = placesHighlightMode === 'selected'
-      ? (highlightedPlace ? [highlightedPlace] : [])
+      ? (highlightedPlace ? places.filter(p => p.id === highlightedPlace.id) : [])
       : places;
     
     if (placesToHighlight.length === 0) return null;
     
     const escaped = placesToHighlight.map(p => escapeRegex(p.name));
     return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
-  }, [places, placesHighlightMode, highlightedPlace, escapeRegex]);
+  }, [places, placesHighlightMode, highlightedPlace?.id, escapeRegex]);
 
   // Build regex for dates highlighting
   const dateHighlightRegex = useMemo(() => {
     if (dateHighlightMode === 'none') return null;
     
+    // When in 'selected' mode, look up the highlighted date from the current dates array
     const datesToHighlight = dateHighlightMode === 'selected'
-      ? (highlightedDate ? [highlightedDate] : [])
+      ? (highlightedDate ? dates.filter(d => d.id === highlightedDate.id) : [])
       : dates;
     
     if (datesToHighlight.length === 0) return null;
     
     const escaped = datesToHighlight.map(d => escapeRegex(d.rawText));
     return new RegExp(`(${escaped.join('|')})`, 'gi');
-  }, [dates, dateHighlightMode, highlightedDate, escapeRegex]);
+  }, [dates, dateHighlightMode, highlightedDate?.id, escapeRegex]);
 
   // Helper to render text with all entity highlights (terms, people, places, dates)
   const renderHighlightedText = useCallback((text: string) => {

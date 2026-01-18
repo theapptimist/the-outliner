@@ -159,28 +159,28 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
       const styleConfig = { style: outlineStyle, mixedConfig };
       recalculateUsages(hierarchyBlocks, styleConfig);
     }
-  }, [hierarchyBlocksKey, termsKey, outlineStyle, mixedConfig]);
+  }, [hierarchyBlocksKey, termsKey, outlineStyle, mixedConfig, hierarchyBlocks, recalculateUsages]);
 
   useEffect(() => {
     if (hierarchyBlocksKey && dates.length > 0) {
       const styleConfig = { style: outlineStyle, mixedConfig };
       recalculateDateUsages(hierarchyBlocks, styleConfig);
     }
-  }, [hierarchyBlocksKey, datesKey, outlineStyle, mixedConfig]);
+  }, [hierarchyBlocksKey, datesKey, outlineStyle, mixedConfig, hierarchyBlocks, recalculateDateUsages]);
 
   useEffect(() => {
     if (hierarchyBlocksKey && people.length > 0) {
       const styleConfig = { style: outlineStyle, mixedConfig };
       recalculatePeopleUsages(hierarchyBlocks, styleConfig);
     }
-  }, [hierarchyBlocksKey, peopleKey, outlineStyle, mixedConfig]);
+  }, [hierarchyBlocksKey, peopleKey, outlineStyle, mixedConfig, hierarchyBlocks, recalculatePeopleUsages]);
 
   useEffect(() => {
     if (hierarchyBlocksKey && places.length > 0) {
       const styleConfig = { style: outlineStyle, mixedConfig };
       recalculatePlaceUsages(hierarchyBlocks, styleConfig);
     }
-  }, [hierarchyBlocksKey, placesKey, outlineStyle, mixedConfig]);
+  }, [hierarchyBlocksKey, placesKey, outlineStyle, mixedConfig, hierarchyBlocks, recalculatePlaceUsages]);
 
   // Get current entity count
   const getCount = useCallback((tab: EntityTab) => {
