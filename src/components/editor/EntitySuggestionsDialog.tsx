@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Check, X, Sparkles, User, MapPin, Calendar, Quote } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, X, Sparkles, User, MapPin, Calendar, Quote, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import {
   PlaceSuggestion, 
   DateSuggestion, 
   TermSuggestion,
+  ScanState,
 } from '@/hooks/useEntitySuggestions';
 
 interface SuggestionCardProps {
@@ -62,6 +63,7 @@ function SuggestionCard({ title, subtitle, onAccept, onDismiss }: SuggestionCard
 interface EntitySuggestionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  scanState: ScanState;
   people: PersonSuggestion[];
   places: PlaceSuggestion[];
   dates: DateSuggestion[];
@@ -84,6 +86,7 @@ interface EntitySuggestionsDialogProps {
 export function EntitySuggestionsDialog({
   open,
   onOpenChange,
+  scanState,
   people,
   places,
   dates,
@@ -103,6 +106,7 @@ export function EntitySuggestionsDialog({
   onDismissAll,
 }: EntitySuggestionsDialogProps) {
   const totalCount = people.length + places.length + dates.length + terms.length;
+  const isScanning = scanState === 'scanning';
   
   // Find first tab with suggestions
   const getDefaultTab = () => {
@@ -114,9 +118,16 @@ export function EntitySuggestionsDialog({
   };
 
   const [activeTab, setActiveTab] = useState(getDefaultTab());
+  
+  // Update active tab when suggestions come in
+  useEffect(() => {
+    if (!isScanning && totalCount > 0) {
+      setActiveTab(getDefaultTab());
+    }
+  }, [isScanning, totalCount]);
 
-  // Close dialog if all suggestions are handled
-  if (open && totalCount === 0) {
+  // Close dialog if all suggestions are handled (but not while scanning)
+  if (open && totalCount === 0 && !isScanning) {
     onOpenChange(false);
   }
 
@@ -132,35 +143,60 @@ export function EntitySuggestionsDialog({
       <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            AI-Detected Entities
+            {isScanning ? (
+              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+            ) : (
+              <Sparkles className="h-5 w-5 text-primary" />
+            )}
+            {isScanning ? 'Scanning Document...' : 'AI-Detected Entities'}
           </DialogTitle>
           <DialogDescription>
-            Review and accept entities found in your document. {totalCount} suggestion{totalCount !== 1 ? 's' : ''} remaining.
+            {isScanning 
+              ? 'Analyzing your document for people, places, dates, and terms. This may take a moment...'
+              : `Review and accept entities found in your document. ${totalCount} suggestion${totalCount !== 1 ? 's' : ''} remaining.`
+            }
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList className="grid grid-cols-4 w-full shrink-0">
-            {tabs.map(tab => (
-              <TabsTrigger 
-                key={tab.id} 
-                value={tab.id}
-                disabled={tab.count === 0}
-                className="relative"
-              >
-                <tab.icon className={cn("h-4 w-4 mr-1.5", tab.color)} />
-                <span className="hidden sm:inline">{tab.label}</span>
-                {tab.count > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-5 min-w-[20px] px-1 text-xs">
-                    {tab.count}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {isScanning ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-12 gap-6">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+              <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-sm font-medium text-foreground">AI is reading your document</p>
+              <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <TabsList className="grid grid-cols-4 w-full shrink-0">
+              {tabs.map(tab => (
+                <TabsTrigger 
+                  key={tab.id} 
+                  value={tab.id}
+                  disabled={tab.count === 0}
+                  className="relative"
+                >
+                  <tab.icon className={cn("h-4 w-4 mr-1.5", tab.color)} />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  {tab.count > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 h-5 min-w-[20px] px-1 text-xs">
+                      {tab.count}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-          <div className="flex-1 min-h-0 overflow-hidden mt-4">
+            <div className="flex-1 min-h-0 overflow-hidden mt-4">
             <TabsContent value="people" className="h-full m-0 flex flex-col">
               {people.length > 0 ? (
                 <>
@@ -270,14 +306,23 @@ export function EntitySuggestionsDialog({
             </TabsContent>
           </div>
         </Tabs>
+        )}
 
         <div className="flex justify-between pt-4 border-t shrink-0">
-          <Button variant="ghost" onClick={onDismissAll} className="text-muted-foreground">
-            Dismiss All
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Done
-          </Button>
+          {isScanning ? (
+            <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">
+              Cancel
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={onDismissAll} className="text-muted-foreground">
+                Dismiss All
+              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Done
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
