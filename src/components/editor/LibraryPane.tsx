@@ -1184,6 +1184,29 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
           });
         }}
       />
+
+      {/* Link Dialog */}
+      <EntityLinkDialog
+        open={linkDialogOpen}
+        onOpenChange={(open) => {
+          setLinkDialogOpen(open);
+          if (!open) setLinkSourceEntity(null);
+        }}
+        sourceEntity={linkSourceEntity ?? { id: '', title: '', documentId: '' }}
+        entityType={activeTab}
+        onLinkCreated={() => {
+          toast({
+            title: 'Entity linked',
+            description: 'Cross-document identity link created.',
+          });
+        }}
+        onRelationshipCreated={() => {
+          toast({
+            title: 'Relationship created',
+            description: 'Entity relationship established.',
+          });
+        }}
+      />
     </div>
   );
 }
@@ -1325,6 +1348,10 @@ function EntityCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={onLink}>
+              <Link2 className="h-3.5 w-3.5 mr-2" />
+              Link entity...
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onMerge}>
               <Merge className="h-3.5 w-3.5 mr-2" />
               Merge with...
