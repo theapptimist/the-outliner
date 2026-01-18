@@ -38,6 +38,7 @@ import { AddTermDialog } from './AddTermDialog';
 import { AddDateDialog } from './AddDateDialog';
 import { AddPersonDialog } from './AddPersonDialog';
 import { AddPlaceDialog } from './AddPlaceDialog';
+import { EntityUsagesPane } from './EntityUsagesPane';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 
 // EntityTab type is imported from NavigationContext
@@ -525,160 +526,205 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Items List */}
-        <ScrollArea className="flex-1 px-1">
-          <div className="space-y-1.5 py-2">
-            {filteredItems.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-xs">
-                {currentCount === 0 ? (
-                  <div className="flex flex-col items-center gap-2">
-                    {tabs.find(t => t.id === activeTab)?.icon && (
-                      <div className="opacity-40">
-                        {(() => {
-                          const Icon = tabs.find(t => t.id === activeTab)!.icon;
-                          return <Icon className="h-8 w-8" />;
-                        })()}
-                      </div>
-                    )}
-                    <p>No {activeTab} tagged yet</p>
-                    <p className="text-[10px]">Select text and click + to add</p>
-                  </div>
-                ) : (
-                  <p>No matching {activeTab}</p>
-                )}
-              </div>
-            ) : (
-              <>
-                {activeTab === 'terms' && terms.filter(t => 
-                  t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  t.definition.toLowerCase().includes(searchQuery.toLowerCase())
-                ).map(term => (
-                  <EntityCard
-                    key={term.id}
-                    id={term.id}
-                    title={term.term}
-                    subtitle={term.definition}
-                    icon={Quote}
-                    iconColor="text-amber-500"
-                    usageCount={term.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={highlightMode === 'selected' && highlightedTerm?.id === term.id}
-                    isInspected={inspectedTerm?.id === term.id}
-                    isExpanded={expandedItems.has(term.id)}
-                    onToggleExpand={() => toggleExpand(term.id)}
-                    onInsert={() => insertTextAtCursor?.(term.term)}
-                    onHighlight={() => {
-                      if (highlightMode === 'selected' && highlightedTerm?.id === term.id) {
-                        setHighlightMode('none');
-                        setHighlightedTerm(null);
-                      } else {
-                        setHighlightMode('selected');
-                        setHighlightedTerm(term);
-                      }
-                    }}
-                    onViewUsages={() => setInspectedTerm(inspectedTerm?.id === term.id ? null : term)}
-                    usages={term.usages}
-                  />
-                ))}
+        {/* Show Usages Pane if an entity is being inspected */}
+        {inspectedTerm && activeTab === 'terms' && (
+          <EntityUsagesPane
+            type="term"
+            title={inspectedTerm.term}
+            subtitle={inspectedTerm.definition}
+            usages={inspectedTerm.usages}
+            onClose={() => setInspectedTerm(null)}
+          />
+        )}
+        {inspectedDate && activeTab === 'dates' && (
+          <EntityUsagesPane
+            type="date"
+            title={formatDateForDisplay(inspectedDate.date)}
+            subtitle={inspectedDate.rawText}
+            description={inspectedDate.description}
+            usages={inspectedDate.usages}
+            onClose={() => setInspectedDate(null)}
+          />
+        )}
+        {inspectedPerson && activeTab === 'people' && (
+          <EntityUsagesPane
+            type="person"
+            title={inspectedPerson.name}
+            subtitle={inspectedPerson.role}
+            description={inspectedPerson.description}
+            usages={inspectedPerson.usages}
+            onClose={() => setInspectedPerson(null)}
+          />
+        )}
+        {inspectedPlace && activeTab === 'places' && (
+          <EntityUsagesPane
+            type="place"
+            title={inspectedPlace.name}
+            subtitle={inspectedPlace.significance}
+            usages={inspectedPlace.usages}
+            onClose={() => setInspectedPlace(null)}
+          />
+        )}
 
-                {activeTab === 'dates' && dates.filter(d => 
-                  d.rawText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  d.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                ).map(date => (
-                  <EntityCard
-                    key={date.id}
-                    id={date.id}
-                    title={formatDateForDisplay(date.date)}
-                    subtitle={date.rawText}
-                    description={date.description}
-                    icon={Calendar}
-                    iconColor="text-blue-500"
-                    usageCount={date.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={dateHighlightMode === 'selected' && highlightedDate?.id === date.id}
-                    isInspected={inspectedDate?.id === date.id}
-                    isExpanded={expandedItems.has(date.id)}
-                    onToggleExpand={() => toggleExpand(date.id)}
-                    onInsert={() => insertTextAtCursor?.(date.rawText)}
-                    onHighlight={() => {
-                      if (dateHighlightMode === 'selected' && highlightedDate?.id === date.id) {
-                        setDateHighlightMode('none');
-                        setHighlightedDate(null);
-                      } else {
-                        setDateHighlightMode('selected');
-                        setHighlightedDate(date);
-                      }
-                    }}
-                    onViewUsages={() => setInspectedDate(inspectedDate?.id === date.id ? null : date)}
-                    usages={date.usages}
-                  />
-                ))}
+        {/* Items List - hidden when inspecting */}
+        {!((inspectedTerm && activeTab === 'terms') ||
+           (inspectedDate && activeTab === 'dates') ||
+           (inspectedPerson && activeTab === 'people') ||
+           (inspectedPlace && activeTab === 'places')) && (
+          <ScrollArea className="flex-1 px-1">
+            <div className="space-y-1.5 py-2">
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-xs">
+                  {currentCount === 0 ? (
+                    <div className="flex flex-col items-center gap-2">
+                      {tabs.find(t => t.id === activeTab)?.icon && (
+                        <div className="opacity-40">
+                          {(() => {
+                            const Icon = tabs.find(t => t.id === activeTab)!.icon;
+                            return <Icon className="h-8 w-8" />;
+                          })()}
+                        </div>
+                      )}
+                      <p>No {activeTab} tagged yet</p>
+                      <p className="text-[10px]">Select text and click + to add</p>
+                    </div>
+                  ) : (
+                    <p>No matching {activeTab}</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {activeTab === 'terms' && terms.filter(t => 
+                    t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.definition.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(term => (
+                    <EntityCard
+                      key={term.id}
+                      id={term.id}
+                      title={term.term}
+                      subtitle={term.definition}
+                      icon={Quote}
+                      iconColor="text-amber-500"
+                      usageCount={term.usages.reduce((sum, u) => sum + u.count, 0)}
+                      isHighlighted={highlightMode === 'selected' && highlightedTerm?.id === term.id}
+                      isInspected={inspectedTerm?.id === term.id}
+                      isExpanded={expandedItems.has(term.id)}
+                      onToggleExpand={() => toggleExpand(term.id)}
+                      onInsert={() => insertTextAtCursor?.(term.term)}
+                      onHighlight={() => {
+                        if (highlightMode === 'selected' && highlightedTerm?.id === term.id) {
+                          setHighlightMode('none');
+                          setHighlightedTerm(null);
+                        } else {
+                          setHighlightMode('selected');
+                          setHighlightedTerm(term);
+                        }
+                      }}
+                      onViewUsages={() => setInspectedTerm(inspectedTerm?.id === term.id ? null : term)}
+                      usages={term.usages}
+                    />
+                  ))}
 
-                {activeTab === 'people' && people.filter(p => 
-                  p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  p.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                ).map(person => (
-                  <EntityCard
-                    key={person.id}
-                    id={person.id}
-                    title={person.name}
-                    subtitle={person.role}
-                    description={person.description}
-                    icon={User}
-                    iconColor="text-purple-500"
-                    usageCount={person.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={peopleHighlightMode === 'selected' && highlightedPerson?.id === person.id}
-                    isInspected={inspectedPerson?.id === person.id}
-                    isExpanded={expandedItems.has(person.id)}
-                    onToggleExpand={() => toggleExpand(person.id)}
-                    onInsert={() => insertTextAtCursor?.(person.name)}
-                    onHighlight={() => {
-                      if (peopleHighlightMode === 'selected' && highlightedPerson?.id === person.id) {
-                        setPeopleHighlightMode('none');
-                        setHighlightedPerson(null);
-                      } else {
-                        setPeopleHighlightMode('selected');
-                        setHighlightedPerson(person);
-                      }
-                    }}
-                    onViewUsages={() => setInspectedPerson(inspectedPerson?.id === person.id ? null : person)}
-                    usages={person.usages}
-                  />
-                ))}
+                  {activeTab === 'dates' && dates.filter(d => 
+                    d.rawText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    d.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(date => (
+                    <EntityCard
+                      key={date.id}
+                      id={date.id}
+                      title={formatDateForDisplay(date.date)}
+                      subtitle={date.rawText}
+                      description={date.description}
+                      icon={Calendar}
+                      iconColor="text-blue-500"
+                      usageCount={date.usages.reduce((sum, u) => sum + u.count, 0)}
+                      isHighlighted={dateHighlightMode === 'selected' && highlightedDate?.id === date.id}
+                      isInspected={inspectedDate?.id === date.id}
+                      isExpanded={expandedItems.has(date.id)}
+                      onToggleExpand={() => toggleExpand(date.id)}
+                      onInsert={() => insertTextAtCursor?.(date.rawText)}
+                      onHighlight={() => {
+                        if (dateHighlightMode === 'selected' && highlightedDate?.id === date.id) {
+                          setDateHighlightMode('none');
+                          setHighlightedDate(null);
+                        } else {
+                          setDateHighlightMode('selected');
+                          setHighlightedDate(date);
+                        }
+                      }}
+                      onViewUsages={() => setInspectedDate(inspectedDate?.id === date.id ? null : date)}
+                      usages={date.usages}
+                    />
+                  ))}
 
-                {activeTab === 'places' && places.filter(p => 
-                  p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  p.significance?.toLowerCase().includes(searchQuery.toLowerCase())
-                ).map(place => (
-                  <EntityCard
-                    key={place.id}
-                    id={place.id}
-                    title={place.name}
-                    subtitle={place.significance}
-                    icon={MapPin}
-                    iconColor="text-green-500"
-                    usageCount={place.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={placesHighlightMode === 'selected' && highlightedPlace?.id === place.id}
-                    isInspected={inspectedPlace?.id === place.id}
-                    isExpanded={expandedItems.has(place.id)}
-                    onToggleExpand={() => toggleExpand(place.id)}
-                    onInsert={() => insertTextAtCursor?.(place.name)}
-                    onHighlight={() => {
-                      if (placesHighlightMode === 'selected' && highlightedPlace?.id === place.id) {
-                        setPlacesHighlightMode('none');
-                        setHighlightedPlace(null);
-                      } else {
-                        setPlacesHighlightMode('selected');
-                        setHighlightedPlace(place);
-                      }
-                    }}
-                    onViewUsages={() => setInspectedPlace(inspectedPlace?.id === place.id ? null : place)}
-                    usages={place.usages}
-                  />
-                ))}
-              </>
-            )}
-          </div>
-        </ScrollArea>
+                  {activeTab === 'people' && people.filter(p => 
+                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(person => (
+                    <EntityCard
+                      key={person.id}
+                      id={person.id}
+                      title={person.name}
+                      subtitle={person.role}
+                      description={person.description}
+                      icon={User}
+                      iconColor="text-purple-500"
+                      usageCount={person.usages.reduce((sum, u) => sum + u.count, 0)}
+                      isHighlighted={peopleHighlightMode === 'selected' && highlightedPerson?.id === person.id}
+                      isInspected={inspectedPerson?.id === person.id}
+                      isExpanded={expandedItems.has(person.id)}
+                      onToggleExpand={() => toggleExpand(person.id)}
+                      onInsert={() => insertTextAtCursor?.(person.name)}
+                      onHighlight={() => {
+                        if (peopleHighlightMode === 'selected' && highlightedPerson?.id === person.id) {
+                          setPeopleHighlightMode('none');
+                          setHighlightedPerson(null);
+                        } else {
+                          setPeopleHighlightMode('selected');
+                          setHighlightedPerson(person);
+                        }
+                      }}
+                      onViewUsages={() => setInspectedPerson(inspectedPerson?.id === person.id ? null : person)}
+                      usages={person.usages}
+                    />
+                  ))}
+
+                  {activeTab === 'places' && places.filter(p => 
+                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.significance?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map(place => (
+                    <EntityCard
+                      key={place.id}
+                      id={place.id}
+                      title={place.name}
+                      subtitle={place.significance}
+                      icon={MapPin}
+                      iconColor="text-green-500"
+                      usageCount={place.usages.reduce((sum, u) => sum + u.count, 0)}
+                      isHighlighted={placesHighlightMode === 'selected' && highlightedPlace?.id === place.id}
+                      isInspected={inspectedPlace?.id === place.id}
+                      isExpanded={expandedItems.has(place.id)}
+                      onToggleExpand={() => toggleExpand(place.id)}
+                      onInsert={() => insertTextAtCursor?.(place.name)}
+                      onHighlight={() => {
+                        if (placesHighlightMode === 'selected' && highlightedPlace?.id === place.id) {
+                          setPlacesHighlightMode('none');
+                          setHighlightedPlace(null);
+                        } else {
+                          setPlacesHighlightMode('selected');
+                          setHighlightedPlace(place);
+                        }
+                      }}
+                      onViewUsages={() => setInspectedPlace(inspectedPlace?.id === place.id ? null : place)}
+                      usages={place.usages}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+          </ScrollArea>
+        )}
       </div>
 
       {/* Dialogs */}
