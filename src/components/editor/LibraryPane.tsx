@@ -486,14 +486,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={async () => {
+                onClick={() => {
                   if (entitySuggestions.getTotalSuggestionCount() > 0) {
                     // If we already have suggestions, just open the dialog
                     setSuggestionsDialogOpen(true);
                   } else {
-                    // Scan and open dialog when done
-                    await entitySuggestions.scanDocument(hierarchyBlocks);
+                    // Open dialog immediately to show scanning animation
                     setSuggestionsDialogOpen(true);
+                    entitySuggestions.scanDocument(hierarchyBlocks);
                   }
                 }}
                 disabled={entitySuggestions.state === 'scanning'}
