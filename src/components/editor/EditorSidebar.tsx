@@ -65,7 +65,7 @@ export function EditorSidebar({
     document.documentElement.classList.contains('dark')
   );
   const { editor, onInsertHierarchy, onFindReplace, selectedText, onPasteHierarchy } = useEditorContext();
-  const { isInMasterMode } = useNavigation();
+  const { isInMasterMode, activeEntityTab } = useNavigation();
 
   // Ref to hold pending AI items when we need to create an outline block first
   const pendingAIItemsRef = useRef<Array<{ label: string; depth: number }> | null>(null);
@@ -92,12 +92,18 @@ export function EditorSidebar({
     }
   }, [onPasteHierarchy]);
 
-  // Auto-switch to master tab when entering master mode
+  // Auto-switch to master tab when entering master mode, or library tab if entity mode is active
   useEffect(() => {
     if (isInMasterMode) {
-      setActiveTab('master');
+      if (activeEntityTab) {
+        // Entity mode is active - open Library pane
+        setActiveTab('library');
+      } else {
+        // No entity mode - show master outline
+        setActiveTab('master');
+      }
     }
-  }, [isInMasterMode]);
+  }, [isInMasterMode, activeEntityTab]);
 
   useEffect(() => {
     if (isDark) {

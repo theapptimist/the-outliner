@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useEditorContext } from './EditorContext';
+import { useNavigation, EntityTab } from '@/contexts/NavigationContext';
 import { useToast } from '@/hooks/use-toast';
 import { AddTermDialog } from './AddTermDialog';
 import { AddDateDialog } from './AddDateDialog';
@@ -39,7 +40,7 @@ import { AddPersonDialog } from './AddPersonDialog';
 import { AddPlaceDialog } from './AddPlaceDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 
-type EntityTab = 'people' | 'places' | 'dates' | 'terms';
+// EntityTab type is imported from NavigationContext
 
 interface LibraryPaneProps {
   collapsed?: boolean;
@@ -47,7 +48,10 @@ interface LibraryPaneProps {
 }
 
 export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
-  const [activeTab, setActiveTab] = useState<EntityTab>('terms');
+  const { isInMasterMode, activeEntityTab, setActiveEntityTab } = useNavigation();
+  
+  // Local state for entity tab, synced with NavigationContext in master mode
+  const [localActiveTab, setLocalActiveTab] = useState<EntityTab>('terms');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -57,6 +61,24 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
   
   const { toast } = useToast();
+
+  // In master mode, use the persisted entity tab from NavigationContext
+  const activeTab = isInMasterMode && activeEntityTab ? activeEntityTab : localActiveTab;
+  
+  // Wrapper to set tab both locally and in NavigationContext (when in master mode)
+  const setActiveTab = useCallback((tab: EntityTab) => {
+    setLocalActiveTab(tab);
+    if (isInMasterMode) {
+      setActiveEntityTab(tab);
+    }
+  }, [isInMasterMode, setActiveEntityTab]);
+
+  // Sync local state when activeEntityTab changes from NavigationContext
+  useEffect(() => {
+    if (isInMasterMode && activeEntityTab && activeEntityTab !== localActiveTab) {
+      setLocalActiveTab(activeEntityTab);
+    }
+  }, [isInMasterMode, activeEntityTab]);
 
   // Get all context values
   const {

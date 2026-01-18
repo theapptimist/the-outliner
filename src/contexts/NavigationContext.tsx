@@ -17,6 +17,8 @@ export interface MasterDocumentInfo {
   links: MasterDocumentLink[];
 }
 
+export type EntityTab = 'people' | 'places' | 'dates' | 'terms';
+
 interface NavigationContextValue {
   /** Stack of documents we've navigated through */
   stack: NavigationEntry[];
@@ -40,6 +42,10 @@ interface NavigationContextValue {
   activeSubOutlineId: string | null;
   /** Set the active sub-outline ID */
   setActiveSubOutlineId: (id: string | null) => void;
+  /** The active entity tab for Library pane in master mode */
+  activeEntityTab: EntityTab | null;
+  /** Set the active entity tab (persists across subordinate navigation) */
+  setActiveEntityTab: (tab: EntityTab | null) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue>({
@@ -54,6 +60,8 @@ const NavigationContext = createContext<NavigationContextValue>({
   isInMasterMode: false,
   activeSubOutlineId: null,
   setActiveSubOutlineId: () => {},
+  activeEntityTab: null,
+  setActiveEntityTab: () => {},
 });
 
 interface NavigationProviderProps {
@@ -64,6 +72,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const [stack, setStack] = useState<NavigationEntry[]>([]);
   const [masterDocument, setMasterDocumentState] = useState<MasterDocumentInfo | null>(null);
   const [activeSubOutlineId, setActiveSubOutlineId] = useState<string | null>(null);
+  const [activeEntityTab, setActiveEntityTabState] = useState<EntityTab | null>(null);
 
   const canGoBack = stack.length > 0;
   const currentOrigin = stack.length > 0 ? stack[stack.length - 1] : null;
@@ -91,7 +100,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setMasterDocumentState(doc);
     if (!doc) {
       setActiveSubOutlineId(null);
+      setActiveEntityTabState(null); // Clear entity mode when leaving master mode
     }
+  }, []);
+
+  const setActiveEntityTab = useCallback((tab: EntityTab | null) => {
+    setActiveEntityTabState(tab);
   }, []);
 
   return (
@@ -108,6 +122,8 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         isInMasterMode,
         activeSubOutlineId,
         setActiveSubOutlineId,
+        activeEntityTab,
+        setActiveEntityTab,
       }}
     >
       {children}
