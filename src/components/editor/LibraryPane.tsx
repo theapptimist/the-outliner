@@ -678,10 +678,13 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
               ) : shouldAggregate ? (
                 // Aggregated read-only view
                 <>
-                  {activeTab === 'terms' && aggregatedTerms.filter(t => 
-                    t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    t.definition.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(term => (
+                  {activeTab === 'terms' && aggregatedTerms.filter(t => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (t.term ?? '').toLowerCase().includes(q) ||
+                      (t.definition ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(term => (
                     <AggregatedEntityCard
                       key={`${term.sourceDocId}-${term.id}`}
                       title={term.term}
@@ -695,10 +698,13 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                     />
                   ))}
                   
-                  {activeTab === 'dates' && aggregatedDates.filter(d => 
-                    d.rawText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    d.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(date => (
+                  {activeTab === 'dates' && aggregatedDates.filter(d => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (d.rawText ?? '').toLowerCase().includes(q) ||
+                      (d.description ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(date => (
                     <AggregatedEntityCard
                       key={`${date.sourceDocId}-${date.id}`}
                       title={formatDateForDisplay(date.date)}
@@ -713,11 +719,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                     />
                   ))}
                   
-                  {activeTab === 'people' && aggregatedPeople.filter(p => 
-                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(person => (
+                  {activeTab === 'people' && aggregatedPeople.filter(p => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (p.name ?? '').toLowerCase().includes(q) ||
+                      (p.role ?? '').toLowerCase().includes(q) ||
+                      (p.description ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(person => (
                     <AggregatedEntityCard
                       key={`${person.sourceDocId}-${person.id}`}
                       title={person.name}
@@ -732,10 +741,13 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                     />
                   ))}
                   
-                  {activeTab === 'places' && aggregatedPlaces.filter(p => 
-                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.significance?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(place => (
+                  {activeTab === 'places' && aggregatedPlaces.filter(p => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (p.name ?? '').toLowerCase().includes(q) ||
+                      (p.significance ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(place => (
                     <AggregatedEntityCard
                       key={`${place.sourceDocId}-${place.id}`}
                       title={place.name}
@@ -752,10 +764,13 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
               ) : (
                 // Normal editable view
                 <>
-                  {activeTab === 'terms' && terms.filter(t => 
-                    t.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    t.definition.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(term => (
+                  {activeTab === 'terms' && terms.filter(t => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (t.term ?? '').toLowerCase().includes(q) ||
+                      (t.definition ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(term => (
                     <EntityCard
                       key={term.id}
                       id={term.id}
@@ -783,10 +798,13 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                     />
                   ))}
 
-                  {activeTab === 'dates' && dates.filter(d => 
-                    d.rawText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    d.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(date => (
+                  {activeTab === 'dates' && dates.filter(d => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (d.rawText ?? '').toLowerCase().includes(q) ||
+                      (d.description ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(date => (
                     <EntityCard
                       key={date.id}
                       id={date.id}
@@ -815,11 +833,14 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                     />
                   ))}
 
-                  {activeTab === 'people' && people.filter(p => 
-                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(person => (
+                  {activeTab === 'people' && people.filter(p => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (p.name ?? '').toLowerCase().includes(q) ||
+                      (p.role ?? '').toLowerCase().includes(q) ||
+                      (p.description ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(person => (
                     <EntityCard
                       key={person.id}
                       id={person.id}
@@ -848,10 +869,13 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                     />
                   ))}
 
-                  {activeTab === 'places' && places.filter(p => 
-                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.significance?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(place => (
+                  {activeTab === 'places' && places.filter(p => {
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (p.name ?? '').toLowerCase().includes(q) ||
+                      (p.significance ?? '').toLowerCase().includes(q)
+                    );
+                  }).map(place => (
                     <EntityCard
                       key={place.id}
                       id={place.id}
