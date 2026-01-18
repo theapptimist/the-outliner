@@ -669,6 +669,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       const isOnFirstLine = !textBefore.includes('\n');
 
       if (isOnFirstLine) {
+        // Check if we're at the first node - if so, stay put
+        const currentIndex = nodes.findIndex(n => n.id === node.id);
+        if (currentIndex <= 0) {
+          e.preventDefault();
+          return; // At boundary - don't clear focus
+        }
+        
         e.preventDefault();
         e.stopPropagation(); // prevent global handler from double-navigating
         // Save current value directly before navigating
@@ -686,6 +693,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       const isOnLastLine = !textAfter.includes('\n');
 
       if (isOnLastLine) {
+        // Check if we're at the last node - if so, stay put
+        const currentIndex = nodes.findIndex(n => n.id === node.id);
+        if (currentIndex >= nodes.length - 1) {
+          e.preventDefault();
+          return; // At boundary - don't clear focus
+        }
+        
         e.preventDefault();
         e.stopPropagation(); // prevent global handler from double-navigating
         // Save current value directly before navigating
