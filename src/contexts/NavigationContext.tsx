@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 
 export interface NavigationEntry {
   id: string;
@@ -18,6 +18,12 @@ export interface MasterDocumentInfo {
 }
 
 export type EntityTab = 'people' | 'places' | 'dates' | 'terms';
+
+// Session storage keys for persistence across HMR/reloads
+const MASTER_DOC_KEY = 'outliner:masterDocument';
+const ACTIVE_SUB_KEY = 'outliner:activeSubOutlineId';
+const ENTITY_TAB_KEY = 'outliner:activeEntityTab';
+const NAV_STACK_KEY = 'outliner:navigationStack';
 
 interface NavigationContextValue {
   /** Stack of documents we've navigated through */
@@ -68,11 +74,65 @@ interface NavigationProviderProps {
   children: ReactNode;
 }
 
+// Helper to safely parse JSON from sessionStorage
+function getStoredValue<T>(key: string, fallback: T): T {
+  try {
+    const stored = sessionStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored) as T;
+    }
+  } catch (e) {
+    console.warn(`Failed to parse ${key} from sessionStorage`, e);
+  }
+  return fallback;
+}
+
 export function NavigationProvider({ children }: NavigationProviderProps) {
-  const [stack, setStack] = useState<NavigationEntry[]>([]);
-  const [masterDocument, setMasterDocumentState] = useState<MasterDocumentInfo | null>(null);
-  const [activeSubOutlineId, setActiveSubOutlineId] = useState<string | null>(null);
-  const [activeEntityTab, setActiveEntityTabState] = useState<EntityTab | null>(null);
+  // Initialize state from sessionStorage for persistence across reloads
+  const [stack, setStack] = useState<NavigationEntry[]>(() => 
+    getStoredValue<NavigationEntry[]>(NAV_STACK_KEY, [])
+  );
+  const [masterDocument, setMasterDocumentState] = useState<MasterDocumentInfo | null>(() =>
+    getStoredValue<MasterDocumentInfo | null>(MASTER_DOC_KEY, null)
+  );
+  const [activeSubOutlineId, setActiveSubOutlineIdState] = useState<string | null>(() =>
+    getStoredValue<string | null>(ACTIVE_SUB_KEY, null)
+  );
+  const [activeEntityTab, setActiveEntityTabState] = useState<EntityTab | null>(() =>
+    getStoredValue<EntityTab | null>(ENTITY_TAB_KEY, null)
+  );
+
+  // Persist stack to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem(NAV_STACK_KEY, JSON.stringify(stack));
+  }, [stack]);
+
+  // Persist masterDocument to sessionStorage
+  useEffect(() => {
+    if (masterDocument) {
+      sessionStorage.setItem(MASTER_DOC_KEY, JSON.stringify(masterDocument));
+    } else {
+      sessionStorage.removeItem(MASTER_DOC_KEY);
+    }
+  }, [masterDocument]);
+
+  // Persist activeSubOutlineId to sessionStorage
+  useEffect(() => {
+    if (activeSubOutlineId) {
+      sessionStorage.setItem(ACTIVE_SUB_KEY, JSON.stringify(activeSubOutlineId));
+    } else {
+      sessionStorage.removeItem(ACTIVE_SUB_KEY);
+    }
+  }, [activeSubOutlineId]);
+
+  // Persist activeEntityTab to sessionStorage
+  useEffect(() => {
+    if (activeEntityTab) {
+      sessionStorage.setItem(ENTITY_TAB_KEY, JSON.stringify(activeEntityTab));
+    } else {
+      sessionStorage.removeItem(ENTITY_TAB_KEY);
+    }
+  }, [activeEntityTab]);
 
   const canGoBack = stack.length > 0;
   const currentOrigin = stack.length > 0 ? stack[stack.length - 1] : null;
@@ -96,9 +156,13 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const setMasterDocument = useCallback((doc: MasterDocumentInfo | null) => {
     setMasterDocumentState(doc);
     if (!doc) {
-      setActiveSubOutlineId(null);
-      setActiveEntityTabState(null); // Clear entity mode when leaving master mode
+      setActiveSubOutlineIdState(null);
+      setActiveEntityTabState(null);
     }
+  }, []);
+
+  const setActiveSubOutlineId = useCallback((id: string | null) => {
+    setActiveSubOutlineIdState(id);
   }, []);
 
   const setActiveEntityTab = useCallback((tab: EntityTab | null) => {
