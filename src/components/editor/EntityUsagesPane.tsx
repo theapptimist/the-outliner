@@ -75,9 +75,9 @@ export function EntityUsagesPane({
     <div className="flex flex-col h-full bg-background border-t border-border">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0 bg-muted/30">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <Icon className={cn("h-4 w-4 shrink-0", color)} />
-          <span className="font-medium text-sm truncate">{title}</span>
+          <span className="font-medium text-sm break-words">{title}</span>
           {totalCount > 0 && (
             <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
               {totalCount} use{totalCount !== 1 && 's'}
@@ -165,7 +165,7 @@ export function EntityUsagesPane({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                  <div className="text-xs text-muted-foreground mt-0.5 break-words">
                     {usage.nodeLabel}
                   </div>
                 </button>
