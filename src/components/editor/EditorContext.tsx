@@ -7,7 +7,11 @@ import {
   SelectionProvider, 
   useSelectionContext,
   TermsProvider, 
-  useTermsContext 
+  useTermsContext,
+  PeopleProvider,
+  usePeopleContext,
+  PlacesProvider,
+  usePlacesContext,
 } from './context';
 import { DatesProvider, useDatesContext } from './context/DatesContext';
 
@@ -15,6 +19,8 @@ import { DatesProvider, useDatesContext } from './context/DatesContext';
 export type { FindReplaceMatch, FindReplaceProvider, PasteHierarchyFn, ScrollToNodeFn } from './context';
 export type { SelectionSource, InsertTextAtCursorFn } from './context';
 export type { DefinedTerm, TermUsage, HighlightMode } from './context';
+export type { Person, PersonUsage, PeopleHighlightMode } from './context';
+export type { Place, PlaceUsage, PlacesHighlightMode } from './context';
 export type { TaggedDate, DateUsage, DateHighlightMode } from './context/DatesContext';
 
 interface EditorProviderProps {
@@ -67,7 +73,11 @@ export function EditorProvider({
       <SelectionProvider>
         <TermsProvider documentId={documentId} documentVersion={documentVersion}>
           <DatesProvider documentId={documentId} documentVersion={documentVersion}>
-            {children}
+            <PeopleProvider documentId={documentId} documentVersion={documentVersion}>
+              <PlacesProvider documentId={documentId} documentVersion={documentVersion}>
+                {children}
+              </PlacesProvider>
+            </PeopleProvider>
           </DatesProvider>
         </TermsProvider>
       </SelectionProvider>
@@ -81,14 +91,18 @@ export function useEditorContext() {
   const selectionContext = useSelectionContext();
   const termsContext = useTermsContext();
   const datesContext = useDatesContext();
+  const peopleContext = usePeopleContext();
+  const placesContext = usePlacesContext();
 
   return {
     ...documentContext,
     ...selectionContext,
     ...termsContext,
     ...datesContext,
+    ...peopleContext,
+    ...placesContext,
   };
 }
 
 // Also export individual hooks for focused usage
-export { useDocumentContext, useSelectionContext, useTermsContext, useDatesContext };
+export { useDocumentContext, useSelectionContext, useTermsContext, useDatesContext, usePeopleContext, usePlacesContext };
