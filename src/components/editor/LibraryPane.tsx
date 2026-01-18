@@ -323,9 +323,130 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Horizontal Entity Tabs at Top */}
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30">
+    <div className="flex h-full">
+      {/* Vertical Tool Strip */}
+      <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20">
+        {/* Add */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-add-term-btn
+              data-allow-pointer
+              variant="ghost"
+              size="sm"
+              onClick={handleAdd}
+              className={cn(
+                "h-7 w-7 p-0",
+                selectedText && "bg-accent/20 text-accent"
+              )}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">
+            Add {activeTab.slice(0, -1)}{selectedText ? ' (from selection)' : ''}
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Search Toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchOpen(!searchOpen)}
+              className={cn(
+                "h-7 w-7 p-0",
+                searchOpen && "bg-accent/20 text-accent",
+                searchQuery && "text-accent"
+              )}
+            >
+              <Search className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">
+            {searchOpen ? 'Close search' : 'Search'}
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Highlight Mode */}
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-7 w-7 p-0 relative",
+                    currentHighlightMode === 'all' && "bg-accent/20 text-accent",
+                    currentHighlightMode === 'selected' && "bg-primary/20 text-primary",
+                    currentHighlightMode === 'none' && "text-muted-foreground"
+                  )}
+                >
+                  <Highlighter className="h-3.5 w-3.5" />
+                  <span className={cn(
+                    "absolute bottom-0.5 right-0.5 h-1 w-1 rounded-full",
+                    currentHighlightMode === 'all' && "bg-accent",
+                    currentHighlightMode === 'selected' && "bg-primary",
+                    currentHighlightMode === 'none' && "bg-muted-foreground"
+                  )} />
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Highlight mode</TooltipContent>
+          </Tooltip>
+          <PopoverContent side="right" align="start" className="w-auto p-1">
+            <div className="flex flex-col gap-0.5">
+              {(['all', 'selected', 'none'] as const).map(mode => (
+                <Button
+                  key={mode}
+                  variant={currentHighlightMode === mode ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 justify-start text-xs px-2"
+                  onClick={() => setCurrentHighlightMode(mode)}
+                >
+                  <span className={cn(
+                    "h-2 w-2 rounded-full mr-2",
+                    mode === 'all' && "bg-accent",
+                    mode === 'selected' && "bg-primary",
+                    mode === 'none' && "bg-muted-foreground"
+                  )} />
+                  {mode === 'all' ? 'All' : mode === 'selected' ? 'Selected' : 'Off'}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Recalculate */}
+        {currentCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRecalculate}
+                className={cn(
+                  "h-7 w-7 p-0 transition-colors",
+                  recalcFeedback === 'done' && "text-success",
+                  recalcFeedback === 'empty' && "text-warning",
+                  recalcFeedback === 'idle' && "text-muted-foreground hover:text-primary"
+                )}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", recalcFeedback !== 'idle' && "animate-spin")} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              {recalcFeedback === 'done' ? 'Updated!' : recalcFeedback === 'empty' ? 'No outline' : 'Recalculate'}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Divider */}
+        <div className="h-px w-4 bg-border/50 my-1" />
+
+        {/* Entity Type Tabs */}
         {tabs.map(tab => (
           <Tooltip key={tab.id}>
             <TooltipTrigger asChild>
@@ -350,179 +471,34 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">{tab.label}</TooltipContent>
+            <TooltipContent side="right" className="text-xs">{tab.label}</TooltipContent>
           </Tooltip>
         ))}
+
+        <div className="flex-1" />
+
+        {/* Clear All */}
+        {currentCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                onClick={() => setClearConfirmOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              Clear all ({currentCount})
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
-      {/* Content Area with Vertical Tool Strip */}
-      <div className="flex flex-1 min-h-0">
-        {/* Vertical Tool Strip */}
-        <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20">
-          {/* Add */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                data-add-term-btn
-                data-allow-pointer
-                variant="ghost"
-                size="sm"
-                onClick={handleAdd}
-                className={cn(
-                  "h-7 w-7 p-0",
-                  selectedText && "bg-accent/20 text-accent"
-                )}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              Add {activeTab.slice(0, -1)}{selectedText ? ' (from selection)' : ''}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Search Toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSearchOpen(!searchOpen)}
-                className={cn(
-                  "h-7 w-7 p-0",
-                  searchOpen && "bg-accent/20 text-accent",
-                  searchQuery && "text-accent"
-                )}
-              >
-                <Search className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              {searchOpen ? 'Close search' : 'Search'}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Highlight Mode */}
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-7 w-7 p-0 relative",
-                      currentHighlightMode === 'all' && "bg-accent/20 text-accent",
-                      currentHighlightMode === 'selected' && "bg-primary/20 text-primary",
-                      currentHighlightMode === 'none' && "text-muted-foreground"
-                    )}
-                  >
-                    <Highlighter className="h-3.5 w-3.5" />
-                    <span className={cn(
-                      "absolute bottom-0.5 right-0.5 h-1 w-1 rounded-full",
-                      currentHighlightMode === 'all' && "bg-accent",
-                      currentHighlightMode === 'selected' && "bg-primary",
-                      currentHighlightMode === 'none' && "bg-muted-foreground"
-                    )} />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">Highlight mode</TooltipContent>
-            </Tooltip>
-            <PopoverContent side="right" align="start" className="w-auto p-1">
-              <div className="flex flex-col gap-0.5">
-                {(['all', 'selected', 'none'] as const).map(mode => (
-                  <Button
-                    key={mode}
-                    variant={currentHighlightMode === mode ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-7 justify-start text-xs px-2"
-                    onClick={() => setCurrentHighlightMode(mode)}
-                  >
-                    <span className={cn(
-                      "h-2 w-2 rounded-full mr-2",
-                      mode === 'all' && "bg-accent",
-                      mode === 'selected' && "bg-primary",
-                      mode === 'none' && "bg-muted-foreground"
-                    )} />
-                    {mode === 'all' ? 'All' : mode === 'selected' ? 'Selected' : 'Off'}
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Recalculate */}
-          {currentCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRecalculate}
-                  className={cn(
-                    "h-7 w-7 p-0 transition-colors",
-                    recalcFeedback === 'done' && "text-success",
-                    recalcFeedback === 'empty' && "text-warning",
-                    recalcFeedback === 'idle' && "text-muted-foreground hover:text-primary"
-                  )}
-                >
-                  <RefreshCw className={cn("h-3.5 w-3.5", recalcFeedback !== 'idle' && "animate-spin")} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">
-                {recalcFeedback === 'done' ? 'Updated!' : recalcFeedback === 'empty' ? 'No outline' : 'Recalculate'}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          <div className="flex-1" />
-
-          {/* Clear All */}
-          {currentCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => setClearConfirmOpen(true)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">
-                Clear all ({currentCount})
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-
-        {/* Main Content */}
-        <div className="flex flex-col flex-1 min-w-0">
-        {/* Search (collapsible) */}
-        {searchOpen && (
-          <div className="p-2 border-b border-border/30">
-            <div className="relative">
-              <Input
-                autoFocus
-                placeholder={`Filter ${activeTab}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-7 text-xs pr-6"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Items List */}
         <ScrollArea className="flex-1 px-1">
           <div className="space-y-1.5 py-2">
@@ -677,7 +653,6 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
             )}
           </div>
         </ScrollArea>
-        </div>
       </div>
 
       {/* Dialogs */}
