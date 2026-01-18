@@ -16,12 +16,22 @@ import {
   X,
   FileText,
   Sparkles,
+  MoreVertical,
+  Link2,
+  Merge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1136,66 +1146,96 @@ function EntityCard({
           )}
         </button>
 
-        <Icon className={cn("h-3.5 w-3.5 shrink-0", iconColor)} />
+        <div className="flex items-center gap-1 shrink-0">
+          <Icon className={cn("h-3.5 w-3.5", iconColor)} />
+          {usageCount > 0 && (
+            <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
+              {usageCount}
+            </span>
+          )}
+        </div>
 
         <span className="text-xs font-medium truncate flex-1">{title}</span>
-
-        {usageCount > 0 && (
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {usageCount}
-          </span>
-        )}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-0.5 px-2 pb-1.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
+      <div className="flex items-center justify-between px-2 pb-1.5">
+        <div className="flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                onClick={onInsert}
+              >
+                <Type className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Insert</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-6 w-6 p-0",
+                  isHighlighted ? "text-amber-500" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={onHighlight}
+              >
+                <Highlighter className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Highlight</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-6 w-6 p-0",
+                  isInspected ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={onViewUsages}
+              >
+                <Eye className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">View usages</TooltipContent>
+          </Tooltip>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-              onClick={onInsert}
             >
-              <Type className="h-3 w-3" />
+              <MoreVertical className="h-3 w-3" />
             </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">Insert</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-6 w-6 p-0",
-                isHighlighted ? "text-amber-500" : "text-muted-foreground hover:text-foreground"
-              )}
-              onClick={onHighlight}
-            >
-              <Highlighter className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">Highlight</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-6 w-6 p-0",
-                isInspected ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              )}
-              onClick={onViewUsages}
-            >
-              <Eye className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">View usages</TooltipContent>
-        </Tooltip>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem disabled>
+              <Link2 className="h-3.5 w-3.5 mr-2" />
+              Link entity
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <Merge className="h-3.5 w-3.5 mr-2" />
+              Merge with...
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="text-destructive">
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Expanded content */}
@@ -1273,15 +1313,16 @@ function AggregatedEntityCard({
           )}
         </button>
 
-        <Icon className={cn("h-3.5 w-3.5 shrink-0", iconColor)} />
+        <div className="flex items-center gap-1 shrink-0">
+          <Icon className={cn("h-3.5 w-3.5", iconColor)} />
+          {usageCount > 0 && (
+            <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
+              {usageCount}
+            </span>
+          )}
+        </div>
 
         <span className="text-xs font-medium truncate flex-1">{title}</span>
-
-        {usageCount > 0 && (
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {usageCount}
-          </span>
-        )}
       </div>
 
       {/* Source indicator */}
