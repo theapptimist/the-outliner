@@ -162,7 +162,7 @@ export default function Editor() {
   const [showRevealCodes, setShowRevealCodes] = useState(false);
   const [showRowHighlight, setShowRowHighlight] = useState(() => {
     const stored = localStorage.getItem('outliner:showRowHighlight');
-    return stored !== 'false'; // default true
+    return stored === 'true'; // default false
   });
   
   // Document state
