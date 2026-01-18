@@ -83,7 +83,31 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setSelectedText, setSelectionSource, nodeClipboard, setNodeClipboard, setInsertTextAtCursor, setScrollToNode, editor, terms, highlightMode, highlightedTerm } = useEditorContext();
+  const { 
+    setSelectedText, 
+    setSelectionSource, 
+    nodeClipboard, 
+    setNodeClipboard, 
+    setInsertTextAtCursor, 
+    setScrollToNode, 
+    editor, 
+    // Terms
+    terms, 
+    highlightMode, 
+    highlightedTerm,
+    // Dates
+    dates,
+    dateHighlightMode,
+    highlightedDate,
+    // People
+    people,
+    peopleHighlightMode,
+    highlightedPerson,
+    // Places
+    places,
+    placesHighlightMode,
+    highlightedPlace,
+  } = useEditorContext();
 
   // Track last focused position for term insertion when clicking sidebar
   const lastFocusedNodeIdRef = useRef<string | null>(null);
@@ -99,51 +123,176 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
   const isDragRef = useRef(false);
 
+  // Helper to escape regex special characters
+  const escapeRegex = useCallback((str: string) => 
+    str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), []);
+
   // Build regex for term highlighting
   const termHighlightRegex = useMemo(() => {
     if (highlightMode === 'none') return null;
     
-    // In 'selected' mode with no term chosen, highlight nothing (wait state)
     const termsToHighlight = highlightMode === 'selected'
       ? (highlightedTerm ? [highlightedTerm] : [])
       : terms;
     
     if (termsToHighlight.length === 0) return null;
     
-    const escaped = termsToHighlight.map(t => 
-      t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    );
+    const escaped = termsToHighlight.map(t => escapeRegex(t.term));
     return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
-  }, [terms, highlightMode, highlightedTerm]);
+  }, [terms, highlightMode, highlightedTerm, escapeRegex]);
 
-  // Helper to render text with term highlights
+  // Build regex for people highlighting
+  const peopleHighlightRegex = useMemo(() => {
+    if (peopleHighlightMode === 'none') return null;
+    
+    const peopleToHighlight = peopleHighlightMode === 'selected'
+      ? (highlightedPerson ? [highlightedPerson] : [])
+      : people;
+    
+    if (peopleToHighlight.length === 0) return null;
+    
+    const escaped = peopleToHighlight.map(p => escapeRegex(p.name));
+    return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
+  }, [people, peopleHighlightMode, highlightedPerson, escapeRegex]);
+
+  // Build regex for places highlighting
+  const placesHighlightRegex = useMemo(() => {
+    if (placesHighlightMode === 'none') return null;
+    
+    const placesToHighlight = placesHighlightMode === 'selected'
+      ? (highlightedPlace ? [highlightedPlace] : [])
+      : places;
+    
+    if (placesToHighlight.length === 0) return null;
+    
+    const escaped = placesToHighlight.map(p => escapeRegex(p.name));
+    return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
+  }, [places, placesHighlightMode, highlightedPlace, escapeRegex]);
+
+  // Build regex for dates highlighting
+  const dateHighlightRegex = useMemo(() => {
+    if (dateHighlightMode === 'none') return null;
+    
+    const datesToHighlight = dateHighlightMode === 'selected'
+      ? (highlightedDate ? [highlightedDate] : [])
+      : dates;
+    
+    if (datesToHighlight.length === 0) return null;
+    
+    const escaped = datesToHighlight.map(d => escapeRegex(d.rawText));
+    return new RegExp(`(${escaped.join('|')})`, 'gi');
+  }, [dates, dateHighlightMode, highlightedDate, escapeRegex]);
+
+  // Helper to render text with all entity highlights (terms, people, places, dates)
   const renderHighlightedText = useCallback((text: string) => {
-    if (!termHighlightRegex || !text) {
+    const hasAnyHighlight = termHighlightRegex || peopleHighlightRegex || placesHighlightRegex || dateHighlightRegex;
+    
+    if (!hasAnyHighlight || !text) {
       return text || ' ';
     }
     
+    // Collect all matches with their type and position
+    interface MatchInfo {
+      start: number;
+      end: number;
+      text: string;
+      className: string;
+    }
+    
+    const allMatches: MatchInfo[] = [];
+    
+    // Collect term matches
+    if (termHighlightRegex) {
+      termHighlightRegex.lastIndex = 0;
+      let match;
+      while ((match = termHighlightRegex.exec(text)) !== null) {
+        allMatches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0],
+          className: 'term-highlight',
+        });
+      }
+    }
+    
+    // Collect people matches
+    if (peopleHighlightRegex) {
+      peopleHighlightRegex.lastIndex = 0;
+      let match;
+      while ((match = peopleHighlightRegex.exec(text)) !== null) {
+        allMatches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0],
+          className: 'person-highlight',
+        });
+      }
+    }
+    
+    // Collect places matches
+    if (placesHighlightRegex) {
+      placesHighlightRegex.lastIndex = 0;
+      let match;
+      while ((match = placesHighlightRegex.exec(text)) !== null) {
+        allMatches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0],
+          className: 'place-highlight',
+        });
+      }
+    }
+    
+    // Collect date matches
+    if (dateHighlightRegex) {
+      dateHighlightRegex.lastIndex = 0;
+      let match;
+      while ((match = dateHighlightRegex.exec(text)) !== null) {
+        allMatches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0],
+          className: 'date-highlight',
+        });
+      }
+    }
+    
+    if (allMatches.length === 0) {
+      return text || ' ';
+    }
+    
+    // Sort matches by start position, then by length (longer matches first for overlaps)
+    allMatches.sort((a, b) => a.start - b.start || b.end - a.end);
+    
+    // Remove overlapping matches (keep the first one)
+    const filteredMatches: MatchInfo[] = [];
+    let lastEnd = -1;
+    for (const m of allMatches) {
+      if (m.start >= lastEnd) {
+        filteredMatches.push(m);
+        lastEnd = m.end;
+      }
+    }
+    
+    // Build the highlighted text
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
-    let match: RegExpExecArray | null;
     let key = 0;
     
-    // Reset regex state
-    termHighlightRegex.lastIndex = 0;
-    
-    while ((match = termHighlightRegex.exec(text)) !== null) {
+    for (const m of filteredMatches) {
       // Add text before match
-      if (match.index > lastIndex) {
-        parts.push(text.slice(lastIndex, match.index));
+      if (m.start > lastIndex) {
+        parts.push(text.slice(lastIndex, m.start));
       }
       
       // Add highlighted match
       parts.push(
-        <span key={key++} className="term-highlight">
-          {match[0]}
+        <span key={key++} className={m.className}>
+          {m.text}
         </span>
       );
       
-      lastIndex = match.index + match[0].length;
+      lastIndex = m.end;
     }
     
     // Add remaining text
@@ -152,7 +301,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     }
     
     return parts.length > 0 ? parts : (text || ' ');
-  }, [termHighlightRegex]);
+  }, [termHighlightRegex, peopleHighlightRegex, placesHighlightRegex, dateHighlightRegex]);
 
   // Track text selection in textarea and include source context
   const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {
