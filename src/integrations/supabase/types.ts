@@ -85,6 +85,90 @@ export type Database = {
         }
         Relationships: []
       }
+      entity_links: {
+        Row: {
+          created_at: string
+          id: string
+          source_entity_id: string
+          target_entity_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source_entity_id: string
+          target_entity_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source_entity_id?: string
+          target_entity_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_links_source_entity_id_fkey"
+            columns: ["source_entity_id"]
+            isOneToOne: false
+            referencedRelation: "document_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entity_links_target_entity_id_fkey"
+            columns: ["target_entity_id"]
+            isOneToOne: false
+            referencedRelation: "document_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entity_relationships: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          relationship_type: string
+          source_entity_id: string
+          target_entity_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          relationship_type: string
+          source_entity_id: string
+          target_entity_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          relationship_type?: string
+          source_entity_id?: string
+          target_entity_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_relationships_source_entity_id_fkey"
+            columns: ["source_entity_id"]
+            isOneToOne: false
+            referencedRelation: "document_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entity_relationships_target_entity_id_fkey"
+            columns: ["target_entity_id"]
+            isOneToOne: false
+            referencedRelation: "document_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prompts: {
         Row: {
           category: string | null
