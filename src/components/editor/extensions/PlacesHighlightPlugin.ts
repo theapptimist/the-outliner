@@ -31,6 +31,51 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Build a linearized text map of the document for cross-node matching
+interface TextSegment {
+  text: string;
+  from: number; // ProseMirror position
+  to: number;
+}
+
+function buildLinearizedTextMap(doc: any): { fullText: string; segments: TextSegment[] } {
+  const segments: TextSegment[] = [];
+  let fullText = '';
+  
+  doc.descendants((node: any, pos: number) => {
+    if (!node.isText) return;
+    
+    const text = node.text || '';
+    segments.push({
+      text,
+      from: pos,
+      to: pos + text.length,
+    });
+    fullText += text;
+  });
+  
+  return { fullText, segments };
+}
+
+// Convert an index in the full concatenated text to a ProseMirror position
+function fullTextIndexToDocPos(index: number, segments: TextSegment[]): number {
+  let offset = 0;
+  for (const segment of segments) {
+    const segmentEnd = offset + segment.text.length;
+    if (index < segmentEnd) {
+      // The index falls within this segment
+      const relativeIndex = index - offset;
+      return segment.from + relativeIndex;
+    }
+    offset = segmentEnd;
+  }
+  // Fallback: return end of last segment
+  if (segments.length > 0) {
+    return segments[segments.length - 1].to;
+  }
+  return 0;
+}
+
 function findPlacesMatches(
   doc: any,
   places: TaggedPlace[],
@@ -57,23 +102,36 @@ function findPlacesMatches(
   // Normalize names to ensure consistent matching
   const patterns = placesToHighlight.map(p => ({
     place: p,
-    regex: new RegExp(`\\b${escapeRegex(normalizeEntityName(p.name))}\\b`, 'gi')
-  })).filter(({ regex }) => regex.source !== '\\b\\b'); // Filter out empty names
+    normalizedName: normalizeEntityName(p.name),
+  })).filter(({ normalizedName }) => normalizedName.length > 0);
 
-  // Walk through all text nodes
-  doc.descendants((node: any, pos: number) => {
-    if (!node.isText) return;
+  if (patterns.length === 0) {
+    return decorations;
+  }
 
-    const text = node.text || '';
+  // Build linearized text map for cross-node matching
+  const { fullText, segments } = buildLinearizedTextMap(doc);
+  
+  if (fullText.length === 0 || segments.length === 0) {
+    return decorations;
+  }
 
-    for (const { place, regex } of patterns) {
-      regex.lastIndex = 0;
-      let match;
+  // Find matches in the linearized text
+  for (const { place, normalizedName } of patterns) {
+    const regex = new RegExp(`\\b${escapeRegex(normalizedName)}\\b`, 'gi');
+    regex.lastIndex = 0;
+    let match;
 
-      while ((match = regex.exec(text)) !== null) {
-        const from = pos + match.index;
-        const to = from + match[0].length;
+    while ((match = regex.exec(fullText)) !== null) {
+      const matchStart = match.index;
+      const matchEnd = matchStart + match[0].length;
+      
+      // Convert fullText indices to ProseMirror positions
+      const from = fullTextIndexToDocPos(matchStart, segments);
+      const to = fullTextIndexToDocPos(matchEnd, segments);
 
+      // Validate the decoration range
+      if (from < to && from >= 0) {
         decorations.push(
           Decoration.inline(from, to, {
             class: 'place-highlight',
@@ -82,7 +140,7 @@ function findPlacesMatches(
         );
       }
     }
-  });
+  }
 
   return decorations;
 }
