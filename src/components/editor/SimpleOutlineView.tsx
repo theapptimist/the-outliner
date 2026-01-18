@@ -1214,8 +1214,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               const isEditing = editingId === node.id;
               const baseValue = isEditing ? editValue : node.label;
               const suffix = levelStyle.suffix && (isEditing ? editValue : node.label) ? levelStyle.suffix : '';
-              // Include suffix in display value so caret can appear after colon
-              const displayValue = baseValue + (suffix || '');
+              // Display value is just the text - suffix is rendered separately
+              const displayValue = baseValue;
               const shouldUnderline = levelStyle.underline && (isEditing ? editValue : node.label);
 
               return (
@@ -1229,10 +1229,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     style={{ gridArea: '1 / 1' }}
                     aria-hidden="true"
                   >
-                    {displayValue || ' '}
+                    {(displayValue || ' ') + (suffix || '')}
                   </span>
                   
-                  {/* Visible layer - text (maybe underlined), suffix is now part of displayValue */}
+                  {/* Visible layer - text (maybe underlined), suffix rendered separately */}
                   <span 
                     className="whitespace-pre-wrap break-words text-sm font-mono leading-6 min-w-0 pointer-events-none"
                     style={{ gridArea: '1 / 1' }}
@@ -1245,16 +1245,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     {suffix && <span className="select-none">{suffix}</span>}
                   </span>
                   
-                  {/* Textarea - overlays both, but only covers the text width */}
+                  {/* Textarea - overlays both, contains only the text (no suffix) */}
                   <textarea
                     ref={getInputRefCallback(node.id)}
-                    value={displayValue}
+                    value={displayValue || ''}
                     onChange={(e) => {
-                      let newValue = e.target.value;
-                      // Strip suffix if user hasn't removed it (suffix is auto-appended for display)
-                      if (suffix && newValue.endsWith(suffix)) {
-                        newValue = newValue.slice(0, -suffix.length);
-                      }
+                      const newValue = e.target.value;
                       if (editingId !== node.id) {
                         setEditingId(node.id);
                         setEditValue(newValue);
