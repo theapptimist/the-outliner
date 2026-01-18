@@ -803,15 +803,6 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-          onClick={() => navigate('/hierarchy')}
-          title="Open in Hierarchy Editor"
-        >
-          <ExternalLink className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
           title={isCollapsed ? 'Expand' : 'Collapse'}
         >
