@@ -22,7 +22,7 @@ interface SimpleOutlineViewProps {
   onIndent: (id: string) => void;
   onOutdent: (id: string) => void;
   onVisualIndent?: (id: string, delta: number) => void;
-  onAddNode: (afterId?: string | null) => string | undefined;
+  onAddNode: (afterId?: string | null, type?: string) => string | undefined;
   onAddBodyNode: (afterId?: string | null) => string | undefined;
   onAddBodyNodeWithSpacer?: (afterId?: string | null) => string | undefined;
   onAddChildNode: (parentId?: string) => string | undefined;
@@ -1078,10 +1078,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       return;
                     }
                     
-                    // Shift+Enter: create body node (hanging element)
+                    // Shift+Enter: create body node as sibling (same level, not indented under link)
                     if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
                       e.preventDefault();
-                      const newId = onAddBodyNode?.(node.id);
+                      // For link nodes, create a sibling body node (same as regular Enter but body type)
+                      const newId = onAddNode(node.id, 'body');
                       if (newId) pendingNewNodeIdRef.current = newId;
                       return;
                     }
