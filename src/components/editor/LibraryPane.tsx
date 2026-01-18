@@ -18,6 +18,7 @@ import {
   Sparkles,
   MoreVertical,
   Merge,
+  Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +55,9 @@ import { AddPlaceDialog } from './AddPlaceDialog';
 import { EntityUsagesPane } from './EntityUsagesPane';
 import { EntitySuggestionsDialog } from './EntitySuggestionsDialog';
 import { EntityMergeDialog } from './EntityMergeDialog';
+import { EntityLinkDialog } from './EntityLinkDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
+import { useDocumentContext } from './context';
 
 // EntityTab type is imported from NavigationContext
 
@@ -87,6 +90,8 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeSourceEntity, setMergeSourceEntity] = useState<{ id: string; title: string; subtitle?: string } | null>(null);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkSourceEntity, setLinkSourceEntity] = useState<{ id: string; title: string; subtitle?: string; documentId: string } | null>(null);
   
   const { toast } = useToast();
 
@@ -162,6 +167,10 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     outlineStyle,
     mixedConfig,
   } = useEditorContext();
+
+  // Get document ID for linking
+  const { document: currentDocument } = useDocumentContext();
+  const documentId = currentDocument?.meta?.id || '';
 
   // Entity suggestions from AI scan
   const entitySuggestions = useEntitySuggestions({
@@ -864,6 +873,10 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                         setMergeSourceEntity({ id: term.id, title: term.term, subtitle: term.definition });
                         setMergeDialogOpen(true);
                       }}
+                      onLink={() => {
+                        setLinkSourceEntity({ id: term.id, title: term.term, subtitle: term.definition, documentId });
+                        setLinkDialogOpen(true);
+                      }}
                       onDelete={() => {
                         setTerms(prev => prev.filter(t => t.id !== term.id));
                         toast({ title: 'Term deleted' });
@@ -906,6 +919,10 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                       onMerge={() => {
                         setMergeSourceEntity({ id: date.id, title: formatDateForDisplay(date.date), subtitle: date.rawText });
                         setMergeDialogOpen(true);
+                      }}
+                      onLink={() => {
+                        setLinkSourceEntity({ id: date.id, title: formatDateForDisplay(date.date), subtitle: date.rawText, documentId });
+                        setLinkDialogOpen(true);
                       }}
                       onDelete={() => {
                         setDates(prev => prev.filter(d => d.id !== date.id));
@@ -951,6 +968,10 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                         setMergeSourceEntity({ id: person.id, title: person.name, subtitle: person.role });
                         setMergeDialogOpen(true);
                       }}
+                      onLink={() => {
+                        setLinkSourceEntity({ id: person.id, title: person.name, subtitle: person.role, documentId });
+                        setLinkDialogOpen(true);
+                      }}
                       onDelete={() => {
                         setPeople(prev => prev.filter(p => p.id !== person.id));
                         toast({ title: 'Person deleted' });
@@ -992,6 +1013,10 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                       onMerge={() => {
                         setMergeSourceEntity({ id: place.id, title: place.name, subtitle: place.significance });
                         setMergeDialogOpen(true);
+                      }}
+                      onLink={() => {
+                        setLinkSourceEntity({ id: place.id, title: place.name, subtitle: place.significance, documentId });
+                        setLinkDialogOpen(true);
                       }}
                       onDelete={() => {
                         setPlaces(prev => prev.filter(p => p.id !== place.id));
@@ -1180,6 +1205,7 @@ interface EntityCardProps {
   onHighlight: () => void;
   onViewUsages: () => void;
   onMerge: () => void;
+  onLink: () => void;
   onDelete: () => void;
   usages: { nodePrefix: string; nodeLabel: string; count: number }[];
 }
@@ -1200,6 +1226,7 @@ function EntityCard({
   onHighlight,
   onViewUsages,
   onMerge,
+  onLink,
   onDelete,
   usages,
 }: EntityCardProps) {
