@@ -268,7 +268,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       if (node) {
         lastAutoFocusIdRef.current = autoFocusId;
 
-        // Link nodes are focusable (read-only), so focus their textarea rather than entering edit mode.
+        // Link nodes are focusable but not editable, so focus their textarea rather than entering edit mode.
         if (node.type === 'link') {
           onSelect(autoFocusId);
           requestAnimationFrame(() => {
@@ -278,6 +278,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               const len = el.value.length;
               el.selectionStart = len;
               el.selectionEnd = len;
+              // Double rAF stabilizes caret visibility across browsers
+              requestAnimationFrame(() => {
+                el.selectionStart = len;
+                el.selectionEnd = len;
+              });
             }
           });
           onAutoFocusHandled?.();
@@ -663,6 +668,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
       if (isOnFirstLine) {
         e.preventDefault();
+        e.stopPropagation(); // prevent global handler from double-navigating
         // Save current value directly before navigating
         onUpdateLabel(node.id, currentValue);
         setEditingId(null);
@@ -679,6 +685,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
       if (isOnLastLine) {
         e.preventDefault();
+        e.stopPropagation(); // prevent global handler from double-navigating
         // Save current value directly before navigating
         onUpdateLabel(node.id, currentValue);
         setEditingId(null);
@@ -937,7 +944,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             }}
             className={cn(
               'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
-              highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md'
+              highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md',
+              selectedId === node.id && highlightedNodeId !== node.id && 'bg-secondary/60 rounded-sm'
             )}
             style={{
               paddingLeft: `${visualDepth * 24 + 8}px`,
@@ -995,8 +1003,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
                 <textarea
                   ref={getInputRefCallback(node.id)}
-                  readOnly
                   value={node.label}
+                  tabIndex={0}
                   rows={1}
                   className={cn(
                     "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono resize-none whitespace-pre-wrap break-words leading-6 select-text caret-primary cursor-text",
@@ -1005,6 +1013,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       : "text-muted-foreground border-b border-dashed border-muted-foreground/50"
                   )}
                   style={{ caretColor: 'hsl(var(--primary))' }}
+                  // Block typing while preserving caret visibility (avoid readOnly which hides caret in some browsers)
+                  onBeforeInput={(e) => {
+                    e.preventDefault();
+                  }}
+                  onChange={() => {
+                    // No-op: blocked by onBeforeInput
+                  }}
                   onFocus={(e) => {
                     lastFocusedNodeIdRef.current = node.id;
                     onSelect(node.id);
@@ -1012,6 +1027,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     const len = e.currentTarget.value.length;
                     e.currentTarget.selectionStart = len;
                     e.currentTarget.selectionEnd = len;
+                    // Double rAF to stabilize caret
+                    requestAnimationFrame(() => {
+                      e.currentTarget.selectionStart = len;
+                      e.currentTarget.selectionEnd = len;
+                    });
                   }}
                   onKeyDown={(e) => {
                     // Arrow navigation
