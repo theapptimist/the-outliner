@@ -8,7 +8,8 @@ import {
   Sun, 
   Moon, 
   GitBranch, 
-  Search 
+  Search,
+  Rows3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -30,6 +31,8 @@ interface ToolsPaneProps {
   onAutoDescendChange: (value: boolean) => void;
   showRevealCodes: boolean;
   onShowRevealCodesChange: (value: boolean) => void;
+  showRowHighlight: boolean;
+  onShowRowHighlightChange: (value: boolean) => void;
   isDark: boolean;
   onToggleTheme: () => void;
   onInsertHierarchy: () => void;
@@ -51,6 +54,8 @@ export function ToolsPane({
   onAutoDescendChange,
   showRevealCodes,
   onShowRevealCodesChange,
+  showRowHighlight,
+  onShowRowHighlightChange,
   isDark,
   onToggleTheme,
   onInsertHierarchy,
@@ -170,6 +175,28 @@ export function ToolsPane({
             </TooltipTrigger>
             <TooltipContent side="right">
               <p>WordPerfect-style codes (Alt+F3)</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Row Highlight */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={showRowHighlight ? "secondary" : "ghost"}
+                size="sm"
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-primary/15 transition-colors",
+                  showRowHighlight && "bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30"
+                )}
+                onClick={() => onShowRowHighlightChange(!showRowHighlight)}
+              >
+                <Rows3 className={cn("h-4 w-4", showRowHighlight && "text-primary")} />
+                {!collapsed && <span className="ml-2 text-xs">Row Highlight</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Highlight selected row in outline</p>
             </TooltipContent>
           </Tooltip>
 

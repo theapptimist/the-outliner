@@ -160,6 +160,10 @@ export default function Editor() {
   const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
   const [autoDescend, setAutoDescend] = useState(false);
   const [showRevealCodes, setShowRevealCodes] = useState(false);
+  const [showRowHighlight, setShowRowHighlight] = useState(() => {
+    const stored = localStorage.getItem('outliner:showRowHighlight');
+    return stored !== 'false'; // default true
+  });
   
   // Document state
   const [document, setDocument] = useState<DocumentState | null>(null);
@@ -467,6 +471,7 @@ export default function Editor() {
         mixedConfig={mixedConfig}
         autoDescend={autoDescend}
         showRevealCodes={showRevealCodes}
+        showRowHighlight={showRowHighlight}
         document={document}
         documentVersion={documentVersion}
         onDocumentContentChange={handleDocumentContentChange}
@@ -491,6 +496,11 @@ export default function Editor() {
             onAutoDescendChange={setAutoDescend}
             showRevealCodes={showRevealCodes}
             onShowRevealCodesChange={setShowRevealCodes}
+            showRowHighlight={showRowHighlight}
+            onShowRowHighlightChange={(v) => {
+              setShowRowHighlight(v);
+              localStorage.setItem('outliner:showRowHighlight', String(v));
+            }}
             onUndo={() => undoRef.current()}
             onRedo={() => redoRef.current()}
             canUndo={canUndo}

@@ -32,6 +32,7 @@ interface DocumentContextValue {
   mixedConfig: MixedStyleConfig;
   autoDescend: boolean;
   showRevealCodes: boolean;
+  showRowHighlight: boolean;
   
   // Document state
   document: DocumentState | null;
@@ -88,6 +89,7 @@ const DocumentContext = createContext<DocumentContextValue>({
   mixedConfig: DEFAULT_MIXED_CONFIG,
   autoDescend: false,
   showRevealCodes: false,
+  showRowHighlight: true,
   
   document: null,
   documentVersion: 0,
@@ -130,6 +132,7 @@ interface DocumentProviderProps {
   mixedConfig: MixedStyleConfig;
   autoDescend: boolean;
   showRevealCodes: boolean;
+  showRowHighlight: boolean;
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
@@ -148,6 +151,7 @@ export function DocumentProvider({
   mixedConfig,
   autoDescend,
   showRevealCodes,
+  showRowHighlight,
   document,
   documentVersion,
   onDocumentContentChange,
@@ -243,6 +247,7 @@ export function DocumentProvider({
         mixedConfig,
         autoDescend,
         showRevealCodes,
+        showRowHighlight,
         document,
         documentVersion,
         setDocumentContent: onDocumentContentChange,

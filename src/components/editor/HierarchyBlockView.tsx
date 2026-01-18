@@ -43,6 +43,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     mixedConfig,
     autoDescend,
     showRevealCodes,
+    showRowHighlight,
     registerUndoRedo,
     registerFindReplaceProvider,
     unregisterFindReplaceProvider,
@@ -802,6 +803,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             selectedId={selectedId}
             outlineStyle={outlineStyle}
             mixedConfig={mixedConfig}
+            showRowHighlight={showRowHighlight}
             autoFocusId={autoFocusId}
             onAutoFocusHandled={() => setAutoFocusId(null)}
             onSelect={setSelectedId}
