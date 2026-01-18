@@ -146,16 +146,41 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     };
   }, []);
 
-  // Auto-recalculate usages when hierarchy changes
+  // Auto-recalculate usages when hierarchy or entities change
+  // Using JSON.stringify to detect deep changes, not just length changes
+  const termsKey = terms.map(t => t.id).join(',');
+  const datesKey = dates.map(d => d.id).join(',');
+  const peopleKey = people.map(p => p.id).join(',');
+  const placesKey = places.map(p => p.id).join(',');
+  const hierarchyBlocksKey = Object.keys(hierarchyBlocks).join(',');
+
   useEffect(() => {
-    if (Object.keys(hierarchyBlocks).length > 0) {
+    if (hierarchyBlocksKey && terms.length > 0) {
       const styleConfig = { style: outlineStyle, mixedConfig };
-      if (terms.length > 0) recalculateUsages(hierarchyBlocks, styleConfig);
-      if (dates.length > 0) recalculateDateUsages(hierarchyBlocks, styleConfig);
-      if (people.length > 0) recalculatePeopleUsages(hierarchyBlocks, styleConfig);
-      if (places.length > 0) recalculatePlaceUsages(hierarchyBlocks, styleConfig);
+      recalculateUsages(hierarchyBlocks, styleConfig);
     }
-  }, [hierarchyBlocks, outlineStyle, mixedConfig]);
+  }, [hierarchyBlocksKey, termsKey, outlineStyle, mixedConfig]);
+
+  useEffect(() => {
+    if (hierarchyBlocksKey && dates.length > 0) {
+      const styleConfig = { style: outlineStyle, mixedConfig };
+      recalculateDateUsages(hierarchyBlocks, styleConfig);
+    }
+  }, [hierarchyBlocksKey, datesKey, outlineStyle, mixedConfig]);
+
+  useEffect(() => {
+    if (hierarchyBlocksKey && people.length > 0) {
+      const styleConfig = { style: outlineStyle, mixedConfig };
+      recalculatePeopleUsages(hierarchyBlocks, styleConfig);
+    }
+  }, [hierarchyBlocksKey, peopleKey, outlineStyle, mixedConfig]);
+
+  useEffect(() => {
+    if (hierarchyBlocksKey && places.length > 0) {
+      const styleConfig = { style: outlineStyle, mixedConfig };
+      recalculatePlaceUsages(hierarchyBlocks, styleConfig);
+    }
+  }, [hierarchyBlocksKey, placesKey, outlineStyle, mixedConfig]);
 
   // Get current entity count
   const getCount = useCallback((tab: EntityTab) => {
