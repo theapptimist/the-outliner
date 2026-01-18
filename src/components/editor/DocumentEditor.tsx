@@ -6,6 +6,9 @@ import { SlashCommandMenu } from './SlashCommandMenu';
 import { FindReplace } from './FindReplace';
 import { HierarchyBlockExtension } from './extensions/HierarchyBlockExtension';
 import { TermHighlightExtension, termHighlightPluginKey } from './extensions/TermHighlightPlugin';
+import { DateHighlightExtension, dateHighlightPluginKey } from './extensions/DateHighlightPlugin';
+import { PeopleHighlightExtension, peopleHighlightPluginKey } from './extensions/PeopleHighlightPlugin';
+import { PlacesHighlightExtension, placesHighlightPluginKey } from './extensions/PlacesHighlightPlugin';
 import { PaginatedDocument } from './PageContainer';
 import { useEditorContext } from './EditorContext';
 
@@ -18,9 +21,22 @@ export function DocumentEditor() {
     setInsertHierarchyHandler,
     setFindReplaceHandler,
     setSelectedText,
+    // Terms
     terms,
     highlightMode,
     highlightedTerm,
+    // Dates
+    dates,
+    dateHighlightMode,
+    highlightedDate,
+    // People
+    people,
+    peopleHighlightMode,
+    highlightedPerson,
+    // Places
+    places,
+    placesHighlightMode,
+    highlightedPlace,
   } = useEditorContext();
   
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -49,6 +65,9 @@ export function DocumentEditor() {
       }),
       HierarchyBlockExtension,
       TermHighlightExtension,
+      DateHighlightExtension,
+      PeopleHighlightExtension,
+      PlacesHighlightExtension,
     ],
     content: initialContentRef.current,
     onUpdate: ({ editor }) => {
@@ -128,6 +147,45 @@ export function DocumentEditor() {
     
     editor.view.dispatch(tr);
   }, [editor, terms, highlightMode, highlightedTerm]);
+
+  // Update date highlights
+  useEffect(() => {
+    if (!editor) return;
+    
+    const tr = editor.state.tr.setMeta(dateHighlightPluginKey, {
+      dates,
+      highlightMode: dateHighlightMode,
+      highlightedDate,
+    });
+    
+    editor.view.dispatch(tr);
+  }, [editor, dates, dateHighlightMode, highlightedDate]);
+
+  // Update people highlights
+  useEffect(() => {
+    if (!editor) return;
+    
+    const tr = editor.state.tr.setMeta(peopleHighlightPluginKey, {
+      people,
+      highlightMode: peopleHighlightMode,
+      highlightedPerson,
+    });
+    
+    editor.view.dispatch(tr);
+  }, [editor, people, peopleHighlightMode, highlightedPerson]);
+
+  // Update places highlights
+  useEffect(() => {
+    if (!editor) return;
+    
+    const tr = editor.state.tr.setMeta(placesHighlightPluginKey, {
+      places,
+      highlightMode: placesHighlightMode,
+      highlightedPlace,
+    });
+    
+    editor.view.dispatch(tr);
+  }, [editor, places, placesHighlightMode, highlightedPlace]);
 
   // Keyboard shortcuts for find/replace
   useEffect(() => {
