@@ -543,11 +543,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           }
         }
       } else if (hasSuffix) {
-        // Line with suffix (colon): create BODY sibling instead of inserting newline
+        // Line with suffix (colon): create BODY child node (indented under this header)
         // This prevents the colon from being pushed down to the next line
+        // and creates a proper "hanging" element under the header
         e.preventDefault();
         handleEndEdit(node.id); // Save current content first
-        const newId = onAddNode(node.id, 'body');
+        const newId = onAddBodyNode(node.id);
         if (newId) {
           pendingNewNodeIdRef.current = newId;
         }
@@ -1068,16 +1069,24 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     });
                   }}
                   onKeyDown={(e) => {
-                    // Arrow navigation
+                    // Arrow navigation with boundary protection
                     if (e.key === 'ArrowUp') {
                       e.preventDefault();
                       e.stopPropagation();
+                      const currentIndex = nodes.findIndex(n => n.id === node.id);
+                      if (currentIndex <= 0) {
+                        return; // At first node - don't navigate
+                      }
                       onNavigateUp();
                       return;
                     }
                     if (e.key === 'ArrowDown') {
                       e.preventDefault();
                       e.stopPropagation();
+                      const currentIndex = nodes.findIndex(n => n.id === node.id);
+                      if (currentIndex >= nodes.length - 1) {
+                        return; // At last node - don't navigate
+                      }
                       onNavigateDown();
                       return;
                     }
