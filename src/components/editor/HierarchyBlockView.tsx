@@ -691,11 +691,24 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           const anchorId = selectedId || flatNodes[flatNodes.length - 1]?.id;
           if (anchorId) {
             const anchor = flatNodes.find(n => n.id === anchorId);
-            const newNode = createNode(anchor?.parentId ?? null, 'link', docTitle);
-            newNode.linkedDocumentId = docId;
-            newNode.linkedDocumentTitle = docTitle;
-            setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
-            setSelectedId(newNode.id);
+            // If the anchor node is empty, replace it with the link instead of inserting after
+            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link') {
+              setTree(prev => updateNode(prev, anchorId, {
+                type: 'link',
+                label: docTitle,
+                linkedDocumentId: docId,
+                linkedDocumentTitle: docTitle,
+              }));
+              setSelectedId(anchorId);
+              setAutoFocusId(anchorId);
+            } else {
+              const newNode = createNode(anchor?.parentId ?? null, 'link', docTitle);
+              newNode.linkedDocumentId = docId;
+              newNode.linkedDocumentTitle = docTitle;
+              setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
+              setSelectedId(newNode.id);
+              setAutoFocusId(newNode.id);
+            }
           }
         }}
       />
@@ -708,11 +721,24 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           const anchorId = selectedId || flatNodes[flatNodes.length - 1]?.id;
           if (anchorId) {
             const anchor = flatNodes.find(n => n.id === anchorId);
-            const newNode = createNode(anchor?.parentId ?? null, 'link', docTitle);
-            newNode.linkedDocumentId = docId;
-            newNode.linkedDocumentTitle = docTitle;
-            setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
-            setSelectedId(newNode.id);
+            // If the anchor node is empty, replace it with the link instead of inserting after
+            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link') {
+              setTree(prev => updateNode(prev, anchorId, {
+                type: 'link',
+                label: docTitle,
+                linkedDocumentId: docId,
+                linkedDocumentTitle: docTitle,
+              }));
+              setSelectedId(anchorId);
+              setAutoFocusId(anchorId);
+            } else {
+              const newNode = createNode(anchor?.parentId ?? null, 'link', docTitle);
+              newNode.linkedDocumentId = docId;
+              newNode.linkedDocumentTitle = docTitle;
+              setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
+              setSelectedId(newNode.id);
+              setAutoFocusId(newNode.id);
+            }
           }
         }}
         currentDocId={document?.meta?.id}
