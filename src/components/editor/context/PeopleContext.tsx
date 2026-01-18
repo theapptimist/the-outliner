@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
-import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
@@ -45,6 +45,8 @@ interface PeopleContextValue {
     hierarchyBlocks: Record<string, HierarchyNode[]>,
     styleConfig?: { style: OutlineStyle; mixedConfig?: MixedStyleConfig }
   ) => void;
+
+  loading: boolean;
 }
 
 const PeopleContext = createContext<PeopleContextValue>({
@@ -60,6 +62,7 @@ const PeopleContext = createContext<PeopleContextValue>({
   peopleHighlightMode: 'all',
   setPeopleHighlightMode: () => {},
   recalculatePeopleUsages: () => {},
+  loading: false,
 });
 
 interface PeopleProviderProps {
@@ -141,7 +144,16 @@ function escapeRegex(str: string): string {
 }
 
 export function PeopleProvider({ children, documentId, documentVersion }: PeopleProviderProps) {
-  const [people, setPeople] = useSessionStorage<Person[]>(`tagged-people:${documentId}`, []);
+  const { 
+    entities: people, 
+    setEntities: setPeople, 
+    loading 
+  } = useCloudEntities<Person>({
+    documentId,
+    entityType: 'person',
+    localStorageKey: `tagged-people:${documentId}`,
+  });
+
   const [inspectedPerson, setInspectedPerson] = useState<Person | null>(null);
   const [highlightedPerson, setHighlightedPerson] = useState<Person | null>(null);
   const [peopleHighlightMode, setPeopleHighlightMode] = useState<PeopleHighlightMode>('all');
@@ -151,6 +163,7 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
 
   // One-time normalization of existing stored people per document
   useEffect(() => {
+    if (loading) return;
     if (normalizedRef.current === documentId) return;
     normalizedRef.current = documentId;
     
@@ -166,7 +179,7 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
       });
       return changed ? normalized : prev;
     });
-  }, [documentId, setPeople]);
+  }, [documentId, loading, setPeople]);
 
   useEffect(() => {
     setInspectedPerson(null);
@@ -233,6 +246,7 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
         peopleHighlightMode,
         setPeopleHighlightMode,
         recalculatePeopleUsages,
+        loading,
       }}
     >
       {children}

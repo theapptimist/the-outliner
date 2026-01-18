@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
-import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
@@ -44,6 +44,8 @@ interface PlacesContextValue {
     hierarchyBlocks: Record<string, HierarchyNode[]>,
     styleConfig?: { style: OutlineStyle; mixedConfig?: MixedStyleConfig }
   ) => void;
+
+  loading: boolean;
 }
 
 const PlacesContext = createContext<PlacesContextValue>({
@@ -59,6 +61,7 @@ const PlacesContext = createContext<PlacesContextValue>({
   placesHighlightMode: 'all',
   setPlacesHighlightMode: () => {},
   recalculatePlaceUsages: () => {},
+  loading: false,
 });
 
 interface PlacesProviderProps {
@@ -140,7 +143,16 @@ function escapeRegex(str: string): string {
 }
 
 export function PlacesProvider({ children, documentId, documentVersion }: PlacesProviderProps) {
-  const [places, setPlaces] = useSessionStorage<Place[]>(`tagged-places:${documentId}`, []);
+  const { 
+    entities: places, 
+    setEntities: setPlaces, 
+    loading 
+  } = useCloudEntities<Place>({
+    documentId,
+    entityType: 'place',
+    localStorageKey: `tagged-places:${documentId}`,
+  });
+
   const [inspectedPlace, setInspectedPlace] = useState<Place | null>(null);
   const [highlightedPlace, setHighlightedPlace] = useState<Place | null>(null);
   const [placesHighlightMode, setPlacesHighlightMode] = useState<PlacesHighlightMode>('all');
@@ -150,6 +162,7 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
 
   // One-time normalization of existing stored places per document
   useEffect(() => {
+    if (loading) return;
     if (normalizedRef.current === documentId) return;
     normalizedRef.current = documentId;
     
@@ -165,7 +178,7 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
       });
       return changed ? normalized : prev;
     });
-  }, [documentId, setPlaces]);
+  }, [documentId, loading, setPlaces]);
 
   useEffect(() => {
     setInspectedPlace(null);
@@ -231,6 +244,7 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
         placesHighlightMode,
         setPlacesHighlightMode,
         recalculatePlaceUsages,
+        loading,
       }}
     >
       {children}
