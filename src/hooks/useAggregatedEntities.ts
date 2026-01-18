@@ -61,6 +61,9 @@ export function useAggregatedEntities() {
     for (const link of masterDocument.links) {
       const people = loadEntitiesFromStorage<Person>(`tagged-people:${link.linkedDocumentId}`);
       for (const person of people) {
+        // Skip invalid entries
+        if (!person || !person.name) continue;
+        
         // Dedupe by name (case-insensitive)
         const normalizedName = person.name.toLowerCase();
         if (!seenNames.has(normalizedName)) {
@@ -86,6 +89,9 @@ export function useAggregatedEntities() {
     for (const link of masterDocument.links) {
       const places = loadEntitiesFromStorage<Place>(`tagged-places:${link.linkedDocumentId}`);
       for (const place of places) {
+        // Skip invalid entries
+        if (!place || !place.name) continue;
+        
         const normalizedName = place.name.toLowerCase();
         if (!seenNames.has(normalizedName)) {
           seenNames.add(normalizedName);
@@ -110,6 +116,9 @@ export function useAggregatedEntities() {
     for (const link of masterDocument.links) {
       const dates = loadEntitiesFromStorage<TaggedDate>(`tagged-dates:${link.linkedDocumentId}`);
       for (const date of dates) {
+        // Skip invalid entries
+        if (!date || !date.rawText) continue;
+        
         // Dedupe by raw text
         const key = date.rawText.toLowerCase();
         if (!seenRawText.has(key)) {
@@ -142,6 +151,9 @@ export function useAggregatedEntities() {
     for (const link of masterDocument.links) {
       const terms = loadEntitiesFromStorage<DefinedTerm>(`defined-terms:${link.linkedDocumentId}`);
       for (const term of terms) {
+        // Skip invalid entries
+        if (!term || !term.term) continue;
+        
         const key = term.term.toLowerCase();
         if (!seenTerms.has(key)) {
           seenTerms.add(key);

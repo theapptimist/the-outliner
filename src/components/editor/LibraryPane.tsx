@@ -338,24 +338,24 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
       switch (activeTab) {
         case 'people':
           return aggregatedPeople.filter(p => 
-            p.name.toLowerCase().includes(q) || 
+            p.name?.toLowerCase().includes(q) || 
             p.role?.toLowerCase().includes(q) ||
             p.description?.toLowerCase().includes(q)
           );
         case 'places':
           return aggregatedPlaces.filter(p => 
-            p.name.toLowerCase().includes(q) || 
+            p.name?.toLowerCase().includes(q) || 
             p.significance?.toLowerCase().includes(q)
           );
         case 'dates':
           return aggregatedDates.filter(d => 
-            d.rawText.toLowerCase().includes(q) ||
+            d.rawText?.toLowerCase().includes(q) ||
             d.description?.toLowerCase().includes(q)
           );
         case 'terms':
           return aggregatedTerms.filter(t => 
-            t.term.toLowerCase().includes(q) ||
-            t.definition.toLowerCase().includes(q)
+            t.term?.toLowerCase().includes(q) ||
+            t.definition?.toLowerCase().includes(q)
           );
       }
     }
@@ -363,24 +363,24 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     switch (activeTab) {
       case 'people':
         return people.filter(p => 
-          p.name.toLowerCase().includes(q) || 
+          p.name?.toLowerCase().includes(q) || 
           p.role?.toLowerCase().includes(q) ||
           p.description?.toLowerCase().includes(q)
         );
       case 'places':
         return places.filter(p => 
-          p.name.toLowerCase().includes(q) || 
+          p.name?.toLowerCase().includes(q) || 
           p.significance?.toLowerCase().includes(q)
         );
       case 'dates':
         return dates.filter(d => 
-          d.rawText.toLowerCase().includes(q) ||
+          d.rawText?.toLowerCase().includes(q) ||
           d.description?.toLowerCase().includes(q)
         );
       case 'terms':
         return terms.filter(t => 
-          t.term.toLowerCase().includes(q) ||
-          t.definition.toLowerCase().includes(q)
+          t.term?.toLowerCase().includes(q) ||
+          t.definition?.toLowerCase().includes(q)
         );
     }
   }, [activeTab, searchQuery, shouldAggregate, aggregatedPeople, aggregatedPlaces, aggregatedDates, aggregatedTerms, people, places, dates, terms]);
