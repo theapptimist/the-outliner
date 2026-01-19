@@ -75,6 +75,11 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
     };
   }, []);
 
+  // Ensure tiles default to expanded (helps after hot-reload state carryover)
+  useEffect(() => {
+    setCollapsedDates(new Set());
+  }, []);
+
   // Toggle collapsed state for a date
   const toggleCollapsed = useCallback((id: string) => {
     setCollapsedDates(prev => {
