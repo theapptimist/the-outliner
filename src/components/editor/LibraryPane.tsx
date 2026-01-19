@@ -548,6 +548,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
                 <Button
+                  data-allow-pointer
                   variant="ghost"
                   size="sm"
                   className={cn(
