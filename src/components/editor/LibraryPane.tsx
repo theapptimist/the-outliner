@@ -269,6 +269,41 @@ export function LibraryPane({
   // Load relationship counts for all entities
   const { counts: relationshipCounts, refresh: refreshRelationshipCounts } = useEntityRelationshipCounts(allEntityIds);
 
+  // Handle saving edited entity
+  const handleEditSave = useCallback((updatedEntity: EditableEntity) => {
+    if (updatedEntity.type === 'people') {
+      setPeople(prev => prev.map(p => 
+        p.id === updatedEntity.id 
+          ? { ...p, name: updatedEntity.name || p.name, role: updatedEntity.role, description: updatedEntity.description }
+          : p
+      ));
+      toast({ title: 'Person updated' });
+    } else if (updatedEntity.type === 'places') {
+      setPlaces(prev => prev.map(p => 
+        p.id === updatedEntity.id 
+          ? { ...p, name: updatedEntity.name || p.name, significance: updatedEntity.significance }
+          : p
+      ));
+      toast({ title: 'Place updated' });
+    } else if (updatedEntity.type === 'dates') {
+      setDates(prev => prev.map(d => 
+        d.id === updatedEntity.id 
+          ? { ...d, date: updatedEntity.date || d.date, rawText: updatedEntity.rawText || d.rawText, description: updatedEntity.description }
+          : d
+      ));
+      toast({ title: 'Date updated' });
+    } else if (updatedEntity.type === 'terms') {
+      setTerms(prev => prev.map(t => 
+        t.id === updatedEntity.id 
+          ? { ...t, term: updatedEntity.term || t.term, definition: updatedEntity.definition || t.definition }
+          : t
+      ));
+      toast({ title: 'Term updated' });
+    }
+    setEditDialogOpen(false);
+    setEditingEntity(null);
+  }, [setPeople, setPlaces, setDates, setTerms, toast]);
+
   // Get current entity count (use aggregated counts when viewing master)
   const getCount = useCallback((tab: EntityTab) => {
     if (shouldAggregate) {
@@ -1693,7 +1728,17 @@ export function LibraryPane({
             title: 'Relationship created',
             description: 'Entity relationship established.',
           });
+          refreshRelationshipCounts();
         }}
+      />
+
+      {/* Edit Entity Dialog */}
+      <EditEntityDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        entity={editingEntity}
+        onSave={handleEditSave}
+        onRelationshipDeleted={refreshRelationshipCounts}
       />
     </div>
   );
