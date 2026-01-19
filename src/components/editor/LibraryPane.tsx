@@ -680,7 +680,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => {}}
+                      onEdit={() => { setEditingEntity({ id: term.id, type: 'terms', term: term.term, definition: term.definition }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={term.usages}
                       linkingMode
@@ -712,7 +712,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => {}}
+                      onEdit={() => { setEditingEntity({ id: date.id, type: 'dates', date: date.date, rawText: date.rawText, description: date.description }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={date.usages}
                       linkingMode
@@ -744,7 +744,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => {}}
+                      onEdit={() => { setEditingEntity({ id: person.id, type: 'people', name: person.name, role: person.role, description: person.description }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={person.usages}
                       linkingMode
@@ -775,7 +775,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => {}}
+                      onEdit={() => { setEditingEntity({ id: place.id, type: 'places', name: place.name, significance: place.significance }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={place.usages}
                       linkingMode
