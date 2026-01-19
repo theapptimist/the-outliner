@@ -513,6 +513,47 @@ export function LibraryPane({
   }
 
   // Simplified linking mode view - just entity tabs and list
+  // Use a local filter that can be 'all' or a specific type
+  const [linkingFilter, setLinkingFilter] = useState<'all' | EntityTab>('all');
+  
+  // Build all entities for linking mode
+  const allLinkingEntities = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const entities: Array<{ type: EntityTab; data: any }> = [];
+    
+    // Filter and add terms
+    terms.filter(t => 
+      (t.term ?? '').toLowerCase().includes(q) ||
+      (t.definition ?? '').toLowerCase().includes(q)
+    ).forEach(t => entities.push({ type: 'terms', data: t }));
+    
+    // Filter and add dates
+    dates.filter(d => 
+      (d.rawText ?? '').toLowerCase().includes(q) ||
+      (d.description ?? '').toLowerCase().includes(q)
+    ).forEach(d => entities.push({ type: 'dates', data: d }));
+    
+    // Filter and add people
+    people.filter(p => 
+      (p.name ?? '').toLowerCase().includes(q) ||
+      (p.role ?? '').toLowerCase().includes(q) ||
+      (p.description ?? '').toLowerCase().includes(q)
+    ).forEach(p => entities.push({ type: 'people', data: p }));
+    
+    // Filter and add places
+    places.filter(p => 
+      (p.name ?? '').toLowerCase().includes(q) ||
+      (p.significance ?? '').toLowerCase().includes(q)
+    ).forEach(p => entities.push({ type: 'places', data: p }));
+    
+    return entities;
+  }, [terms, dates, people, places, searchQuery]);
+  
+  // Apply type filter
+  const filteredLinkingEntities = linkingFilter === 'all' 
+    ? allLinkingEntities 
+    : allLinkingEntities.filter(e => e.type === linkingFilter);
+
   if (linkingMode) {
     return (
       <div className="flex flex-col h-full">
@@ -524,10 +565,10 @@ export function LibraryPane({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => setActiveTab('terms')}
+                  onClick={() => setLinkingFilter('all')}
                   className={cn(
                     "px-2 py-1 text-xs rounded transition-colors",
-                    activeTab === 'terms' 
+                    linkingFilter === 'all' 
                       ? "bg-accent text-accent-foreground" 
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
@@ -542,10 +583,10 @@ export function LibraryPane({
               <Tooltip key={tab.id}>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => setLinkingFilter(tab.id)}
                     className={cn(
                       "p-1.5 rounded transition-colors",
-                      activeTab === tab.id 
+                      linkingFilter === tab.id 
                         ? "bg-accent text-accent-foreground" 
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
@@ -573,151 +614,132 @@ export function LibraryPane({
         {/* Entity list */}
         <ScrollArea className="flex-1">
           <div className="space-y-1.5 p-2">
-            {filteredItems.length === 0 ? (
+            {filteredLinkingEntities.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-xs">
-                {currentCount === 0 ? (
-                  <p>No {activeTab} tagged yet</p>
-                ) : (
-                  <p>No matching {activeTab}</p>
-                )}
+                <p>No matching entities</p>
               </div>
             ) : (
-              <>
-                {activeTab === 'terms' && terms.filter(t => {
-                  const q = searchQuery.toLowerCase();
+              filteredLinkingEntities.map(({ type, data }) => {
+                if (type === 'terms') {
+                  const term = data;
                   return (
-                    (t.term ?? '').toLowerCase().includes(q) ||
-                    (t.definition ?? '').toLowerCase().includes(q)
+                    <EntityCard
+                      key={`terms-${term.id}`}
+                      id={term.id}
+                      title={term.term}
+                      subtitle={term.definition}
+                      icon={Quote}
+                      iconColor="text-amber-500"
+                      usageCount={term.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      isHighlighted={false}
+                      isInspected={false}
+                      isExpanded={false}
+                      onToggleExpand={() => {}}
+                      onInsert={() => {}}
+                      onHighlight={() => {}}
+                      onViewUsages={() => {}}
+                      onMerge={() => {}}
+                      onLink={() => {}}
+                      onDelete={() => {}}
+                      usages={term.usages}
+                      linkingMode
+                      entityType="terms"
+                      isSelectedAsSource={selectedSource?.id === term.id && selectedSource?.type === 'terms'}
+                      onSelectAsSource={() => onSelectSource?.({ id: term.id, type: 'terms', name: term.term })}
+                    />
                   );
-                }).map(term => (
-                  <EntityCard
-                    key={term.id}
-                    id={term.id}
-                    title={term.term}
-                    subtitle={term.definition}
-                    icon={Quote}
-                    iconColor="text-amber-500"
-                    usageCount={term.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={false}
-                    isInspected={false}
-                    isExpanded={false}
-                    onToggleExpand={() => {}}
-                    onInsert={() => {}}
-                    onHighlight={() => {}}
-                    onViewUsages={() => {}}
-                    onMerge={() => {}}
-                    onLink={() => {}}
-                    onDelete={() => {}}
-                    usages={term.usages}
-                    linkingMode
-                    entityType="terms"
-                    isSelectedAsSource={selectedSource?.id === term.id && selectedSource?.type === 'terms'}
-                    onSelectAsSource={() => onSelectSource?.({ id: term.id, type: 'terms', name: term.term })}
-                  />
-                ))}
-
-                {activeTab === 'dates' && dates.filter(d => {
-                  const q = searchQuery.toLowerCase();
+                }
+                if (type === 'dates') {
+                  const date = data;
                   return (
-                    (d.rawText ?? '').toLowerCase().includes(q) ||
-                    (d.description ?? '').toLowerCase().includes(q)
+                    <EntityCard
+                      key={`dates-${date.id}`}
+                      id={date.id}
+                      title={formatDateForDisplay(date.date)}
+                      subtitle={date.rawText}
+                      description={date.description}
+                      icon={Calendar}
+                      iconColor="text-blue-500"
+                      usageCount={date.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      isHighlighted={false}
+                      isInspected={false}
+                      isExpanded={false}
+                      onToggleExpand={() => {}}
+                      onInsert={() => {}}
+                      onHighlight={() => {}}
+                      onViewUsages={() => {}}
+                      onMerge={() => {}}
+                      onLink={() => {}}
+                      onDelete={() => {}}
+                      usages={date.usages}
+                      linkingMode
+                      entityType="dates"
+                      isSelectedAsSource={selectedSource?.id === date.id && selectedSource?.type === 'dates'}
+                      onSelectAsSource={() => onSelectSource?.({ id: date.id, type: 'dates', name: date.rawText })}
+                    />
                   );
-                }).map(date => (
-                  <EntityCard
-                    key={date.id}
-                    id={date.id}
-                    title={formatDateForDisplay(date.date)}
-                    subtitle={date.rawText}
-                    description={date.description}
-                    icon={Calendar}
-                    iconColor="text-blue-500"
-                    usageCount={date.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={false}
-                    isInspected={false}
-                    isExpanded={false}
-                    onToggleExpand={() => {}}
-                    onInsert={() => {}}
-                    onHighlight={() => {}}
-                    onViewUsages={() => {}}
-                    onMerge={() => {}}
-                    onLink={() => {}}
-                    onDelete={() => {}}
-                    usages={date.usages}
-                    linkingMode
-                    entityType="dates"
-                    isSelectedAsSource={selectedSource?.id === date.id && selectedSource?.type === 'dates'}
-                    onSelectAsSource={() => onSelectSource?.({ id: date.id, type: 'dates', name: date.rawText })}
-                  />
-                ))}
-
-                {activeTab === 'people' && people.filter(p => {
-                  const q = searchQuery.toLowerCase();
+                }
+                if (type === 'people') {
+                  const person = data;
                   return (
-                    (p.name ?? '').toLowerCase().includes(q) ||
-                    (p.role ?? '').toLowerCase().includes(q) ||
-                    (p.description ?? '').toLowerCase().includes(q)
+                    <EntityCard
+                      key={`people-${person.id}`}
+                      id={person.id}
+                      title={person.name}
+                      subtitle={person.role}
+                      description={person.description}
+                      icon={User}
+                      iconColor="text-purple-500"
+                      usageCount={person.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      isHighlighted={false}
+                      isInspected={false}
+                      isExpanded={false}
+                      onToggleExpand={() => {}}
+                      onInsert={() => {}}
+                      onHighlight={() => {}}
+                      onViewUsages={() => {}}
+                      onMerge={() => {}}
+                      onLink={() => {}}
+                      onDelete={() => {}}
+                      usages={person.usages}
+                      linkingMode
+                      entityType="people"
+                      isSelectedAsSource={selectedSource?.id === person.id && selectedSource?.type === 'people'}
+                      onSelectAsSource={() => onSelectSource?.({ id: person.id, type: 'people', name: person.name })}
+                    />
                   );
-                }).map(person => (
-                  <EntityCard
-                    key={person.id}
-                    id={person.id}
-                    title={person.name}
-                    subtitle={person.role}
-                    description={person.description}
-                    icon={User}
-                    iconColor="text-purple-500"
-                    usageCount={person.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={false}
-                    isInspected={false}
-                    isExpanded={false}
-                    onToggleExpand={() => {}}
-                    onInsert={() => {}}
-                    onHighlight={() => {}}
-                    onViewUsages={() => {}}
-                    onMerge={() => {}}
-                    onLink={() => {}}
-                    onDelete={() => {}}
-                    usages={person.usages}
-                    linkingMode
-                    entityType="people"
-                    isSelectedAsSource={selectedSource?.id === person.id && selectedSource?.type === 'people'}
-                    onSelectAsSource={() => onSelectSource?.({ id: person.id, type: 'people', name: person.name })}
-                  />
-                ))}
-
-                {activeTab === 'places' && places.filter(p => {
-                  const q = searchQuery.toLowerCase();
+                }
+                if (type === 'places') {
+                  const place = data;
                   return (
-                    (p.name ?? '').toLowerCase().includes(q) ||
-                    (p.significance ?? '').toLowerCase().includes(q)
+                    <EntityCard
+                      key={`places-${place.id}`}
+                      id={place.id}
+                      title={place.name}
+                      subtitle={place.significance}
+                      icon={MapPin}
+                      iconColor="text-green-500"
+                      usageCount={place.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      isHighlighted={false}
+                      isInspected={false}
+                      isExpanded={false}
+                      onToggleExpand={() => {}}
+                      onInsert={() => {}}
+                      onHighlight={() => {}}
+                      onViewUsages={() => {}}
+                      onMerge={() => {}}
+                      onLink={() => {}}
+                      onDelete={() => {}}
+                      usages={place.usages}
+                      linkingMode
+                      entityType="places"
+                      isSelectedAsSource={selectedSource?.id === place.id && selectedSource?.type === 'places'}
+                      onSelectAsSource={() => onSelectSource?.({ id: place.id, type: 'places', name: place.name })}
+                    />
                   );
-                }).map(place => (
-                  <EntityCard
-                    key={place.id}
-                    id={place.id}
-                    title={place.name}
-                    subtitle={place.significance}
-                    icon={MapPin}
-                    iconColor="text-green-500"
-                    usageCount={place.usages.reduce((sum, u) => sum + u.count, 0)}
-                    isHighlighted={false}
-                    isInspected={false}
-                    isExpanded={false}
-                    onToggleExpand={() => {}}
-                    onInsert={() => {}}
-                    onHighlight={() => {}}
-                    onViewUsages={() => {}}
-                    onMerge={() => {}}
-                    onLink={() => {}}
-                    onDelete={() => {}}
-                    usages={place.usages}
-                    linkingMode
-                    entityType="places"
-                    isSelectedAsSource={selectedSource?.id === place.id && selectedSource?.type === 'places'}
-                    onSelectAsSource={() => onSelectSource?.({ id: place.id, type: 'places', name: place.name })}
-                  />
-                ))}
-              </>
+                }
+                return null;
+              })
             )}
           </div>
         </ScrollArea>
