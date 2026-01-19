@@ -6,6 +6,7 @@ import {
   BookOpen,
   Sparkles,
   Network,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -17,10 +18,11 @@ import { LinkingWorkspace } from './LinkingWorkspace';
 import { AIGeneratePane } from './AIGeneratePane';
 import { ToolsPane } from './ToolsPane';
 import { MasterOutlinePane } from './MasterOutlinePane';
+import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
-type SidebarTab = 'tools' | 'library' | 'ai' | 'master';
+type SidebarTab = 'tools' | 'library' | 'ai' | 'master' | 'timeline';
 
 interface EditorSidebarProps {
   outlineStyle: OutlineStyle;
@@ -233,6 +235,25 @@ export function EditorSidebar({
             <TooltipContent side={collapsed ? "right" : "bottom"}>AI Generate</TooltipContent>
           </Tooltip>
           
+          {/* Timeline button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                data-allow-pointer
+                onClick={() => setActiveTab('timeline')}
+                className={cn(
+                  "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+                  activeTab === 'timeline'
+                    ? "bg-info/15 text-info"
+                    : "hover:bg-muted/50 text-muted-foreground"
+                )}
+              >
+                <Clock className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? "right" : "bottom"}>Timeline</TooltipContent>
+          </Tooltip>
+          
           {/* Master Outline button - only visible when in master mode */}
           {isInMasterMode && (
             <Tooltip>
@@ -286,6 +307,15 @@ export function EditorSidebar({
       {activeTab === 'master' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           <MasterOutlinePane
+            collapsed={collapsed}
+            onNavigateToDocument={(id) => onNavigateToDocument?.(id)}
+          />
+        </div>
+      )}
+      
+      {activeTab === 'timeline' && (
+        <div className="relative flex-1 overflow-y-auto scrollbar-thin">
+          <TimelinePane
             collapsed={collapsed}
             onNavigateToDocument={(id) => onNavigateToDocument?.(id)}
           />
