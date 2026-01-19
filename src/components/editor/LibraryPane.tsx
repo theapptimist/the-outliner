@@ -19,6 +19,8 @@ import {
   MoreVertical,
   Merge,
   Link2,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,9 +66,11 @@ import { useDocumentContext } from './context';
 interface LibraryPaneProps {
   collapsed?: boolean;
   selectedText?: string;
+  fullPage?: boolean;
+  onToggleFullPage?: () => void;
 }
 
-export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
+export function LibraryPane({ collapsed, selectedText, fullPage, onToggleFullPage }: LibraryPaneProps) {
   const { isInMasterMode, activeEntityTab, setActiveEntityTab, activeSubOutlineId } = useNavigation();
   
   // Aggregated entities from sub-docs when viewing master
@@ -477,6 +481,33 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     <div className="flex h-full">
       {/* Vertical Tool Strip */}
       <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20">
+        {/* Full Page Toggle */}
+        {onToggleFullPage && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                data-allow-pointer
+                variant="ghost"
+                size="sm"
+                onClick={onToggleFullPage}
+                className={cn(
+                  "h-7 w-7 p-0",
+                  fullPage && "bg-accent/20 text-accent"
+                )}
+              >
+                {fullPage ? (
+                  <Minimize2 className="h-3.5 w-3.5" />
+                ) : (
+                  <Maximize2 className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              {fullPage ? 'Collapse to sidebar' : 'Expand to full page'}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {/* Add */}
         <Tooltip>
           <TooltipTrigger asChild>

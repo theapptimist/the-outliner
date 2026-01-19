@@ -60,6 +60,7 @@ export function EditorSidebar({
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('tools');
+  const [libraryFullPage, setLibraryFullPage] = useState(false);
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
@@ -137,7 +138,9 @@ export function EditorSidebar({
       }}
       className={cn(
         "flex flex-col border-r border-border/30 transition-all duration-300 relative overflow-hidden",
-        collapsed ? "w-12" : activeTab === 'library' ? "w-64" : "w-56"
+        collapsed ? "w-12" : 
+        activeTab === 'library' && libraryFullPage ? "w-[600px]" :
+        activeTab === 'library' ? "w-64" : "w-56"
       )}
     >
       {/* Subtle gradient background */}
@@ -255,7 +258,12 @@ export function EditorSidebar({
       {/* Conditional Content - now properly conditional rendering */}
       {activeTab === 'library' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
-          <LibraryPane collapsed={collapsed} selectedText={selectedText} />
+          <LibraryPane 
+            collapsed={collapsed} 
+            selectedText={selectedText} 
+            fullPage={libraryFullPage}
+            onToggleFullPage={() => setLibraryFullPage(prev => !prev)}
+          />
         </div>
       )}
       
