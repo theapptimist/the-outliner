@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { 
   User, 
   MapPin, 
@@ -60,6 +60,7 @@ import { EntityMergeDialog } from './EntityMergeDialog';
 import { EntityLinkDialog } from './EntityLinkDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 import { useDocumentContext } from './context';
+import { useEntityRelationshipCounts } from '@/hooks/useEntityRelationships';
 
 // EntityTab type is imported from NavigationContext
 
@@ -250,6 +251,19 @@ export function LibraryPane({
       recalculatePlaceUsages(hierarchyBlocks, styleConfig);
     }
   }, [hierarchyBlocksKey, placesKey, outlineStyle, mixedConfig, hierarchyBlocks, recalculatePlaceUsages]);
+
+  // Collect all entity IDs for relationship count lookup
+  const allEntityIds = useMemo(() => {
+    const ids: string[] = [];
+    terms.forEach(t => ids.push(t.id));
+    dates.forEach(d => ids.push(d.id));
+    people.forEach(p => ids.push(p.id));
+    places.forEach(p => ids.push(p.id));
+    return ids;
+  }, [terms, dates, people, places]);
+
+  // Load relationship counts for all entities
+  const { counts: relationshipCounts, refresh: refreshRelationshipCounts } = useEntityRelationshipCounts(allEntityIds);
 
   // Get current entity count (use aggregated counts when viewing master)
   const getCount = useCallback((tab: EntityTab) => {
@@ -1273,6 +1287,7 @@ export function LibraryPane({
                         toast({ title: 'Term deleted' });
                       }}
                       usages={term.usages}
+                      relationshipCount={relationshipCounts[term.id] || 0}
                       linkingMode={linkingMode}
                       entityType="terms"
                       isSelectedAsSource={selectedSource?.id === term.id && selectedSource?.type === 'terms'}
@@ -1324,6 +1339,7 @@ export function LibraryPane({
                         toast({ title: 'Date deleted' });
                       }}
                       usages={date.usages}
+                      relationshipCount={relationshipCounts[date.id] || 0}
                       linkingMode={linkingMode}
                       entityType="dates"
                       isSelectedAsSource={selectedSource?.id === date.id && selectedSource?.type === 'dates'}
@@ -1376,6 +1392,7 @@ export function LibraryPane({
                         toast({ title: 'Person deleted' });
                       }}
                       usages={person.usages}
+                      relationshipCount={relationshipCounts[person.id] || 0}
                       linkingMode={linkingMode}
                       entityType="people"
                       isSelectedAsSource={selectedSource?.id === person.id && selectedSource?.type === 'people'}
@@ -1426,6 +1443,7 @@ export function LibraryPane({
                         toast({ title: 'Place deleted' });
                       }}
                       usages={place.usages}
+                      relationshipCount={relationshipCounts[place.id] || 0}
                       linkingMode={linkingMode}
                       entityType="places"
                       isSelectedAsSource={selectedSource?.id === place.id && selectedSource?.type === 'places'}
@@ -1643,6 +1661,8 @@ interface EntityCardProps {
   isSelectedAsSource?: boolean;
   onSelectAsSource?: () => void;
   entityType?: 'people' | 'places' | 'dates' | 'terms';
+  // Relationship indicator
+  relationshipCount?: number;
 }
 
 function EntityCard({
@@ -1668,6 +1688,7 @@ function EntityCard({
   isSelectedAsSource,
   onSelectAsSource,
   entityType,
+  relationshipCount = 0,
 }: EntityCardProps) {
   return (
     <div
@@ -1763,32 +1784,48 @@ function EntityCard({
           </Tooltip>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-            >
-              <MoreVertical className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem onClick={onLink}>
-              <Link2 className="h-3.5 w-3.5 mr-2" />
-              Link entity...
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onMerge}>
-              <Merge className="h-3.5 w-3.5 mr-2" />
-              Merge with...
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-              <Trash2 className="h-3.5 w-3.5 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-0.5">
+          {/* Relationship indicator */}
+          {relationshipCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="h-6 w-6 flex items-center justify-center text-primary">
+                  <Link2 className="h-3 w-3" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {relationshipCount} relationship{relationshipCount !== 1 ? 's' : ''}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+              >
+                <MoreVertical className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={onLink}>
+                <Link2 className="h-3.5 w-3.5 mr-2" />
+                Link entity...
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onMerge}>
+                <Merge className="h-3.5 w-3.5 mr-2" />
+                Merge with...
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Expanded content */}
