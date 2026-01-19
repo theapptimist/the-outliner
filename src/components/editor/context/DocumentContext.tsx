@@ -33,6 +33,7 @@ interface DocumentContextValue {
   autoDescend: boolean;
   showRevealCodes: boolean;
   showRowHighlight: boolean;
+  showSlashPlaceholder: boolean;
   
   // Document state
   document: DocumentState | null;
@@ -90,6 +91,7 @@ const DocumentContext = createContext<DocumentContextValue>({
   autoDescend: false,
   showRevealCodes: false,
   showRowHighlight: true,
+  showSlashPlaceholder: false,
   
   document: null,
   documentVersion: 0,
@@ -133,6 +135,7 @@ interface DocumentProviderProps {
   autoDescend: boolean;
   showRevealCodes: boolean;
   showRowHighlight: boolean;
+  showSlashPlaceholder: boolean;
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
@@ -152,6 +155,7 @@ export function DocumentProvider({
   autoDescend,
   showRevealCodes,
   showRowHighlight,
+  showSlashPlaceholder,
   document,
   documentVersion,
   onDocumentContentChange,
@@ -248,6 +252,7 @@ export function DocumentProvider({
         autoDescend,
         showRevealCodes,
         showRowHighlight,
+        showSlashPlaceholder,
         document,
         documentVersion,
         setDocumentContent: onDocumentContentChange,

@@ -23,6 +23,7 @@ export function DocumentEditor() {
     setInsertHierarchyHandler,
     setFindReplaceHandler,
     setSelectedText,
+    showSlashPlaceholder,
     // Terms
     terms,
     highlightMode,
@@ -40,6 +41,10 @@ export function DocumentEditor() {
     placesHighlightMode,
     highlightedPlace,
   } = useEditorContext();
+  
+  // Use a ref to access the current value in the placeholder callback
+  const showSlashPlaceholderRef = useRef(showSlashPlaceholder);
+  showSlashPlaceholderRef.current = showSlashPlaceholder;
   
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = useState({ top: 0, left: 0 });
@@ -62,7 +67,7 @@ export function DocumentEditor() {
           if (node.type.name === 'heading') {
             return 'Heading...';
           }
-          return "Type '/' for commands...";
+          return showSlashPlaceholderRef.current ? "Type '/' for commands..." : '';
         },
       }),
       HierarchyBlockExtension,
@@ -110,6 +115,13 @@ export function DocumentEditor() {
       editor.commands.setContent(document?.content || { type: 'doc', content: [{ type: 'paragraph' }] });
     }
   }, [editor, document, documentVersion]);
+
+  // Force placeholder update when setting changes
+  useEffect(() => {
+    if (!editor) return;
+    // Dispatch an empty transaction to trigger decoration recalculation
+    editor.view.dispatch(editor.state.tr);
+  }, [editor, showSlashPlaceholder]);
 
   // Register editor in context
   useEffect(() => {

@@ -30,6 +30,7 @@ interface EditorProviderProps {
   autoDescend: boolean;
   showRevealCodes: boolean;
   showRowHighlight: boolean;
+  showSlashPlaceholder: boolean;
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
@@ -49,6 +50,7 @@ export function EditorProvider({
   autoDescend,
   showRevealCodes,
   showRowHighlight,
+  showSlashPlaceholder,
   document,
   documentVersion,
   onDocumentContentChange,
@@ -64,6 +66,7 @@ export function EditorProvider({
       autoDescend={autoDescend}
       showRevealCodes={showRevealCodes}
       showRowHighlight={showRowHighlight}
+      showSlashPlaceholder={showSlashPlaceholder}
       document={document}
       documentVersion={documentVersion}
       onDocumentContentChange={onDocumentContentChange}
