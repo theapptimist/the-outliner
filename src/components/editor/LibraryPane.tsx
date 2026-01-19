@@ -113,6 +113,7 @@ export function LibraryPane({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [capturedSelection, setCapturedSelection] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const hasAutoExpandedDatesRef = useRef<string | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
@@ -147,6 +148,7 @@ export function LibraryPane({
       setLocalActiveTab(activeEntityTab);
     }
   }, [isInMasterMode, activeEntityTab]);
+
 
   // Get all context values
   const {
@@ -206,6 +208,32 @@ export function LibraryPane({
   // Get document ID for linking
   const { document: currentDocument } = useDocumentContext();
   const documentId = currentDocument?.meta?.id || '';
+
+  // Auto-expand all dates when viewing the Dates tab
+  const datesContextKey = shouldAggregate 
+    ? `master:${activeSubOutlineId ?? 'all'}` 
+    : `doc:${documentId}`;
+  
+  useEffect(() => {
+    if (activeTab !== 'dates') return;
+    
+    // Get current date IDs
+    const currentDates = shouldAggregate ? aggregatedDates : dates;
+    const dateIds = currentDates.map(d => d.id);
+    
+    // Only auto-expand once per context (document/mode change)
+    if (hasAutoExpandedDatesRef.current !== datesContextKey) {
+      setExpandedItems(new Set(dateIds));
+      hasAutoExpandedDatesRef.current = datesContextKey;
+    } else {
+      // Add any new dates that were added
+      setExpandedItems(prev => {
+        const next = new Set(prev);
+        dateIds.forEach(id => next.add(id));
+        return next;
+      });
+    }
+  }, [activeTab, datesContextKey, shouldAggregate, aggregatedDates, dates]);
 
   // Entity suggestions from AI scan
   const entitySuggestions = useEntitySuggestions({
