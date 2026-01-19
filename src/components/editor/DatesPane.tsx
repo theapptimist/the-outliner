@@ -669,50 +669,54 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
                         </TooltipContent>
                       </Tooltip>
 
-                      {/* Collapse toggle for usages - expanded by default */}
-                      {taggedDate.usages.length > 0 && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              data-allow-pointer
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleCollapsed(taggedDate.id)}
-                              className="h-6 w-6 p-0 ml-auto"
-                            >
-                              {isCollapsed ? (
-                                <ChevronRight className="h-3 w-3" />
-                              ) : (
-                                <ChevronDown className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {isCollapsed ? 'Show locations' : 'Hide locations'}
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
+                      {/* Collapse toggle for locations - expanded by default */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            data-allow-pointer
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleCollapsed(taggedDate.id)}
+                            className="h-6 w-6 p-0 ml-auto"
+                          >
+                            {isCollapsed ? (
+                              <ChevronRight className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {isCollapsed ? 'Show locations' : 'Hide locations'}
+                        </TooltipContent>
+                      </Tooltip>
                     </TooltipProvider>
                   </div>
 
-                  {/* Location usages - shown by default (when NOT in collapsed set) */}
-                  {taggedDate.usages.length > 0 && !isCollapsed && (
+                  {/* Locations - shown by default (when NOT in collapsed set) */}
+                  {!isCollapsed && (
                     <div className="mt-2 pt-2 border-t border-border/30">
                       <div className="text-[11px] space-y-0.5">
                         <div className="text-muted-foreground font-medium mb-1">Locations:</div>
-                        {taggedDate.usages.slice(0, 5).map((usage, i) => (
-                          <div key={i} className="flex items-center gap-1.5 text-muted-foreground">
-                            <span className="font-mono text-[10px]">{usage.nodePrefix}</span>
-                            <span className="truncate text-xs">{usage.nodeLabel}</span>
-                            {usage.count > 1 && (
-                              <span className="text-[10px]">×{usage.count}</span>
+                        {taggedDate.usages.length === 0 ? (
+                          <div className="text-xs text-muted-foreground">No locations found.</div>
+                        ) : (
+                          <>
+                            {taggedDate.usages.slice(0, 5).map((usage, i) => (
+                              <div key={i} className="flex items-center gap-1.5 text-muted-foreground">
+                                <span className="font-mono text-[10px]">{usage.nodePrefix}</span>
+                                <span className="truncate text-xs">{usage.nodeLabel}</span>
+                                {usage.count > 1 && (
+                                  <span className="text-[10px]">×{usage.count}</span>
+                                )}
+                              </div>
+                            ))}
+                            {taggedDate.usages.length > 5 && (
+                              <div className="text-muted-foreground text-[10px]">
+                                +{taggedDate.usages.length - 5} more...
+                              </div>
                             )}
-                          </div>
-                        ))}
-                        {taggedDate.usages.length > 5 && (
-                          <div className="text-muted-foreground text-[10px]">
-                            +{taggedDate.usages.length - 5} more...
-                          </div>
+                          </>
                         )}
                       </div>
                     </div>
