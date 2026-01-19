@@ -1501,6 +1501,10 @@ export function LibraryPane({
                         setPlaces(prev => prev.filter(p => p.id !== place.id));
                         toast({ title: 'Place deleted' });
                       }}
+                      onEdit={() => {
+                        setEditingEntity({ id: place.id, type: 'places', name: place.name, significance: place.significance });
+                        setEditDialogOpen(true);
+                      }}
                       usages={place.usages}
                       relationshipCount={relationshipCounts[place.id] || 0}
                       linkingMode={linkingMode}
