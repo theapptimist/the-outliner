@@ -237,6 +237,10 @@ export default function Editor() {
     const stored = localStorage.getItem('outliner:showRowHighlight');
     return stored === 'true'; // default false
   });
+  const [showSlashPlaceholder, setShowSlashPlaceholder] = useState(() => {
+    const stored = localStorage.getItem('outliner:showSlashPlaceholder');
+    return stored === 'true'; // default false
+  });
   
   // Document state
   const [document, setDocument] = useState<DocumentState | null>(null);
@@ -576,6 +580,7 @@ export default function Editor() {
         autoDescend={autoDescend}
         showRevealCodes={showRevealCodes}
         showRowHighlight={showRowHighlight}
+        showSlashPlaceholder={showSlashPlaceholder}
         document={document}
         documentVersion={documentVersion}
         onDocumentContentChange={handleDocumentContentChange}
@@ -604,6 +609,11 @@ export default function Editor() {
             onShowRowHighlightChange={(v) => {
               setShowRowHighlight(v);
               localStorage.setItem('outliner:showRowHighlight', String(v));
+            }}
+            showSlashPlaceholder={showSlashPlaceholder}
+            onShowSlashPlaceholderChange={(v) => {
+              setShowSlashPlaceholder(v);
+              localStorage.setItem('outliner:showSlashPlaceholder', String(v));
             }}
             onUndo={() => undoRef.current()}
             onRedo={() => redoRef.current()}

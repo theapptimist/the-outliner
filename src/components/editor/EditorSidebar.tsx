@@ -35,6 +35,8 @@ interface EditorSidebarProps {
   onShowRevealCodesChange: (value: boolean) => void;
   showRowHighlight: boolean;
   onShowRowHighlightChange: (value: boolean) => void;
+  showSlashPlaceholder: boolean;
+  onShowSlashPlaceholderChange: (value: boolean) => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -54,6 +56,8 @@ export function EditorSidebar({
   onShowRevealCodesChange,
   showRowHighlight,
   onShowRowHighlightChange,
+  showSlashPlaceholder,
+  onShowSlashPlaceholderChange,
   onUndo,
   onRedo,
   canUndo,
@@ -336,6 +340,8 @@ export function EditorSidebar({
           onShowRevealCodesChange={onShowRevealCodesChange}
           showRowHighlight={showRowHighlight}
           onShowRowHighlightChange={onShowRowHighlightChange}
+          showSlashPlaceholder={showSlashPlaceholder}
+          onShowSlashPlaceholderChange={onShowSlashPlaceholderChange}
           isDark={isDark}
           onToggleTheme={handleToggleTheme}
           onInsertHierarchy={onInsertHierarchy}

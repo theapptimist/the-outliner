@@ -10,6 +10,7 @@ import {
   GitBranch, 
   Search,
   Rows3,
+  Type,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,6 +34,8 @@ interface ToolsPaneProps {
   onShowRevealCodesChange: (value: boolean) => void;
   showRowHighlight: boolean;
   onShowRowHighlightChange: (value: boolean) => void;
+  showSlashPlaceholder: boolean;
+  onShowSlashPlaceholderChange: (value: boolean) => void;
   isDark: boolean;
   onToggleTheme: () => void;
   onInsertHierarchy: () => void;
@@ -56,6 +59,8 @@ export function ToolsPane({
   onShowRevealCodesChange,
   showRowHighlight,
   onShowRowHighlightChange,
+  showSlashPlaceholder,
+  onShowSlashPlaceholderChange,
   isDark,
   onToggleTheme,
   onInsertHierarchy,
@@ -197,6 +202,28 @@ export function ToolsPane({
             </TooltipTrigger>
             <TooltipContent side="right">
               <p>Highlight selected row in outline</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Slash Placeholder */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={showSlashPlaceholder ? "secondary" : "ghost"}
+                size="sm"
+                className={cn(
+                  collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
+                  "hover:bg-muted/50 transition-colors",
+                  showSlashPlaceholder && "bg-muted text-foreground hover:bg-muted/80 border border-border/50"
+                )}
+                onClick={() => onShowSlashPlaceholderChange(!showSlashPlaceholder)}
+              >
+                <Type className={cn("h-4 w-4", showSlashPlaceholder && "text-foreground")} />
+                {!collapsed && <span className="ml-2 text-xs">Slash Hint</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Show "Type '/' for commands" placeholder</p>
             </TooltipContent>
           </Tooltip>
 
