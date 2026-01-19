@@ -57,7 +57,7 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [capturedSelection, setCapturedSelection] = useState<string>('');
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(() => new Set(dates.map(d => d.id)));
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
   const [reparseFeedback, setReparseFeedback] = useState<'idle' | 'done' | 'none'>('idle');
   const [orphanWarningDismissed, setOrphanWarningDismissed] = useState(false);
@@ -75,14 +75,18 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
     };
   }, []);
 
-  // Auto-expand new dates
-  useEffect(() => {
-    setExpandedDates(prev => {
+  // Toggle collapsed state for a date
+  const toggleCollapsed = useCallback((id: string) => {
+    setCollapsedDates(prev => {
       const next = new Set(prev);
-      dates.forEach(d => next.add(d.id));
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
-  }, [dates]);
+  }, []);
 
   // Auto-recalculate when hierarchy blocks or dates change
   useEffect(() => {
@@ -180,17 +184,6 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
     setTimeout(() => setReparseFeedback('idle'), 1500);
   }, [reparseDates]);
 
-  const toggleExpanded = useCallback((id: string) => {
-    setExpandedDates(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
 
   // Filter dates by search
   const filteredDates = dates.filter(d => {
@@ -511,7 +504,7 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
             </div>
           ) : (
             filteredDates.map((taggedDate) => {
-              const isExpanded = expandedDates.has(taggedDate.id);
+              const isCollapsed = collapsedDates.has(taggedDate.id);
               const isHighlighted = highlightedDate?.id === taggedDate.id;
               const isInspected = inspectedDate?.id === taggedDate.id;
               const usageCount = taggedDate.usages.reduce((sum, u) => sum + u.count, 0);
@@ -615,7 +608,7 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
                         </TooltipContent>
                       </Tooltip>
 
-                      {/* Expand toggle for usages */}
+                      {/* Collapse toggle for usages - expanded by default */}
                       {taggedDate.usages.length > 0 && (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -623,26 +616,26 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
                               data-allow-pointer
                               variant="ghost"
                               size="sm"
-                              onClick={() => toggleExpanded(taggedDate.id)}
+                              onClick={() => toggleCollapsed(taggedDate.id)}
                               className="h-6 w-6 p-0 ml-auto"
                             >
-                              {isExpanded ? (
-                                <ChevronDown className="h-3 w-3" />
-                              ) : (
+                              {isCollapsed ? (
                                 <ChevronRight className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
                               )}
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {isExpanded ? 'Hide locations' : 'Show locations'}
+                            {isCollapsed ? 'Show locations' : 'Hide locations'}
                           </TooltipContent>
                         </Tooltip>
                       )}
                     </TooltipProvider>
                   </div>
 
-                  {/* Expanded content: location usages only */}
-                  {isExpanded && taggedDate.usages.length > 0 && (
+                  {/* Location usages - shown by default (when NOT in collapsed set) */}
+                  {taggedDate.usages.length > 0 && !isCollapsed && (
                     <div className="mt-2 pt-2 border-t border-border/30">
                       <div className="text-[11px] space-y-0.5">
                         <div className="text-muted-foreground font-medium mb-1">Locations:</div>
