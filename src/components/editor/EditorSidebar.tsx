@@ -13,6 +13,7 @@ import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { useEditorContext } from './EditorContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { LibraryPane } from './LibraryPane';
+import { LinkingWorkspace } from './LinkingWorkspace';
 import { AIGeneratePane } from './AIGeneratePane';
 import { ToolsPane } from './ToolsPane';
 import { MasterOutlinePane } from './MasterOutlinePane';
@@ -258,12 +259,19 @@ export function EditorSidebar({
       {/* Conditional Content - now properly conditional rendering */}
       {activeTab === 'library' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
-          <LibraryPane 
-            collapsed={collapsed} 
-            selectedText={selectedText} 
-            fullPage={libraryFullPage}
-            onToggleFullPage={() => setLibraryFullPage(prev => !prev)}
-          />
+          {libraryFullPage ? (
+            <LinkingWorkspace
+              onClose={() => setLibraryFullPage(false)}
+              selectedText={selectedText}
+            />
+          ) : (
+            <LibraryPane 
+              collapsed={collapsed} 
+              selectedText={selectedText} 
+              fullPage={libraryFullPage}
+              onToggleFullPage={() => setLibraryFullPage(prev => !prev)}
+            />
+          )}
         </div>
       )}
       

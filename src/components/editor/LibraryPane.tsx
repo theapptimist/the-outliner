@@ -63,14 +63,35 @@ import { useDocumentContext } from './context';
 
 // EntityTab type is imported from NavigationContext
 
+// EntityRef type for linking mode
+export interface EntityRef {
+  id: string;
+  type: 'people' | 'places' | 'dates' | 'terms';
+  name: string;
+  sourceDocId?: string;
+  sourceDocTitle?: string;
+}
+
 interface LibraryPaneProps {
   collapsed?: boolean;
   selectedText?: string;
   fullPage?: boolean;
   onToggleFullPage?: () => void;
+  // Linking mode props
+  linkingMode?: boolean;
+  selectedSource?: EntityRef | null;
+  onSelectSource?: (entity: EntityRef) => void;
 }
 
-export function LibraryPane({ collapsed, selectedText, fullPage, onToggleFullPage }: LibraryPaneProps) {
+export function LibraryPane({ 
+  collapsed, 
+  selectedText, 
+  fullPage, 
+  onToggleFullPage,
+  linkingMode,
+  selectedSource,
+  onSelectSource,
+}: LibraryPaneProps) {
   const { isInMasterMode, activeEntityTab, setActiveEntityTab, activeSubOutlineId } = useNavigation();
   
   // Aggregated entities from sub-docs when viewing master
@@ -1052,6 +1073,10 @@ export function LibraryPane({ collapsed, selectedText, fullPage, onToggleFullPag
                         toast({ title: 'Term deleted' });
                       }}
                       usages={term.usages}
+                      linkingMode={linkingMode}
+                      entityType="terms"
+                      isSelectedAsSource={selectedSource?.id === term.id && selectedSource?.type === 'terms'}
+                      onSelectAsSource={() => onSelectSource?.({ id: term.id, type: 'terms', name: term.term })}
                     />
                   ))}
 
@@ -1099,6 +1124,10 @@ export function LibraryPane({ collapsed, selectedText, fullPage, onToggleFullPag
                         toast({ title: 'Date deleted' });
                       }}
                       usages={date.usages}
+                      linkingMode={linkingMode}
+                      entityType="dates"
+                      isSelectedAsSource={selectedSource?.id === date.id && selectedSource?.type === 'dates'}
+                      onSelectAsSource={() => onSelectSource?.({ id: date.id, type: 'dates', name: date.rawText })}
                     />
                   ))}
 
@@ -1147,6 +1176,10 @@ export function LibraryPane({ collapsed, selectedText, fullPage, onToggleFullPag
                         toast({ title: 'Person deleted' });
                       }}
                       usages={person.usages}
+                      linkingMode={linkingMode}
+                      entityType="people"
+                      isSelectedAsSource={selectedSource?.id === person.id && selectedSource?.type === 'people'}
+                      onSelectAsSource={() => onSelectSource?.({ id: person.id, type: 'people', name: person.name })}
                     />
                   ))}
 
@@ -1193,6 +1226,10 @@ export function LibraryPane({ collapsed, selectedText, fullPage, onToggleFullPag
                         toast({ title: 'Place deleted' });
                       }}
                       usages={place.usages}
+                      linkingMode={linkingMode}
+                      entityType="places"
+                      isSelectedAsSource={selectedSource?.id === place.id && selectedSource?.type === 'places'}
+                      onSelectAsSource={() => onSelectSource?.({ id: place.id, type: 'places', name: place.name })}
                     />
                   ))}
                 </>
@@ -1401,6 +1438,11 @@ interface EntityCardProps {
   onLink: () => void;
   onDelete: () => void;
   usages: { nodePrefix: string; nodeLabel: string; count: number }[];
+  // Linking mode props
+  linkingMode?: boolean;
+  isSelectedAsSource?: boolean;
+  onSelectAsSource?: () => void;
+  entityType?: 'people' | 'places' | 'dates' | 'terms';
 }
 
 function EntityCard({
@@ -1422,13 +1464,20 @@ function EntityCard({
   onLink,
   onDelete,
   usages,
+  linkingMode,
+  isSelectedAsSource,
+  onSelectAsSource,
+  entityType,
 }: EntityCardProps) {
   return (
     <div
       className={cn(
         "rounded-md border border-border bg-card/50 overflow-hidden min-w-0",
-        isHighlighted && "ring-1 ring-amber-500/50"
+        isHighlighted && "ring-1 ring-amber-500/50",
+        linkingMode && "cursor-pointer hover:bg-muted/50 transition-colors",
+        isSelectedAsSource && "ring-2 ring-primary bg-primary/10"
       )}
+      onClick={linkingMode ? onSelectAsSource : undefined}
     >
       {/* Header */}
       <div className="flex items-start gap-1.5 px-2 py-1.5 min-w-0">
