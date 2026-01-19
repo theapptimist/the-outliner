@@ -569,11 +569,12 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
             </TooltipTrigger>
             <TooltipContent side="right" className="text-xs">Highlight mode</TooltipContent>
           </Tooltip>
-          <PopoverContent side="right" align="start" className="w-auto p-1">
+          <PopoverContent side="right" align="start" className="w-auto p-1" data-allow-pointer>
             <div className="flex flex-col gap-0.5">
               {(['all', 'selected', 'none'] as const).map(mode => (
                 <Button
                   key={mode}
+                  data-allow-pointer
                   variant={currentHighlightMode === mode ? 'secondary' : 'ghost'}
                   size="sm"
                   className="h-7 justify-start text-xs px-2"
