@@ -2010,28 +2010,28 @@ function EntityCard({
 
       {/* Expanded content */}
       {showExpanded && (
-        <div className="px-2 pb-2 pt-1 border-t border-border/30 space-y-1">
+        <div className="px-2 pb-2 pt-1 border-t border-border/30 space-y-1.5">
           {subtitle && (
-            <p className="text-[10px] text-muted-foreground">{subtitle}</p>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
           )}
           {description && (
-            <p className="text-[10px] text-muted-foreground italic">{description}</p>
+            <p className="text-xs text-muted-foreground italic">{description}</p>
           )}
           {usages.length > 0 && (
             <div className="pt-1">
-              <p className="text-[9px] text-muted-foreground uppercase font-medium mb-1">Usages</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-medium mb-1">Usages</p>
               <div className="flex flex-wrap gap-1">
                 {usages.slice(0, 5).map((u, i) => (
                   <span
                     key={i}
-                    className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded"
+                    className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded"
                     title={u.nodeLabel}
                   >
                     {u.nodePrefix}
                   </span>
                 ))}
                 {usages.length > 5 && (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     +{usages.length - 5} more
                   </span>
                 )}
