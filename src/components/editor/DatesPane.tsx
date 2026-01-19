@@ -57,7 +57,7 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [capturedSelection, setCapturedSelection] = useState<string>('');
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(() => new Set(dates.map(d => d.id)));
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
   const [reparseFeedback, setReparseFeedback] = useState<'idle' | 'done' | 'none'>('idle');
   const [orphanWarningDismissed, setOrphanWarningDismissed] = useState(false);
@@ -74,6 +74,15 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
       }
     };
   }, []);
+
+  // Auto-expand new dates
+  useEffect(() => {
+    setExpandedDates(prev => {
+      const next = new Set(prev);
+      dates.forEach(d => next.add(d.id));
+      return next;
+    });
+  }, [dates]);
 
   // Auto-recalculate when hierarchy blocks or dates change
   useEffect(() => {
