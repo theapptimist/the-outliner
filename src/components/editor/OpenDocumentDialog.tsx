@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -31,12 +31,12 @@ interface OpenDocumentDialogProps {
   currentDocId?: string;
 }
 
-export const OpenDocumentDialog = forwardRef<HTMLDivElement, OpenDocumentDialogProps>(function OpenDocumentDialog({
+export function OpenDocumentDialog({
   open,
   onOpenChange,
   onSelect,
   currentDocId,
-}, ref) {
+}: OpenDocumentDialogProps) {
   const [documents, setDocuments] = useState<CloudDocumentMetadata[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -199,4 +199,4 @@ export const OpenDocumentDialog = forwardRef<HTMLDivElement, OpenDocumentDialogP
       </DialogContent>
     </Dialog>
   );
-});
+}
