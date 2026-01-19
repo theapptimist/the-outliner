@@ -1672,30 +1672,18 @@ function EntityCard({
   return (
     <div
       className={cn(
-        "rounded-md border border-border bg-card/50 overflow-hidden min-w-0",
+        "rounded-md border overflow-hidden min-w-0 transition-colors",
         isHighlighted && "ring-1 ring-amber-500/50",
-        linkingMode && "cursor-pointer hover:bg-muted/50 transition-colors",
-        isSelectedAsSource && "ring-2 ring-primary bg-primary/10"
+        linkingMode && "cursor-pointer",
+        linkingMode && !isSelectedAsSource && "border-border bg-card/50 hover:bg-muted/50",
+        linkingMode && isSelectedAsSource && "border-primary bg-primary/20",
+        !linkingMode && "border-border bg-card/50"
       )}
       onClick={linkingMode ? onSelectAsSource : undefined}
     >
       {/* Header */}
       <div className="flex items-start gap-1.5 px-2 py-1.5 min-w-0">
-        {/* Radio indicator for linking mode */}
-        {linkingMode ? (
-          <div className="shrink-0 mt-0.5">
-            <div className={cn(
-              "h-4 w-4 rounded-full border-2 flex items-center justify-center transition-colors",
-              isSelectedAsSource 
-                ? "border-primary bg-primary" 
-                : "border-muted-foreground/50 hover:border-primary/50"
-            )}>
-              {isSelectedAsSource && (
-                <div className="h-2 w-2 rounded-full bg-primary-foreground" />
-              )}
-            </div>
-          </div>
-        ) : (
+        {!linkingMode && (
           <button
             onClick={(e) => {
               e.stopPropagation();
