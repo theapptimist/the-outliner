@@ -33,16 +33,27 @@ const DATE_PATTERNS = [
   { regex: /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g, parser: parseISO },
   // US format: 3/15/2022 or 03/15/2022
   { regex: /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, parser: parseUSDate },
-  // Full month: March 15, 2022 or March 2022
-  { regex: /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})?,?\s*(\d{4})\b/gi, parser: parseFullMonth },
+  // Full month with day: March 15, 2022 or August 20, 2022 (Saturday) - must check day before month-only
+  { regex: /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s*(\d{4})/gi, parser: parseFullMonthWithDay },
+  // Month range: March-April 2021
+  { regex: /\b(January|February|March|April|May|June|July|August|September|October|November|December)[-–](January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/gi, parser: parseMonthRange },
+  // Full month only: March 2022 (no day)
+  { regex: /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/gi, parser: parseFullMonthOnly },
+  // Year with month in parentheses: 2019 (June)
+  { regex: /\b(\d{4})\s*\((January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\)/gi, parser: parseYearParenMonth },
+  // Approximate date with tilde: ~August 9-10, 2022 or ~1994
+  { regex: /~\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:-\d{1,2})?,?\s*(\d{4})/gi, parser: parseApproxFullMonth },
+  { regex: /~\s*(\d{4})\b/g, parser: parseApproxYear },
   // Abbreviated month: Mar 15, 2022 or Mar 2022
   { regex: /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+(\d{1,2})?,?\s*(\d{4})\b/gi, parser: parseAbbrevMonth },
   // Season + year: Spring 2021
   { regex: /\b(Spring|Summer|Fall|Autumn|Winter)\s+(\d{4})\b/gi, parser: parseSeason },
   // Quarter: Q1 2020, Q3 2021
   { regex: /\bQ([1-4])\s+(\d{4})\b/gi, parser: parseQuarter },
+  // Date range: 1966-67 or 1966-1967
+  { regex: /\b(19\d{2}|20\d{2})[-–](\d{2,4})\b/g, parser: parseYearRange },
   // Year only: 2020, 2021 (lower confidence)
-  { regex: /\b(20\d{2})\b/g, parser: parseYearOnly },
+  { regex: /\b(19\d{2}|20\d{2})\b/g, parser: parseYearOnly },
 ];
 
 const MONTH_MAP: Record<string, number> = {
@@ -83,6 +94,56 @@ function parseFullMonth(match: RegExpMatchArray): Date | null {
   const monthNum = MONTH_MAP[month.toLowerCase()];
   if (monthNum === undefined) return null;
   return new Date(parseInt(year), monthNum, day ? parseInt(day) : 1);
+}
+
+function parseFullMonthWithDay(match: RegExpMatchArray): Date | null {
+  const [, month, day, year] = match;
+  const monthNum = MONTH_MAP[month.toLowerCase()];
+  if (monthNum === undefined) return null;
+  return new Date(parseInt(year), monthNum, parseInt(day));
+}
+
+function parseFullMonthOnly(match: RegExpMatchArray): Date | null {
+  const [, month, year] = match;
+  const monthNum = MONTH_MAP[month.toLowerCase()];
+  if (monthNum === undefined) return null;
+  return new Date(parseInt(year), monthNum, 1);
+}
+
+function parseMonthRange(match: RegExpMatchArray): Date | null {
+  // For ranges like "March-April 2021", use the first month
+  const [, startMonth, , year] = match;
+  const monthNum = MONTH_MAP[startMonth.toLowerCase()];
+  if (monthNum === undefined) return null;
+  return new Date(parseInt(year), monthNum, 1);
+}
+
+function parseYearParenMonth(match: RegExpMatchArray): Date | null {
+  // For "2019 (June)" format
+  const [, year, month] = match;
+  const monthNum = MONTH_MAP[month.toLowerCase().replace('.', '')];
+  if (monthNum === undefined) return null;
+  return new Date(parseInt(year), monthNum, 1);
+}
+
+function parseApproxFullMonth(match: RegExpMatchArray): Date | null {
+  // For "~August 9-10, 2022" format
+  const [, month, day, year] = match;
+  const monthNum = MONTH_MAP[month.toLowerCase()];
+  if (monthNum === undefined) return null;
+  return new Date(parseInt(year), monthNum, parseInt(day));
+}
+
+function parseApproxYear(match: RegExpMatchArray): Date | null {
+  // For "~1994" format
+  const [, year] = match;
+  return new Date(parseInt(year), 0, 1);
+}
+
+function parseYearRange(match: RegExpMatchArray): Date | null {
+  // For "1966-67" or "1966-1967" format - use the first year
+  const [, startYear] = match;
+  return new Date(parseInt(startYear), 0, 1);
 }
 
 function parseAbbrevMonth(match: RegExpMatchArray): Date | null {
@@ -147,14 +208,27 @@ export function detectDatesInText(text: string): DetectedDate[] {
 function getConfidence(rawText: string, date: Date | null): 'high' | 'medium' | 'low' {
   if (!date) return 'low';
   
+  // Approximate dates (with ~) are lower confidence
+  if (rawText.startsWith('~')) return 'medium';
+  
   // Year-only patterns are low confidence
-  if (/^\d{4}$/.test(rawText)) return 'low';
+  if (/^~?\d{4}$/.test(rawText)) return 'low';
+  
+  // Year ranges like 1966-67 are low confidence
+  if (/^\d{4}[-–]\d{2,4}$/.test(rawText)) return 'low';
   
   // Seasons and quarters are medium confidence
   if (/^(Spring|Summer|Fall|Autumn|Winter|Q[1-4])/i.test(rawText)) return 'medium';
   
+  // Month ranges are medium confidence
+  if (/^(January|February|March|April|May|June|July|August|September|October|November|December)[-–]/i.test(rawText)) return 'medium';
+  
+  // Year with parenthetical month: 2019 (June)
+  if (/^\d{4}\s*\([A-Za-z]+\)$/.test(rawText)) return 'medium';
+  
   // Full dates with day are high confidence
   if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(rawText)) return 'high';
+  if (/(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s*\d{4}/i.test(rawText)) return 'high';
   if (/\d{1,2},?\s*\d{4}/.test(rawText)) return 'high';
   
   return 'medium';
