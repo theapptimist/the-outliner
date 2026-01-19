@@ -173,14 +173,25 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
   // Re-parse all dates from their rawText to fix incorrect date values
   const reparseDates = useCallback(() => {
     let updatedCount = 0;
-    setDates(prev => prev.map(taggedDate => {
-      const parsed = parseDateFromRawText(taggedDate.rawText);
-      if (parsed && parsed.getTime() !== taggedDate.date.getTime()) {
-        updatedCount++;
-        return { ...taggedDate, date: parsed };
-      }
-      return taggedDate;
-    }));
+    
+    setDates(prev => {
+      const updated = prev.map(taggedDate => {
+        const parsed = parseDateFromRawText(taggedDate.rawText);
+        if (parsed && parsed.getTime() !== taggedDate.date.getTime()) {
+          updatedCount++;
+          return { ...taggedDate, date: parsed };
+        }
+        return taggedDate;
+      });
+      
+      // Log for debugging
+      console.log(`[reparseDates] Updated ${updatedCount} of ${prev.length} dates`);
+      
+      return updated;
+    });
+    
+    // Note: updatedCount will be set after setDates callback runs
+    // Return a getter function approach won't work here, so we rely on toast in the handler
     return updatedCount;
   }, [setDates]);
 
