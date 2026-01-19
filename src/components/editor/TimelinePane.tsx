@@ -306,18 +306,31 @@ export function TimelinePane({ collapsed, onNavigateToDocument }: TimelinePanePr
                             key={date.id}
                             onClick={() => handleDateClick(date)}
                             className={cn(
-                              "relative pl-4 pr-2 py-2 rounded-md cursor-pointer transition-all",
-                              "hover:bg-info/10 border border-transparent",
-                              isHighlighted && "bg-info/15 border-info/30"
+                              "relative pl-4 pr-3 py-3 rounded-lg cursor-pointer transition-all",
+                              "hover:bg-info/10 border border-border/50",
+                              "bg-card/50 shadow-sm",
+                              isHighlighted && "bg-info/15 border-info/40 shadow-info/20"
                             )}
                           >
                             {/* Connector line */}
                             <div className="absolute left-0 top-1/2 w-3 h-0.5 bg-info/30 -translate-y-1/2" />
                             
-                            {/* Date content */}
-                            <div className="flex flex-col gap-0.5">
+                            {/* Date content - redesigned for visibility */}
+                            <div className="flex flex-col gap-1.5">
+                              {/* Primary: Description/context - this is the meaningful part */}
+                              {date.description ? (
+                                <p className="text-sm font-medium text-foreground leading-snug">
+                                  {date.description}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-foreground leading-snug">
+                                  "{date.rawText}"
+                                </p>
+                              )}
+                              
+                              {/* Secondary row: formatted date + usages badge */}
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-medium text-foreground">
+                                <span className="text-xs font-medium text-info">
                                   {formatDateForDisplay(dateObj)}
                                 </span>
                                 {date.usages && date.usages.length > 0 && (
@@ -328,13 +341,10 @@ export function TimelinePane({ collapsed, onNavigateToDocument }: TimelinePanePr
                                 )}
                               </div>
                               
-                              <span className="text-xs text-muted-foreground">
-                                "{date.rawText}"
-                              </span>
-                              
+                              {/* Show rawText as tertiary if description exists */}
                               {date.description && (
-                                <span className="text-xs text-muted-foreground/80 mt-0.5">
-                                  {date.description}
+                                <span className="text-xs text-muted-foreground italic">
+                                  "{date.rawText}"
                                 </span>
                               )}
                               
@@ -345,7 +355,7 @@ export function TimelinePane({ collapsed, onNavigateToDocument }: TimelinePanePr
                                     e.stopPropagation();
                                     handleNavigateToSource(date as AggregatedDate);
                                   }}
-                                  className="flex items-center gap-1 text-xs text-warning hover:text-warning/80 mt-1"
+                                  className="flex items-center gap-1 text-xs text-warning hover:text-warning/80 mt-0.5"
                                 >
                                   <FileText className="h-3 w-3" />
                                   {(date as AggregatedDate).sourceDocTitle}
