@@ -535,7 +535,9 @@ export function EditEntityDialog({
                           >
                             {display.direction === 'outgoing' ? (
                               <>
-                                <span className="text-xs text-muted-foreground whitespace-nowrap underline decoration-dashed underline-offset-2">{display.relationshipType}</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 underline decoration-dashed underline-offset-2">
+                                  {display.relationshipType || <em className="text-muted-foreground/60">(no type)</em>}
+                                </span>
                                 <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                 <div className="flex items-center gap-1 min-w-0">
                                   {getEntityIcon(display.otherEntity.type)}
@@ -549,7 +551,9 @@ export function EditEntityDialog({
                                   <span className="text-sm truncate">{display.otherEntity.name}</span>
                                 </div>
                                 <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap underline decoration-dashed underline-offset-2">{display.relationshipType}</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 underline decoration-dashed underline-offset-2">
+                                  {display.relationshipType || <em className="text-muted-foreground/60">(no type)</em>}
+                                </span>
                               </>
                             )}
                           </button>
