@@ -1916,25 +1916,27 @@ function EntityCard({
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
               >
                 <MoreVertical className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={onEdit}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                 <Pencil className="h-3.5 w-3.5 mr-2" />
                 Edit...
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onLink}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onLink(); }}>
                 <Link2 className="h-3.5 w-3.5 mr-2" />
                 Link entity...
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onMerge}>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMerge(); }}>
                 <Merge className="h-3.5 w-3.5 mr-2" />
                 Merge with...
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive focus:text-destructive">
                 <Trash2 className="h-3.5 w-3.5 mr-2" />
                 Delete
               </DropdownMenuItem>
