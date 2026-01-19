@@ -498,6 +498,206 @@ export function LibraryPane({
     );
   }
 
+  // Simplified linking mode view - just entity tabs and list
+  if (linkingMode) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Horizontal Entity Type Tabs */}
+        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30 bg-muted/20">
+          {tabs.map(tab => (
+            <Tooltip key={tab.id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "h-7 px-2 rounded flex items-center gap-1.5 transition-colors relative text-xs",
+                    activeTab === tab.id 
+                      ? "bg-accent/30 text-foreground" 
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <tab.icon className={cn("h-3.5 w-3.5", activeTab === tab.id ? tab.color : "")} />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  {getCount(tab.id) > 0 && (
+                    <span className="text-[10px] bg-muted px-1 rounded">
+                      {getCount(tab.id)}
+                    </span>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs sm:hidden">{tab.label}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="px-2 py-1.5 border-b border-border/30">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search ${activeTab}...`}
+              className="h-7 pl-7 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Entity list */}
+        <ScrollArea className="flex-1">
+          <div className="space-y-1.5 p-2">
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-xs">
+                {currentCount === 0 ? (
+                  <p>No {activeTab} tagged yet</p>
+                ) : (
+                  <p>No matching {activeTab}</p>
+                )}
+              </div>
+            ) : (
+              <>
+                {activeTab === 'terms' && terms.filter(t => {
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    (t.term ?? '').toLowerCase().includes(q) ||
+                    (t.definition ?? '').toLowerCase().includes(q)
+                  );
+                }).map(term => (
+                  <EntityCard
+                    key={term.id}
+                    id={term.id}
+                    title={term.term}
+                    subtitle={term.definition}
+                    icon={Quote}
+                    iconColor="text-amber-500"
+                    usageCount={term.usages.reduce((sum, u) => sum + u.count, 0)}
+                    isHighlighted={false}
+                    isInspected={false}
+                    isExpanded={false}
+                    onToggleExpand={() => {}}
+                    onInsert={() => {}}
+                    onHighlight={() => {}}
+                    onViewUsages={() => {}}
+                    onMerge={() => {}}
+                    onLink={() => {}}
+                    onDelete={() => {}}
+                    usages={term.usages}
+                    linkingMode
+                    entityType="terms"
+                    isSelectedAsSource={selectedSource?.id === term.id && selectedSource?.type === 'terms'}
+                    onSelectAsSource={() => onSelectSource?.({ id: term.id, type: 'terms', name: term.term })}
+                  />
+                ))}
+
+                {activeTab === 'dates' && dates.filter(d => {
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    (d.rawText ?? '').toLowerCase().includes(q) ||
+                    (d.description ?? '').toLowerCase().includes(q)
+                  );
+                }).map(date => (
+                  <EntityCard
+                    key={date.id}
+                    id={date.id}
+                    title={formatDateForDisplay(date.date)}
+                    subtitle={date.rawText}
+                    description={date.description}
+                    icon={Calendar}
+                    iconColor="text-blue-500"
+                    usageCount={date.usages.reduce((sum, u) => sum + u.count, 0)}
+                    isHighlighted={false}
+                    isInspected={false}
+                    isExpanded={false}
+                    onToggleExpand={() => {}}
+                    onInsert={() => {}}
+                    onHighlight={() => {}}
+                    onViewUsages={() => {}}
+                    onMerge={() => {}}
+                    onLink={() => {}}
+                    onDelete={() => {}}
+                    usages={date.usages}
+                    linkingMode
+                    entityType="dates"
+                    isSelectedAsSource={selectedSource?.id === date.id && selectedSource?.type === 'dates'}
+                    onSelectAsSource={() => onSelectSource?.({ id: date.id, type: 'dates', name: date.rawText })}
+                  />
+                ))}
+
+                {activeTab === 'people' && people.filter(p => {
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    (p.name ?? '').toLowerCase().includes(q) ||
+                    (p.role ?? '').toLowerCase().includes(q) ||
+                    (p.description ?? '').toLowerCase().includes(q)
+                  );
+                }).map(person => (
+                  <EntityCard
+                    key={person.id}
+                    id={person.id}
+                    title={person.name}
+                    subtitle={person.role}
+                    description={person.description}
+                    icon={User}
+                    iconColor="text-purple-500"
+                    usageCount={person.usages.reduce((sum, u) => sum + u.count, 0)}
+                    isHighlighted={false}
+                    isInspected={false}
+                    isExpanded={false}
+                    onToggleExpand={() => {}}
+                    onInsert={() => {}}
+                    onHighlight={() => {}}
+                    onViewUsages={() => {}}
+                    onMerge={() => {}}
+                    onLink={() => {}}
+                    onDelete={() => {}}
+                    usages={person.usages}
+                    linkingMode
+                    entityType="people"
+                    isSelectedAsSource={selectedSource?.id === person.id && selectedSource?.type === 'people'}
+                    onSelectAsSource={() => onSelectSource?.({ id: person.id, type: 'people', name: person.name })}
+                  />
+                ))}
+
+                {activeTab === 'places' && places.filter(p => {
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    (p.name ?? '').toLowerCase().includes(q) ||
+                    (p.significance ?? '').toLowerCase().includes(q)
+                  );
+                }).map(place => (
+                  <EntityCard
+                    key={place.id}
+                    id={place.id}
+                    title={place.name}
+                    subtitle={place.significance}
+                    icon={MapPin}
+                    iconColor="text-green-500"
+                    usageCount={place.usages.reduce((sum, u) => sum + u.count, 0)}
+                    isHighlighted={false}
+                    isInspected={false}
+                    isExpanded={false}
+                    onToggleExpand={() => {}}
+                    onInsert={() => {}}
+                    onHighlight={() => {}}
+                    onViewUsages={() => {}}
+                    onMerge={() => {}}
+                    onLink={() => {}}
+                    onDelete={() => {}}
+                    usages={place.usages}
+                    linkingMode
+                    entityType="places"
+                    isSelectedAsSource={selectedSource?.id === place.id && selectedSource?.type === 'places'}
+                    onSelectAsSource={() => onSelectSource?.({ id: place.id, type: 'places', name: place.name })}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full">
       {/* Vertical Tool Strip */}
