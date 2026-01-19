@@ -162,11 +162,13 @@ export function EditEntityDialog({
         data?.forEach(ent => {
           const entData = ent.data as Record<string, unknown>;
           let name = 'Unknown';
-          if (ent.entity_type === 'people' || ent.entity_type === 'places') {
+          // Handle both singular (from DB) and plural (from context) entity types
+          const entityType = ent.entity_type?.toLowerCase();
+          if (entityType === 'people' || entityType === 'person' || entityType === 'places' || entityType === 'place') {
             name = (entData?.name as string) || 'Unknown';
-          } else if (ent.entity_type === 'dates') {
+          } else if (entityType === 'dates' || entityType === 'date') {
             name = (entData?.rawText as string) || 'Unknown Date';
-          } else if (ent.entity_type === 'terms') {
+          } else if (entityType === 'terms' || entityType === 'term') {
             name = (entData?.term as string) || 'Unknown Term';
           }
           entities[ent.id] = { id: ent.id, name, type: ent.entity_type };
