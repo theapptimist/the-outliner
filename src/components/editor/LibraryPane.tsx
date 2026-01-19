@@ -1481,16 +1481,35 @@ function EntityCard({
     >
       {/* Header */}
       <div className="flex items-start gap-1.5 px-2 py-1.5 min-w-0">
-        <button
-          onClick={onToggleExpand}
-          className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3" />
-          ) : (
-            <ChevronRight className="h-3 w-3" />
-          )}
-        </button>
+        {/* Radio indicator for linking mode */}
+        {linkingMode ? (
+          <div className="shrink-0 mt-0.5">
+            <div className={cn(
+              "h-4 w-4 rounded-full border-2 flex items-center justify-center transition-colors",
+              isSelectedAsSource 
+                ? "border-primary bg-primary" 
+                : "border-muted-foreground/50 hover:border-primary/50"
+            )}>
+              {isSelectedAsSource && (
+                <div className="h-2 w-2 rounded-full bg-primary-foreground" />
+              )}
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand();
+            }}
+            className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+          </button>
+        )}
 
         <div className="flex items-center gap-1 shrink-0">
           <Icon className={cn("h-3.5 w-3.5", iconColor)} />
