@@ -511,47 +511,45 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
                 <div
                   key={taggedDate.id}
                   className={cn(
-                    "border rounded-md p-2 bg-card transition-colors",
+                    "border rounded-lg p-3 bg-card transition-colors shadow-sm",
                     isHighlighted && "border-blue-500/50 bg-blue-500/5"
                   )}
                 >
-                  {/* Header row */}
-                  <div className="flex items-center gap-1.5">
-                    {/* Expand toggle */}
-                    <button
-                      onClick={() => toggleExpanded(taggedDate.id)}
-                      className="text-muted-foreground hover:text-foreground shrink-0"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      )}
-                    </button>
+                  {/* Primary content: Description or rawText as main focus */}
+                  <div className="mb-2">
+                    {taggedDate.description ? (
+                      <p className="text-sm font-medium text-foreground leading-snug break-words">
+                        {taggedDate.description}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-foreground leading-snug break-words">
+                        "{taggedDate.rawText}"
+                      </p>
+                    )}
+                  </div>
 
-                    {/* Date icon */}
-                    <Calendar className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-
-                    {/* Date display */}
-                    <span className="text-xs font-medium truncate flex-1">
+                  {/* Secondary row: formatted date + usage count */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-3.5 w-3.5 text-info shrink-0" />
+                    <span className="text-xs font-medium text-info">
                       {formatDateForDisplay(taggedDate.date)}
                     </span>
-
-                    {/* Usage count */}
                     {usageCount > 0 && (
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        {usageCount}
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-auto">
+                        {usageCount} usage{usageCount !== 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
 
-                  {/* Raw text */}
-                  <div className="ml-6 mt-0.5 text-[11px] text-muted-foreground truncate">
-                    "{taggedDate.rawText}"
-                  </div>
+                  {/* Show rawText as tertiary if description exists */}
+                  {taggedDate.description && (
+                    <div className="text-xs text-muted-foreground italic mb-2 break-words">
+                      "{taggedDate.rawText}"
+                    </div>
+                  )}
 
-                  {/* Tool strip */}
-                  <div className="ml-6 mt-1.5 flex items-center gap-0.5">
+                  {/* Tool strip + expand toggle */}
+                  <div className="flex items-center gap-0.5 pt-1 border-t border-border/50">
                     <TooltipProvider delayDuration={300}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -607,37 +605,53 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
                           {isInspected ? 'Hide usages' : 'View usages'}
                         </TooltipContent>
                       </Tooltip>
+
+                      {/* Expand toggle for usages */}
+                      {taggedDate.usages.length > 0 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              data-allow-pointer
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleExpanded(taggedDate.id)}
+                              className="h-6 w-6 p-0 ml-auto"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-3 w-3" />
+                              ) : (
+                                <ChevronRight className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isExpanded ? 'Hide locations' : 'Show locations'}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </TooltipProvider>
                   </div>
 
-                  {/* Expanded content */}
-                  {isExpanded && (
-                    <div className="ml-6 mt-2 space-y-2">
-                      {taggedDate.description && (
-                        <div className="text-xs text-muted-foreground">
-                          {taggedDate.description}
-                        </div>
-                      )}
-
-                      {taggedDate.usages.length > 0 && (
-                        <div className="text-[11px] space-y-0.5">
-                          <div className="text-muted-foreground font-medium">Locations:</div>
-                          {taggedDate.usages.slice(0, 5).map((usage, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-muted-foreground">
-                              <span className="font-mono">{usage.nodePrefix}</span>
-                              <span className="truncate">{usage.nodeLabel}</span>
-                              {usage.count > 1 && (
-                                <span className="text-[10px]">×{usage.count}</span>
-                              )}
-                            </div>
-                          ))}
-                          {taggedDate.usages.length > 5 && (
-                            <div className="text-muted-foreground">
-                              +{taggedDate.usages.length - 5} more...
-                            </div>
-                          )}
-                        </div>
-                      )}
+                  {/* Expanded content: location usages only */}
+                  {isExpanded && taggedDate.usages.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-border/30">
+                      <div className="text-[11px] space-y-0.5">
+                        <div className="text-muted-foreground font-medium mb-1">Locations:</div>
+                        {taggedDate.usages.slice(0, 5).map((usage, i) => (
+                          <div key={i} className="flex items-center gap-1.5 text-muted-foreground">
+                            <span className="font-mono text-[10px]">{usage.nodePrefix}</span>
+                            <span className="truncate text-xs">{usage.nodeLabel}</span>
+                            {usage.count > 1 && (
+                              <span className="text-[10px]">×{usage.count}</span>
+                            )}
+                          </div>
+                        ))}
+                        {taggedDate.usages.length > 5 && (
+                          <div className="text-muted-foreground text-[10px]">
+                            +{taggedDate.usages.length - 5} more...
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
