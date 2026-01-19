@@ -1380,30 +1380,6 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   }}
                 />
 
-                {node.linkedDocumentId ? (
-                  <button
-                    type="button"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => {
-                      toast({ title: 'Opening linked document…' });
-                      onNavigateToLinkedDocument?.(node.linkedDocumentId!, node.linkedDocumentTitle || '');
-                    }}
-                    aria-label="Open linked document"
-                  >
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground"
-                    onClick={() => {
-                      toast({ title: 'Link not connected', description: 'Select a document to link to.' });
-                      onRequestRelink?.(node.id);
-                    }}
-                  >
-                    (relink)
-                  </button>
-                )}
               </div>
             ) : (() => {
               const isEditing = editingId === node.id;
