@@ -123,6 +123,11 @@ export function LibraryPane({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<EditableEntity | null>(null);
   
+  // Debug logging for edit dialog state
+  useEffect(() => {
+    console.log('[LibraryPane] editDialogOpen changed:', editDialogOpen, 'editingEntity:', editingEntity);
+  }, [editDialogOpen, editingEntity]);
+  
   const { toast } = useToast();
 
   // In master mode, use the persisted entity tab from NavigationContext
@@ -680,7 +685,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => { setEditingEntity({ id: term.id, type: 'terms', term: term.term, definition: term.definition }); setEditDialogOpen(true); }}
+                      onEdit={() => { console.log('[LinkingMode] onEdit called for term:', term.id); setEditingEntity({ id: term.id, type: 'terms', term: term.term, definition: term.definition }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={term.usages}
                       linkingMode
@@ -712,7 +717,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => { setEditingEntity({ id: date.id, type: 'dates', date: date.date, rawText: date.rawText, description: date.description }); setEditDialogOpen(true); }}
+                      onEdit={() => { console.log('[LinkingMode] onEdit called for date:', date.id); setEditingEntity({ id: date.id, type: 'dates', date: date.date, rawText: date.rawText, description: date.description }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={date.usages}
                       linkingMode
@@ -744,7 +749,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => { setEditingEntity({ id: person.id, type: 'people', name: person.name, role: person.role, description: person.description }); setEditDialogOpen(true); }}
+                      onEdit={() => { console.log('[LinkingMode] onEdit called for person:', person.id); setEditingEntity({ id: person.id, type: 'people', name: person.name, role: person.role, description: person.description }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={person.usages}
                       linkingMode
@@ -775,7 +780,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
-                      onEdit={() => { setEditingEntity({ id: place.id, type: 'places', name: place.name, significance: place.significance }); setEditDialogOpen(true); }}
+                      onEdit={() => { console.log('[LinkingMode] onEdit called for place:', place.id); setEditingEntity({ id: place.id, type: 'places', name: place.name, significance: place.significance }); setEditDialogOpen(true); }}
                       onDelete={() => {}}
                       usages={place.usages}
                       linkingMode
@@ -1925,21 +1930,42 @@ function EntityCard({
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem 
                 data-allow-pointer
-                onSelect={(e) => { e.preventDefault(); setTimeout(() => onEdit(), 0); }}
+                onSelect={(e) => { 
+                  console.log('[EntityCard] Edit onSelect fired', { defaultPrevented: e.defaultPrevented, linkingMode });
+                  e.preventDefault(); 
+                  setTimeout(() => {
+                    console.log('[EntityCard] Edit setTimeout executing, calling onEdit()');
+                    onEdit(); 
+                  }, 0); 
+                }}
               >
                 <Pencil className="h-3.5 w-3.5 mr-2" />
                 Edit...
               </DropdownMenuItem>
               <DropdownMenuItem 
                 data-allow-pointer
-                onSelect={(e) => { e.preventDefault(); setTimeout(() => onLink(), 0); }}
+                onSelect={(e) => { 
+                  console.log('[EntityCard] Link onSelect fired');
+                  e.preventDefault(); 
+                  setTimeout(() => {
+                    console.log('[EntityCard] Link setTimeout executing');
+                    onLink(); 
+                  }, 0); 
+                }}
               >
                 <Link2 className="h-3.5 w-3.5 mr-2" />
                 Link entity...
               </DropdownMenuItem>
               <DropdownMenuItem 
                 data-allow-pointer
-                onSelect={(e) => { e.preventDefault(); setTimeout(() => onMerge(), 0); }}
+                onSelect={(e) => { 
+                  console.log('[EntityCard] Merge onSelect fired');
+                  e.preventDefault(); 
+                  setTimeout(() => {
+                    console.log('[EntityCard] Merge setTimeout executing');
+                    onMerge(); 
+                  }, 0); 
+                }}
               >
                 <Merge className="h-3.5 w-3.5 mr-2" />
                 Merge with...
@@ -1947,7 +1973,14 @@ function EntityCard({
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 data-allow-pointer
-                onSelect={(e) => { e.preventDefault(); setTimeout(() => onDelete(), 0); }} 
+                onSelect={(e) => { 
+                  console.log('[EntityCard] Delete onSelect fired');
+                  e.preventDefault(); 
+                  setTimeout(() => {
+                    console.log('[EntityCard] Delete setTimeout executing');
+                    onDelete(); 
+                  }, 0); 
+                }} 
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-2" />
