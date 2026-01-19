@@ -1395,15 +1395,15 @@ function EntityCard({
   return (
     <div
       className={cn(
-        "rounded-md border border-border/50 bg-card/50 overflow-hidden",
+        "rounded-md border border-border bg-card/50 overflow-hidden min-w-0",
         isHighlighted && "ring-1 ring-amber-500/50"
       )}
     >
       {/* Header */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5">
+      <div className="flex items-start gap-1.5 px-2 py-1.5 min-w-0">
         <button
           onClick={onToggleExpand}
-          className="text-muted-foreground hover:text-foreground shrink-0"
+          className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
         >
           {isExpanded ? (
             <ChevronDown className="h-3 w-3" />
@@ -1421,11 +1421,11 @@ function EntityCard({
           )}
         </div>
 
-        <span className="text-xs font-medium truncate flex-1">{title}</span>
+        <span className="text-xs font-medium flex-1 min-w-0 break-words">{title}</span>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between px-2 pb-1.5">
+      <div className="flex items-center justify-between px-2 pb-1.5 gap-1">
         <div className="flex items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1565,12 +1565,12 @@ function AggregatedEntityCard({
   onToggleExpand,
 }: AggregatedEntityCardProps) {
   return (
-    <div className="rounded-md border border-border/50 bg-card/50 overflow-hidden">
+    <div className="rounded-md border border-border bg-card/50 overflow-hidden min-w-0">
       {/* Header */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5">
+      <div className="flex items-start gap-1.5 px-2 py-1.5 min-w-0">
         <button
           onClick={onToggleExpand}
-          className="text-muted-foreground hover:text-foreground shrink-0"
+          className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
         >
           {isExpanded ? (
             <ChevronDown className="h-3 w-3" />
@@ -1588,13 +1588,13 @@ function AggregatedEntityCard({
           )}
         </div>
 
-        <span className="text-xs font-medium truncate flex-1">{title}</span>
+        <span className="text-xs font-medium flex-1 min-w-0 break-words">{title}</span>
       </div>
 
       {/* Source indicator */}
-      <div className="flex items-center gap-1 px-2 pb-1.5">
-        <FileText className="h-3 w-3 text-muted-foreground" />
-        <span className="text-[10px] text-muted-foreground truncate">{sourceDocTitle}</span>
+      <div className="flex items-center gap-1 px-2 pb-1.5 min-w-0">
+        <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+        <span className="text-[10px] text-muted-foreground break-words min-w-0">{sourceDocTitle}</span>
       </div>
 
       {/* Expanded content */}
