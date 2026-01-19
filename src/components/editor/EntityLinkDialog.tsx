@@ -38,7 +38,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { loadAllUserEntities, EntityWithDocument } from '@/lib/cloudEntityQueries';
 import { createEntityLink, areEntitiesLinked } from '@/lib/cloudEntityLinkStorage';
-import { createEntityRelationship, COMMON_RELATIONSHIP_TYPES } from '@/lib/cloudEntityRelationshipStorage';
+import { createEntityRelationship, COMMON_RELATIONSHIP_TYPES, getUserRelationshipTypes } from '@/lib/cloudEntityRelationshipStorage';
 import { EntityType } from '@/lib/cloudEntityStorage';
 import { useToast } from '@/hooks/use-toast';
 
@@ -99,8 +99,17 @@ export function EntityLinkDialog({
   const [relationshipDescription, setRelationshipDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alreadyLinked, setAlreadyLinked] = useState<Set<string>>(new Set());
+  const [userRelationshipTypes, setUserRelationshipTypes] = useState<string[]>([]);
 
   const dbEntityType = ENTITY_TYPE_MAP[entityType];
+
+  // Compute combined relationship types (common + user's custom types)
+  const allRelationshipTypes: string[] = [...COMMON_RELATIONSHIP_TYPES];
+  userRelationshipTypes.forEach(type => {
+    if (!allRelationshipTypes.includes(type)) {
+      allRelationshipTypes.push(type);
+    }
+  });
 
   // Load candidates when dialog opens
   useEffect(() => {
@@ -132,6 +141,10 @@ export function EntityLinkDialog({
           if (isLinked) linkedSet.add(candidate.id);
         }
         setAlreadyLinked(linkedSet);
+
+        // Load user's custom relationship types
+        const customTypes = await getUserRelationshipTypes(user.id);
+        setUserRelationshipTypes(customTypes);
       } catch (error) {
         console.error('Failed to load candidates:', error);
       } finally {
@@ -387,7 +400,7 @@ export function EntityLinkDialog({
                   <SelectValue placeholder="Select relationship type..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {COMMON_RELATIONSHIP_TYPES.map((type) => (
+                  {allRelationshipTypes.map((type) => (
                     <SelectItem key={type} value={type}>
                       {type}
                     </SelectItem>

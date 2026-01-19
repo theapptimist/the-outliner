@@ -631,6 +631,7 @@ export function LibraryPane({
                       icon={Quote}
                       iconColor="text-amber-500"
                       usageCount={term.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      relationshipCount={relationshipCounts[term.id] || 0}
                       isHighlighted={false}
                       isInspected={false}
                       isExpanded={false}
@@ -661,6 +662,7 @@ export function LibraryPane({
                       icon={Calendar}
                       iconColor="text-blue-500"
                       usageCount={date.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      relationshipCount={relationshipCounts[date.id] || 0}
                       isHighlighted={false}
                       isInspected={false}
                       isExpanded={false}
@@ -691,6 +693,7 @@ export function LibraryPane({
                       icon={User}
                       iconColor="text-purple-500"
                       usageCount={person.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      relationshipCount={relationshipCounts[person.id] || 0}
                       isHighlighted={false}
                       isInspected={false}
                       isExpanded={false}
@@ -720,6 +723,7 @@ export function LibraryPane({
                       icon={MapPin}
                       iconColor="text-green-500"
                       usageCount={place.usages.reduce((sum: number, u: any) => sum + u.count, 0)}
+                      relationshipCount={relationshipCounts[place.id] || 0}
                       isHighlighted={false}
                       isInspected={false}
                       isExpanded={false}
