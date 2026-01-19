@@ -113,8 +113,6 @@ export function LibraryPane({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [capturedSelection, setCapturedSelection] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const hasAutoExpandedDatesRef = useRef<string | null>(null);
-  const prevActiveTabRef = useRef<EntityTab | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
@@ -210,51 +208,6 @@ export function LibraryPane({
   const { document: currentDocument } = useDocumentContext();
   const documentId = currentDocument?.meta?.id || '';
 
-  // Auto-expand all dates when viewing the Dates tab
-  const datesContextKey = shouldAggregate 
-    ? `master:${activeSubOutlineId ?? 'all'}` 
-    : `doc:${documentId}`;
-  
-  useEffect(() => {
-    // Track previous tab for detecting tab switches
-    const justSwitchedToTab = activeTab === 'dates' && prevActiveTabRef.current !== 'dates';
-    prevActiveTabRef.current = activeTab;
-    
-    if (activeTab !== 'dates') return;
-    
-    // Get current date IDs
-    const currentDates = shouldAggregate ? aggregatedDates : dates;
-    const dateIds = currentDates.map(d => d.id);
-    
-    // Force expand if we just switched to the dates tab or context changed
-    const contextChanged = hasAutoExpandedDatesRef.current !== datesContextKey;
-    
-    if (justSwitchedToTab || contextChanged) {
-      setExpandedItems(new Set(dateIds));
-      hasAutoExpandedDatesRef.current = datesContextKey;
-    } else {
-      // Add any new dates that were added
-      setExpandedItems(prev => {
-        const next = new Set(prev);
-        dateIds.forEach(id => next.add(id));
-        return next;
-      });
-    }
-  }, [activeTab, datesContextKey, shouldAggregate, aggregatedDates, dates]);
-
-  // Fallback: handle late-loading dates (async fetch race condition)
-  useEffect(() => {
-    if (activeTab !== 'dates') return;
-    
-    const currentDates = shouldAggregate ? aggregatedDates : dates;
-    if (currentDates.length === 0) return; // Still loading
-    
-    // If we're on dates tab and no items are expanded, force expand all
-    if (expandedItems.size === 0) {
-      const dateIds = currentDates.map(d => d.id);
-      setExpandedItems(new Set(dateIds));
-    }
-  }, [activeTab, shouldAggregate, aggregatedDates, dates, expandedItems.size]);
 
   // Entity suggestions from AI scan
   const entitySuggestions = useEntitySuggestions({
@@ -1462,8 +1415,9 @@ export function LibraryPane({
                       usageCount={date.usages.reduce((sum, u) => sum + u.count, 0)}
                       isHighlighted={dateHighlightMode === 'selected' && highlightedDate?.id === date.id}
                       isInspected={inspectedDate?.id === date.id}
-                      isExpanded={expandedItems.has(date.id)}
-                      onToggleExpand={() => toggleExpand(date.id)}
+                      isExpanded={true}
+                      onToggleExpand={() => {}}
+                      alwaysExpanded={true}
                       onInsert={() => insertTextAtCursor?.(date.rawText)}
                       onHighlight={() => {
                         if (dateHighlightMode === 'selected' && highlightedDate?.id === date.id) {
@@ -1835,6 +1789,8 @@ interface EntityCardProps {
   entityType?: 'people' | 'places' | 'dates' | 'terms';
   // Relationship indicator
   relationshipCount?: number;
+  // Force always expanded (no chevron toggle)
+  alwaysExpanded?: boolean;
 }
 
 function EntityCard({
@@ -1862,7 +1818,10 @@ function EntityCard({
   onSelectAsSource,
   entityType,
   relationshipCount = 0,
+  alwaysExpanded = false,
 }: EntityCardProps) {
+  // If alwaysExpanded is true, always show content
+  const showExpanded = alwaysExpanded || isExpanded;
   return (
     <div
       className={cn(
@@ -1877,7 +1836,7 @@ function EntityCard({
     >
       {/* Header */}
       <div className="flex items-start gap-1.5 px-2 py-1.5 min-w-0">
-        {!linkingMode && (
+        {!linkingMode && !alwaysExpanded && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -2050,7 +2009,7 @@ function EntityCard({
       </div>
 
       {/* Expanded content */}
-      {isExpanded && (
+      {showExpanded && (
         <div className="px-2 pb-2 pt-1 border-t border-border/30 space-y-1">
           {subtitle && (
             <p className="text-[10px] text-muted-foreground">{subtitle}</p>
