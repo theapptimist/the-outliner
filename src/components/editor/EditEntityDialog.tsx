@@ -12,9 +12,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { User, MapPin, Calendar as CalendarIcon, Quote, Pencil } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { User, MapPin, Calendar as CalendarIcon, Quote, Pencil, Link2, Trash2, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDateForDisplay } from '@/lib/dateScanner';
+import { useEntityRelationships } from '@/hooks/useEntityRelationships';
+import { deleteEntityRelationship, EntityRelationship } from '@/lib/cloudEntityRelationshipStorage';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export type EntityType = 'people' | 'places' | 'dates' | 'terms';
 
@@ -35,11 +41,18 @@ export interface EditableEntity {
   definition?: string;
 }
 
+interface EntityInfo {
+  id: string;
+  name: string;
+  type: string;
+}
+
 interface EditEntityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entity: EditableEntity | null;
   onSave: (entity: EditableEntity) => void;
+  onRelationshipDeleted?: () => void;
 }
 
 export function EditEntityDialog({
@@ -47,7 +60,10 @@ export function EditEntityDialog({
   onOpenChange,
   entity,
   onSave,
+  onRelationshipDeleted,
 }: EditEntityDialogProps) {
+  const { toast } = useToast();
+  
   // Person/Place name
   const [name, setName] = useState('');
   // Person role
@@ -63,6 +79,12 @@ export function EditEntityDialog({
   // Term fields
   const [term, setTerm] = useState('');
   const [definition, setDefinition] = useState('');
+  
+  // Relationships
+  const { relationships, loading: loadingRelationships, refresh: refreshRelationships } = useEntityRelationships(open ? entity?.id ?? null : null);
+  const [relatedEntities, setRelatedEntities] = useState<Record<string, EntityInfo>>({});
+  const [loadingEntities, setLoadingEntities] = useState(false);
+  const [deletingRelationship, setDeletingRelationship] = useState<string | null>(null);
 
   // Reset and prefill when dialog opens or entity changes
   useEffect(() => {
@@ -84,6 +106,101 @@ export function EditEntityDialog({
       }
     }
   }, [open, entity]);
+
+  // Fetch entity details for relationships
+  useEffect(() => {
+    if (!open || relationships.length === 0) {
+      setRelatedEntities({});
+      return;
+    }
+
+    const fetchEntityInfo = async () => {
+      setLoadingEntities(true);
+      const entityIds = new Set<string>();
+      
+      relationships.forEach(rel => {
+        if (rel.source_entity_id !== entity?.id) entityIds.add(rel.source_entity_id);
+        if (rel.target_entity_id !== entity?.id) entityIds.add(rel.target_entity_id);
+      });
+
+      if (entityIds.size === 0) {
+        setLoadingEntities(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('document_entities')
+          .select('id, entity_type, data')
+          .in('id', Array.from(entityIds));
+
+        if (error) throw error;
+
+        const entities: Record<string, EntityInfo> = {};
+        data?.forEach(ent => {
+          const entData = ent.data as Record<string, unknown>;
+          let name = 'Unknown';
+          if (ent.entity_type === 'people' || ent.entity_type === 'places') {
+            name = (entData?.name as string) || 'Unknown';
+          } else if (ent.entity_type === 'dates') {
+            name = (entData?.rawText as string) || 'Unknown Date';
+          } else if (ent.entity_type === 'terms') {
+            name = (entData?.term as string) || 'Unknown Term';
+          }
+          entities[ent.id] = { id: ent.id, name, type: ent.entity_type };
+        });
+        setRelatedEntities(entities);
+      } catch (error) {
+        console.error('Failed to fetch entity info:', error);
+      } finally {
+        setLoadingEntities(false);
+      }
+    };
+
+    fetchEntityInfo();
+  }, [open, relationships, entity?.id]);
+
+  const handleDeleteRelationship = async (relationshipId: string) => {
+    setDeletingRelationship(relationshipId);
+    try {
+      const success = await deleteEntityRelationship(relationshipId);
+      if (success) {
+        toast({ title: 'Relationship removed' });
+        refreshRelationships();
+        onRelationshipDeleted?.();
+      } else {
+        toast({ title: 'Failed to remove relationship', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Failed to delete relationship:', error);
+      toast({ title: 'Failed to remove relationship', variant: 'destructive' });
+    } finally {
+      setDeletingRelationship(null);
+    }
+  };
+
+  const getRelationshipDisplay = (rel: EntityRelationship) => {
+    const isSource = rel.source_entity_id === entity?.id;
+    const otherEntityId = isSource ? rel.target_entity_id : rel.source_entity_id;
+    const otherEntity = relatedEntities[otherEntityId];
+    
+    return {
+      direction: isSource ? 'outgoing' : 'incoming',
+      relationshipType: rel.relationship_type,
+      otherEntity: otherEntity || { id: otherEntityId, name: 'Loading...', type: 'unknown' },
+      description: rel.description,
+    };
+  };
+
+  const getEntityIcon = (type: string) => {
+    switch (type) {
+      case 'people': return <User className="h-3 w-3 text-purple-500" />;
+      case 'places': return <MapPin className="h-3 w-3 text-green-500" />;
+      case 'dates': return <CalendarIcon className="h-3 w-3 text-blue-500" />;
+      case 'terms': return <Quote className="h-3 w-3 text-amber-500" />;
+      default: return null;
+    }
+  };
 
   const handleSave = () => {
     if (!entity) return;
@@ -150,162 +267,226 @@ export function EditEntityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md overflow-hidden">
-        <DialogHeader className="overflow-hidden">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="overflow-hidden flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             {getIcon()}
             {getTitle()}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Person fields */}
-          {entity?.type === 'people' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Harold Norse"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role (optional)</Label>
-                <Input
-                  id="role"
-                  placeholder="e.g., poet, friend, publisher"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (optional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Brief bio or relationship note..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="resize-none"
-                  rows={3}
-                />
-              </div>
-            </>
-          )}
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-4 py-4">
+            {/* Person fields */}
+            {entity?.type === 'people' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Harold Norse"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role (optional)</Label>
+                  <Input
+                    id="role"
+                    placeholder="e.g., poet, friend, publisher"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (optional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Brief bio or relationship note..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="resize-none"
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
 
-          {/* Place fields */}
-          {entity?.type === 'places' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Beat Hotel"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="significance">Significance (optional)</Label>
-                <Textarea
-                  id="significance"
-                  placeholder="Why this place is important..."
-                  value={significance}
-                  onChange={(e) => setSignificance(e.target.value)}
-                  className="resize-none"
-                  rows={3}
-                />
-              </div>
-            </>
-          )}
+            {/* Place fields */}
+            {entity?.type === 'places' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Beat Hotel"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="significance">Significance (optional)</Label>
+                  <Textarea
+                    id="significance"
+                    placeholder="Why this place is important..."
+                    value={significance}
+                    onChange={(e) => setSignificance(e.target.value)}
+                    className="resize-none"
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
 
-          {/* Date fields */}
-          {entity?.type === 'dates' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="rawText">Date Text</Label>
-                <Input
-                  id="rawText"
-                  placeholder="e.g., Spring 1959"
-                  value={rawText}
-                  onChange={(e) => setRawText(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Normalized Date</Label>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !selectedDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate ? formatDateForDisplay(selectedDate) : "Select a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(date) => {
-                        setSelectedDate(date);
-                        setCalendarOpen(false);
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (optional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Context or notes about this date..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="resize-none"
-                  rows={3}
-                />
-              </div>
-            </>
-          )}
+            {/* Date fields */}
+            {entity?.type === 'dates' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="rawText">Date Text</Label>
+                  <Input
+                    id="rawText"
+                    placeholder="e.g., Spring 1959"
+                    value={rawText}
+                    onChange={(e) => setRawText(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Normalized Date</Label>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? formatDateForDisplay(selectedDate) : "Select a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date);
+                          setCalendarOpen(false);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (optional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Context or notes about this date..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="resize-none"
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
 
-          {/* Term fields */}
-          {entity?.type === 'terms' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="term">Term</Label>
-                <Input
-                  id="term"
-                  placeholder="e.g., Beat Generation"
-                  value={term}
-                  onChange={(e) => setTerm(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="definition">Definition</Label>
-                <Textarea
-                  id="definition"
-                  placeholder="Definition or explanation..."
-                  value={definition}
-                  onChange={(e) => setDefinition(e.target.value)}
-                  className="resize-none"
-                  rows={4}
-                />
-              </div>
-            </>
-          )}
-        </div>
+            {/* Term fields */}
+            {entity?.type === 'terms' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="term">Term</Label>
+                  <Input
+                    id="term"
+                    placeholder="e.g., Beat Generation"
+                    value={term}
+                    onChange={(e) => setTerm(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="definition">Definition</Label>
+                  <Textarea
+                    id="definition"
+                    placeholder="Definition or explanation..."
+                    value={definition}
+                    onChange={(e) => setDefinition(e.target.value)}
+                    className="resize-none"
+                    rows={4}
+                  />
+                </div>
+              </>
+            )}
 
-        <DialogFooter>
+            {/* Relationships Section */}
+            <Separator className="my-4" />
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Relationships</Label>
+                {loadingRelationships && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </div>
+
+              {relationships.length === 0 && !loadingRelationships ? (
+                <p className="text-sm text-muted-foreground italic">No relationships defined</p>
+              ) : (
+                <div className="space-y-2">
+                  {relationships.map((rel) => {
+                    const display = getRelationshipDisplay(rel);
+                    return (
+                      <div
+                        key={rel.id}
+                        className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50 border border-border"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {display.direction === 'outgoing' ? (
+                            <>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">{display.relationshipType}</span>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <div className="flex items-center gap-1 min-w-0">
+                                {getEntityIcon(display.otherEntity.type)}
+                                <span className="text-sm truncate">{display.otherEntity.name}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-1 min-w-0">
+                                {getEntityIcon(display.otherEntity.type)}
+                                <span className="text-sm truncate">{display.otherEntity.name}</span>
+                              </div>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">{display.relationshipType}</span>
+                            </>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteRelationship(rel.id)}
+                          disabled={deletingRelationship === rel.id}
+                        >
+                          {deletingRelationship === rel.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="flex-shrink-0 pt-4 border-t">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
