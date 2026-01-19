@@ -795,6 +795,15 @@ export function LibraryPane({
             )}
           </div>
         </ScrollArea>
+
+        {/* Edit Entity Dialog - also needed in linking mode */}
+        <EditEntityDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          entity={editingEntity}
+          onSave={handleEditSave}
+          onRelationshipDeleted={refreshRelationshipCounts}
+        />
       </div>
     );
   }
