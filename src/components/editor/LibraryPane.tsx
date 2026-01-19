@@ -518,7 +518,6 @@ export function LibraryPane({
       <div className="flex flex-col h-full">
         {/* Header - matches TargetEntityPane style */}
         <div className="px-3 py-2 border-b border-border/30 bg-muted/20">
-          <div className="text-xs font-medium text-muted-foreground mb-2">Select Source</div>
           
           {/* Entity type filter tabs */}
           <div className="flex gap-1 mb-2">
