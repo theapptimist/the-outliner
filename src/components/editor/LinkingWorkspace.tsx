@@ -136,7 +136,7 @@ export function LinkingWorkspace({ onClose, selectedText }: LinkingWorkspaceProp
   const canGroup = selectedSource && selectedTargets.length > 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-allow-pointer>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/30">
         <div className="flex items-center gap-2">
