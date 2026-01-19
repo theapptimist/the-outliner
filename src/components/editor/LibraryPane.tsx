@@ -21,6 +21,7 @@ import {
   Link2,
   Maximize2,
   Minimize2,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,7 @@ import { EntityUsagesPane } from './EntityUsagesPane';
 import { EntitySuggestionsDialog } from './EntitySuggestionsDialog';
 import { EntityMergeDialog } from './EntityMergeDialog';
 import { EntityLinkDialog } from './EntityLinkDialog';
+import { EditEntityDialog, EditableEntity } from './EditEntityDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 import { useDocumentContext } from './context';
 import { useEntityRelationshipCounts } from '@/hooks/useEntityRelationships';
@@ -118,6 +120,8 @@ export function LibraryPane({
   const [mergeSourceEntity, setMergeSourceEntity] = useState<{ id: string; title: string; subtitle?: string } | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkSourceEntity, setLinkSourceEntity] = useState<{ id: string; title: string; subtitle?: string; documentId: string } | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingEntity, setEditingEntity] = useState<EditableEntity | null>(null);
   
   const { toast } = useToast();
 
@@ -641,6 +645,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
+                      onEdit={() => {}}
                       onDelete={() => {}}
                       usages={term.usages}
                       linkingMode
@@ -672,6 +677,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
+                      onEdit={() => {}}
                       onDelete={() => {}}
                       usages={date.usages}
                       linkingMode
@@ -703,6 +709,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
+                      onEdit={() => {}}
                       onDelete={() => {}}
                       usages={person.usages}
                       linkingMode
@@ -733,6 +740,7 @@ export function LibraryPane({
                       onViewUsages={() => {}}
                       onMerge={() => {}}
                       onLink={() => {}}
+                      onEdit={() => {}}
                       onDelete={() => {}}
                       usages={place.usages}
                       linkingMode
@@ -1321,6 +1329,10 @@ export function LibraryPane({
                         setLinkSourceEntity({ id: term.id, title: term.term, subtitle: term.definition, documentId });
                         setLinkDialogOpen(true);
                       }}
+                      onEdit={() => {
+                        setEditingEntity({ id: term.id, type: 'terms', term: term.term, definition: term.definition });
+                        setEditDialogOpen(true);
+                      }}
                       onDelete={() => {
                         setTerms(prev => prev.filter(t => t.id !== term.id));
                         toast({ title: 'Term deleted' });
@@ -1372,6 +1384,10 @@ export function LibraryPane({
                       onLink={() => {
                         setLinkSourceEntity({ id: date.id, title: formatDateForDisplay(date.date), subtitle: date.rawText, documentId });
                         setLinkDialogOpen(true);
+                      }}
+                      onEdit={() => {
+                        setEditingEntity({ id: date.id, type: 'dates', date: date.date, rawText: date.rawText, description: date.description });
+                        setEditDialogOpen(true);
                       }}
                       onDelete={() => {
                         setDates(prev => prev.filter(d => d.id !== date.id));
@@ -1425,6 +1441,10 @@ export function LibraryPane({
                       onLink={() => {
                         setLinkSourceEntity({ id: person.id, title: person.name, subtitle: person.role, documentId });
                         setLinkDialogOpen(true);
+                      }}
+                      onEdit={() => {
+                        setEditingEntity({ id: person.id, type: 'people', name: person.name, role: person.role, description: person.description });
+                        setEditDialogOpen(true);
                       }}
                       onDelete={() => {
                         setPeople(prev => prev.filter(p => p.id !== person.id));
@@ -1693,6 +1713,7 @@ interface EntityCardProps {
   onViewUsages: () => void;
   onMerge: () => void;
   onLink: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   usages: { nodePrefix: string; nodeLabel: string; count: number }[];
   // Linking mode props
@@ -1721,6 +1742,7 @@ function EntityCard({
   onViewUsages,
   onMerge,
   onLink,
+  onEdit,
   onDelete,
   usages,
   linkingMode,
@@ -1849,6 +1871,10 @@ function EntityCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="h-3.5 w-3.5 mr-2" />
+                Edit...
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onLink}>
                 <Link2 className="h-3.5 w-3.5 mr-2" />
                 Link entity...
