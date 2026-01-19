@@ -516,42 +516,56 @@ export function LibraryPane({
   if (linkingMode) {
     return (
       <div className="flex flex-col h-full">
-        {/* Horizontal Entity Type Tabs */}
-        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30 bg-muted/20">
-          {tabs.map(tab => (
-            <Tooltip key={tab.id}>
+        {/* Header - matches TargetEntityPane style */}
+        <div className="px-3 py-2 border-b border-border/30 bg-muted/20">
+          <div className="text-xs font-medium text-muted-foreground mb-2">Select Source</div>
+          
+          {/* Entity type filter tabs */}
+          <div className="flex gap-1 mb-2">
+            <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => setActiveTab('terms')}
                   className={cn(
-                    "h-7 px-2 rounded flex items-center gap-1.5 transition-colors relative text-xs",
-                    activeTab === tab.id 
-                      ? "bg-accent/30 text-foreground" 
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    "px-2 py-1 text-xs rounded transition-colors",
+                    activeTab === 'terms' 
+                      ? "bg-accent text-accent-foreground" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
-                  <tab.icon className={cn("h-3.5 w-3.5", activeTab === tab.id ? tab.color : "")} />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  {getCount(tab.id) > 0 && (
-                    <span className="text-[10px] bg-muted px-1 rounded">
-                      {getCount(tab.id)}
-                    </span>
-                  )}
+                  All
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs sm:hidden">{tab.label}</TooltipContent>
+              <TooltipContent side="bottom" className="text-xs">All entity types</TooltipContent>
             </Tooltip>
-          ))}
-        </div>
+            
+            {tabs.map(tab => (
+              <Tooltip key={tab.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "p-1.5 rounded transition-colors",
+                      activeTab === tab.id 
+                        ? "bg-accent text-accent-foreground" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <tab.icon className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">{tab.label}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
 
-        {/* Search */}
-        <div className="px-2 py-1.5 border-b border-border/30">
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${activeTab}...`}
+              placeholder="Search sources..."
               className="h-7 pl-7 text-xs"
             />
           </div>
