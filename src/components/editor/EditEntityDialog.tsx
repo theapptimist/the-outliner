@@ -14,13 +14,15 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { User, MapPin, Calendar as CalendarIcon, Quote, Pencil, Link2, Trash2, ArrowRight, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { User, MapPin, Calendar as CalendarIcon, Quote, Pencil, Link2, Trash2, ArrowRight, Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 import { useEntityRelationships } from '@/hooks/useEntityRelationships';
-import { deleteEntityRelationship, EntityRelationship } from '@/lib/cloudEntityRelationshipStorage';
+import { deleteEntityRelationship, updateEntityRelationship, EntityRelationship, COMMON_RELATIONSHIP_TYPES, getUserRelationshipTypes } from '@/lib/cloudEntityRelationshipStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type EntityType = 'people' | 'places' | 'dates' | 'terms';
 
@@ -63,6 +65,7 @@ export function EditEntityDialog({
   onRelationshipDeleted,
 }: EditEntityDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // Person/Place name
   const [name, setName] = useState('');
@@ -85,6 +88,12 @@ export function EditEntityDialog({
   const [relatedEntities, setRelatedEntities] = useState<Record<string, EntityInfo>>({});
   const [loadingEntities, setLoadingEntities] = useState(false);
   const [deletingRelationship, setDeletingRelationship] = useState<string | null>(null);
+  
+  // Edit relationship state
+  const [editingRelationshipId, setEditingRelationshipId] = useState<string | null>(null);
+  const [editingRelationshipType, setEditingRelationshipType] = useState('');
+  const [savingRelationship, setSavingRelationship] = useState(false);
+  const [availableRelationshipTypes, setAvailableRelationshipTypes] = useState<string[]>([]);
 
   // Reset and prefill when dialog opens or entity changes
   useEffect(() => {
@@ -106,6 +115,19 @@ export function EditEntityDialog({
       }
     }
   }, [open, entity]);
+
+  // Load available relationship types
+  useEffect(() => {
+    if (!open || !user) return;
+    
+    const loadRelationshipTypes = async () => {
+      const userTypes = await getUserRelationshipTypes(user.id);
+      const allTypes = [...new Set([...COMMON_RELATIONSHIP_TYPES, ...userTypes])];
+      setAvailableRelationshipTypes(allTypes);
+    };
+    
+    loadRelationshipTypes();
+  }, [open, user]);
 
   // Fetch entity details for relationships
   useEffect(() => {
@@ -176,6 +198,41 @@ export function EditEntityDialog({
       toast({ title: 'Failed to remove relationship', variant: 'destructive' });
     } finally {
       setDeletingRelationship(null);
+    }
+  };
+
+  const handleStartEditRelationship = (rel: EntityRelationship) => {
+    setEditingRelationshipId(rel.id);
+    setEditingRelationshipType(rel.relationship_type);
+  };
+
+  const handleCancelEditRelationship = () => {
+    setEditingRelationshipId(null);
+    setEditingRelationshipType('');
+  };
+
+  const handleSaveRelationship = async (relationshipId: string) => {
+    if (!editingRelationshipType.trim()) return;
+    
+    setSavingRelationship(true);
+    try {
+      const updated = await updateEntityRelationship(relationshipId, {
+        relationship_type: editingRelationshipType.trim(),
+      });
+      
+      if (updated) {
+        toast({ title: 'Relationship updated' });
+        refreshRelationships();
+        setEditingRelationshipId(null);
+        setEditingRelationshipType('');
+      } else {
+        toast({ title: 'Failed to update relationship', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Failed to update relationship:', error);
+      toast({ title: 'Failed to update relationship', variant: 'destructive' });
+    } finally {
+      setSavingRelationship(false);
     }
   };
 
@@ -438,45 +495,108 @@ export function EditEntityDialog({
                 <div className="space-y-2">
                   {relationships.map((rel) => {
                     const display = getRelationshipDisplay(rel);
+                    const isEditing = editingRelationshipId === rel.id;
+                    
                     return (
                       <div
                         key={rel.id}
                         className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50 border border-border"
                       >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {display.direction === 'outgoing' ? (
+                        {isEditing ? (
+                          // Edit mode
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <Select
+                              value={editingRelationshipType}
+                              onValueChange={setEditingRelationshipType}
+                            >
+                              <SelectTrigger className="h-7 text-xs w-[140px]">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableRelationshipTypes.map((type) => (
+                                  <SelectItem key={type} value={type} className="text-xs">
+                                    {type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <div className="flex items-center gap-1 min-w-0">
+                              {getEntityIcon(display.otherEntity.type)}
+                              <span className="text-sm truncate">{display.otherEntity.name}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          // View mode - clickable to edit
+                          <button
+                            className="flex items-center gap-2 min-w-0 flex-1 text-left hover:bg-muted/50 rounded -m-1 p-1 transition-colors"
+                            onClick={() => handleStartEditRelationship(rel)}
+                            title="Click to edit relationship type"
+                          >
+                            {display.direction === 'outgoing' ? (
+                              <>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap underline decoration-dashed underline-offset-2">{display.relationshipType}</span>
+                                <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <div className="flex items-center gap-1 min-w-0">
+                                  {getEntityIcon(display.otherEntity.type)}
+                                  <span className="text-sm truncate">{display.otherEntity.name}</span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-1 min-w-0">
+                                  {getEntityIcon(display.otherEntity.type)}
+                                  <span className="text-sm truncate">{display.otherEntity.name}</span>
+                                </div>
+                                <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <span className="text-xs text-muted-foreground whitespace-nowrap underline decoration-dashed underline-offset-2">{display.relationshipType}</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                        
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {isEditing ? (
                             <>
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">{display.relationshipType}</span>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <div className="flex items-center gap-1 min-w-0">
-                                {getEntityIcon(display.otherEntity.type)}
-                                <span className="text-sm truncate">{display.otherEntity.name}</span>
-                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                onClick={() => handleSaveRelationship(rel.id)}
+                                disabled={savingRelationship || !editingRelationshipType.trim()}
+                              >
+                                {savingRelationship ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Check className="h-3 w-3" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                onClick={handleCancelEditRelationship}
+                                disabled={savingRelationship}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
                             </>
                           ) : (
-                            <>
-                              <div className="flex items-center gap-1 min-w-0">
-                                {getEntityIcon(display.otherEntity.type)}
-                                <span className="text-sm truncate">{display.otherEntity.name}</span>
-                              </div>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">{display.relationshipType}</span>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteRelationship(rel.id)}
+                              disabled={deletingRelationship === rel.id}
+                            >
+                              {deletingRelationship === rel.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3 w-3" />
+                              )}
+                            </Button>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteRelationship(rel.id)}
-                          disabled={deletingRelationship === rel.id}
-                        >
-                          {deletingRelationship === rel.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                        </Button>
                       </div>
                     );
                   })}
