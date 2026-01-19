@@ -1,12 +1,14 @@
-import { useState, useMemo } from 'react';
-import { 
-  Clock, 
-  ChevronDown, 
-  ChevronRight, 
-  Search, 
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import {
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  Search,
   Highlighter,
   MapPin,
   FileText,
+  ChevronsDown,
+  ChevronsUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,20 +76,21 @@ export function TimelinePane({ collapsed, onNavigateToDocument }: TimelinePanePr
   const [search, setSearch] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showSearch, setShowSearch] = useState(false);
-  
+  const hasAutoExpandedRef = useRef(false);
+
   // Use aggregated dates in master mode, local dates otherwise
   const dates = shouldAggregate ? aggregatedDates : localDates;
-  
+
   // Filter dates by search
   const filteredDates = useMemo(() => {
     if (!search.trim()) return dates;
     const searchLower = search.toLowerCase();
-    return dates.filter(d => 
+    return dates.filter(d =>
       d.rawText.toLowerCase().includes(searchLower) ||
       d.description?.toLowerCase().includes(searchLower)
     );
   }, [dates, search]);
-  
+
   // Sort chronologically
   const sortedDates = useMemo(() => {
     return [...filteredDates].sort((a, b) => {
@@ -96,10 +99,19 @@ export function TimelinePane({ collapsed, onNavigateToDocument }: TimelinePanePr
       return dateA.getTime() - dateB.getTime();
     });
   }, [filteredDates]);
-  
+
   // Group by quarter
   const groups = useMemo(() => groupDatesByQuarter(sortedDates), [sortedDates]);
-  
+
+  // Expand all / collapse all
+  const handleExpandAll = useCallback(() => {
+    setExpandedGroups(new Set(groups.map(g => g.label)));
+  }, [groups]);
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedGroups(new Set());
+  }, []);
+
   // Toggle group expansion
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => {
@@ -112,11 +124,20 @@ export function TimelinePane({ collapsed, onNavigateToDocument }: TimelinePanePr
       return next;
     });
   };
-  
-  // Initialize all groups as expanded
-  useMemo(() => {
-    if (groups.length > 0 && expandedGroups.size === 0) {
+
+  // Auto-expand groups when they first appear (survives HMR state carryover)
+  useEffect(() => {
+    if (groups.length > 0 && !hasAutoExpandedRef.current) {
       setExpandedGroups(new Set(groups.map(g => g.label)));
+      hasAutoExpandedRef.current = true;
+    }
+  }, [groups]);
+
+  // Reset auto-expand when timeline becomes empty
+  useEffect(() => {
+    if (groups.length === 0) {
+      hasAutoExpandedRef.current = false;
+      setExpandedGroups(new Set());
     }
   }, [groups.length]);
   
@@ -197,6 +218,38 @@ export function TimelinePane({ collapsed, onNavigateToDocument }: TimelinePanePr
             </TooltipTrigger>
             <TooltipContent>Search Timeline</TooltipContent>
           </Tooltip>
+
+          {/* Expand all */}
+          {groups.length > 0 && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={handleExpandAll}
+                  >
+                    <ChevronsDown className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Expand all</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={handleCollapseAll}
+                  >
+                    <ChevronsUp className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Collapse all</TooltipContent>
+              </Tooltip>
+            </>
+          )}
           
           {/* Highlight mode */}
           <Tooltip>
