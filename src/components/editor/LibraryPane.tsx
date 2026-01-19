@@ -353,6 +353,26 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
     }
   }, [activeTab, setPeopleHighlightMode, setPlacesHighlightMode, setDateHighlightMode, setHighlightMode]);
 
+  // Global highlight controls - set all four entity types at once
+  const setAllHighlightModes = useCallback((mode: 'all' | 'selected' | 'none') => {
+    setPeopleHighlightMode(mode);
+    setPlacesHighlightMode(mode);
+    setDateHighlightMode(mode);
+    setHighlightMode(mode);
+  }, [setPeopleHighlightMode, setPlacesHighlightMode, setDateHighlightMode, setHighlightMode]);
+
+  // Compute global highlight state
+  const globalHighlightState = (() => {
+    const modes = [peopleHighlightMode, placesHighlightMode, dateHighlightMode, highlightMode];
+    const allNone = modes.every(m => m === 'none');
+    const allAll = modes.every(m => m === 'all');
+    const anyOn = modes.some(m => m !== 'none');
+    if (allNone) return 'off';
+    if (allAll) return 'all';
+    if (anyOn) return 'mixed';
+    return 'off';
+  })();
+
   // Toggle expand
   const toggleExpand = useCallback((id: string) => {
     setExpandedItems(prev => {
@@ -483,6 +503,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-allow-pointer
               variant="ghost"
               size="sm"
               onClick={() => setSearchOpen(!searchOpen)}
@@ -505,6 +526,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                data-allow-pointer
                 variant="ghost"
                 size="sm"
                 onClick={() => {
@@ -542,7 +564,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
           </Tooltip>
         )}
 
-        {/* Highlight Mode */}
+        {/* Global Highlight Mode */}
         <Popover>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -553,43 +575,157 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
                   size="sm"
                   className={cn(
                     "h-7 w-7 p-0 relative",
-                    currentHighlightMode === 'all' && "bg-accent/20 text-accent",
-                    currentHighlightMode === 'selected' && "bg-primary/20 text-primary",
-                    currentHighlightMode === 'none' && "text-muted-foreground"
+                    globalHighlightState === 'all' && "bg-accent/20 text-accent",
+                    globalHighlightState === 'mixed' && "bg-primary/20 text-primary",
+                    globalHighlightState === 'off' && "text-muted-foreground"
                   )}
                 >
                   <Highlighter className="h-3.5 w-3.5" />
                   <span className={cn(
                     "absolute bottom-0.5 right-0.5 h-1 w-1 rounded-full",
-                    currentHighlightMode === 'all' && "bg-accent",
-                    currentHighlightMode === 'selected' && "bg-primary",
-                    currentHighlightMode === 'none' && "bg-muted-foreground"
+                    globalHighlightState === 'all' && "bg-accent",
+                    globalHighlightState === 'mixed' && "bg-primary",
+                    globalHighlightState === 'off' && "bg-muted-foreground"
                   )} />
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">Highlight mode</TooltipContent>
+            <TooltipContent side="right" className="text-xs">
+              Highlighting {globalHighlightState === 'off' ? 'off' : globalHighlightState === 'all' ? 'on (all)' : 'on (mixed)'}
+            </TooltipContent>
           </Tooltip>
-          <PopoverContent side="right" align="start" className="w-auto p-1" data-allow-pointer>
-            <div className="flex flex-col gap-0.5">
-              {(['all', 'selected', 'none'] as const).map(mode => (
-                <Button
-                  key={mode}
-                  data-allow-pointer
-                  variant={currentHighlightMode === mode ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-7 justify-start text-xs px-2"
-                  onClick={() => setCurrentHighlightMode(mode)}
-                >
-                  <span className={cn(
-                    "h-2 w-2 rounded-full mr-2",
-                    mode === 'all' && "bg-accent",
-                    mode === 'selected' && "bg-primary",
-                    mode === 'none' && "bg-muted-foreground"
-                  )} />
-                  {mode === 'all' ? 'All' : mode === 'selected' ? 'Selected' : 'Off'}
-                </Button>
-              ))}
+          <PopoverContent side="right" align="start" className="w-auto p-1.5" data-allow-pointer>
+            <div className="flex flex-col gap-1">
+              {/* Global controls */}
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-0.5">
+                Global
+              </div>
+              <Button
+                data-allow-pointer
+                variant={globalHighlightState === 'all' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 justify-start text-xs px-2"
+                onClick={() => setAllHighlightModes('all')}
+              >
+                <span className="h-2 w-2 rounded-full mr-2 bg-accent" />
+                All On
+              </Button>
+              <Button
+                data-allow-pointer
+                variant={globalHighlightState === 'off' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 justify-start text-xs px-2"
+                onClick={() => setAllHighlightModes('none')}
+              >
+                <span className="h-2 w-2 rounded-full mr-2 bg-muted-foreground" />
+                All Off
+              </Button>
+              
+              {/* Per-type controls */}
+              <div className="h-px bg-border/50 my-1" />
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide px-1 mb-0.5">
+                Per Type
+              </div>
+              
+              {/* People */}
+              <div className="flex items-center justify-between px-1 py-0.5">
+                <div className="flex items-center gap-1.5">
+                  <User className="h-3 w-3 text-purple-500" />
+                  <span className="text-xs">People</span>
+                </div>
+                <div className="flex gap-0.5">
+                  {(['all', 'none'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      data-allow-pointer
+                      onClick={() => setPeopleHighlightMode(mode)}
+                      className={cn(
+                        "h-5 w-5 rounded flex items-center justify-center text-[9px]",
+                        peopleHighlightMode === mode 
+                          ? "bg-primary/20 text-primary" 
+                          : "hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {mode === 'all' ? '●' : '○'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Places */}
+              <div className="flex items-center justify-between px-1 py-0.5">
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3 w-3 text-green-500" />
+                  <span className="text-xs">Places</span>
+                </div>
+                <div className="flex gap-0.5">
+                  {(['all', 'none'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      data-allow-pointer
+                      onClick={() => setPlacesHighlightMode(mode)}
+                      className={cn(
+                        "h-5 w-5 rounded flex items-center justify-center text-[9px]",
+                        placesHighlightMode === mode 
+                          ? "bg-primary/20 text-primary" 
+                          : "hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {mode === 'all' ? '●' : '○'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Dates */}
+              <div className="flex items-center justify-between px-1 py-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3 text-blue-500" />
+                  <span className="text-xs">Dates</span>
+                </div>
+                <div className="flex gap-0.5">
+                  {(['all', 'none'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      data-allow-pointer
+                      onClick={() => setDateHighlightMode(mode)}
+                      className={cn(
+                        "h-5 w-5 rounded flex items-center justify-center text-[9px]",
+                        dateHighlightMode === mode 
+                          ? "bg-primary/20 text-primary" 
+                          : "hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {mode === 'all' ? '●' : '○'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Terms */}
+              <div className="flex items-center justify-between px-1 py-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Quote className="h-3 w-3 text-amber-500" />
+                  <span className="text-xs">Terms</span>
+                </div>
+                <div className="flex gap-0.5">
+                  {(['all', 'none'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      data-allow-pointer
+                      onClick={() => setHighlightMode(mode)}
+                      className={cn(
+                        "h-5 w-5 rounded flex items-center justify-center text-[9px]",
+                        highlightMode === mode 
+                          ? "bg-primary/20 text-primary" 
+                          : "hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {mode === 'all' ? '●' : '○'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </PopoverContent>
         </Popover>
@@ -599,6 +735,7 @@ export function LibraryPane({ collapsed, selectedText }: LibraryPaneProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                data-allow-pointer
                 variant="ghost"
                 size="sm"
                 onClick={handleRecalculate}
