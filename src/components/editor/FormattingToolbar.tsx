@@ -2,6 +2,7 @@ import { Editor } from '@tiptap/react';
 import { 
   Bold, 
   Italic, 
+  Underline,
   Strikethrough, 
   Code, 
   Heading1, 
@@ -10,7 +11,11 @@ import {
   List, 
   ListOrdered, 
   Quote, 
-  Minus 
+  Minus,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ToolButton } from './ToolButton';
@@ -50,6 +55,15 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           collapsed={collapsed}
         />
         <ToolButton
+          onClick={() => editor?.chain().focus().toggleUnderline().run()}
+          isActive={editor?.isActive('underline')}
+          disabled={!editor}
+          icon={<Underline className="h-4 w-4" />}
+          label="Underline"
+          tooltip="Underline (Ctrl+U)"
+          collapsed={collapsed}
+        />
+        <ToolButton
           onClick={() => editor?.chain().focus().toggleStrike().run()}
           isActive={editor?.isActive('strike')}
           disabled={!editor}
@@ -65,6 +79,53 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<Code className="h-4 w-4" />}
           label="Code"
           tooltip="Inline Code"
+          collapsed={collapsed}
+        />
+      </div>
+
+      <Separator className="my-2" />
+
+      {/* Alignment */}
+      {!collapsed && (
+        <span className="text-[10px] font-medium text-secondary uppercase tracking-wider px-1">
+          Alignment
+        </span>
+      )}
+      <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+        <ToolButton
+          onClick={() => editor?.chain().focus().setTextAlign('left').run()}
+          isActive={editor?.isActive({ textAlign: 'left' })}
+          disabled={!editor}
+          icon={<AlignLeft className="h-4 w-4" />}
+          label="Left"
+          tooltip="Align Left"
+          collapsed={collapsed}
+        />
+        <ToolButton
+          onClick={() => editor?.chain().focus().setTextAlign('center').run()}
+          isActive={editor?.isActive({ textAlign: 'center' })}
+          disabled={!editor}
+          icon={<AlignCenter className="h-4 w-4" />}
+          label="Center"
+          tooltip="Align Center"
+          collapsed={collapsed}
+        />
+        <ToolButton
+          onClick={() => editor?.chain().focus().setTextAlign('right').run()}
+          isActive={editor?.isActive({ textAlign: 'right' })}
+          disabled={!editor}
+          icon={<AlignRight className="h-4 w-4" />}
+          label="Right"
+          tooltip="Align Right"
+          collapsed={collapsed}
+        />
+        <ToolButton
+          onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
+          isActive={editor?.isActive({ textAlign: 'justify' })}
+          disabled={!editor}
+          icon={<AlignJustify className="h-4 w-4" />}
+          label="Justify"
+          tooltip="Justify"
           collapsed={collapsed}
         />
       </div>
