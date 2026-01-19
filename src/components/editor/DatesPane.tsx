@@ -25,6 +25,8 @@ import {
   AlertTriangle,
   Check,
   RotateCcw,
+  ChevronsDown,
+  ChevronsUp,
 } from 'lucide-react';
 import { formatDateForDisplay, TaggedDate } from '@/lib/dateScanner';
 
@@ -65,6 +67,7 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
   // Backup for undo
   const deletedDatesBackup = useRef<TaggedDate[]>([]);
   const undoTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const hasAutoExpandedRef = useRef(false);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -75,10 +78,29 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
     };
   }, []);
 
-  // Ensure tiles default to expanded (helps after hot-reload state carryover)
+  // Auto-expand all tiles when dates first load (survives HMR state carryover)
   useEffect(() => {
+    if (dates.length > 0 && !hasAutoExpandedRef.current) {
+      setCollapsedDates(new Set());
+      hasAutoExpandedRef.current = true;
+    }
+  }, [dates]);
+
+  // Reset auto-expand flag when dates list is cleared
+  useEffect(() => {
+    if (dates.length === 0) {
+      hasAutoExpandedRef.current = false;
+    }
+  }, [dates.length]);
+
+  // Expand all / Collapse all handlers
+  const handleExpandAll = useCallback(() => {
     setCollapsedDates(new Set());
   }, []);
+
+  const handleCollapseAll = useCallback(() => {
+    setCollapsedDates(new Set(dates.map(d => d.id)));
+  }, [dates]);
 
   // Toggle collapsed state for a date
   const toggleCollapsed = useCallback((id: string) => {
@@ -407,6 +429,40 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
                     : 'Re-parse Dates from Text'}
               </TooltipContent>
             </Tooltip>
+          )}
+
+          {/* Expand all / Collapse all */}
+          {dates.length > 0 && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    data-allow-pointer
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleExpandAll}
+                    className="h-7 w-7 p-0"
+                  >
+                    <ChevronsDown className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Expand All</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    data-allow-pointer
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCollapseAll}
+                    className="h-7 w-7 p-0"
+                  >
+                    <ChevronsUp className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Collapse All</TooltipContent>
+              </Tooltip>
+            </>
           )}
 
           <div className="flex-1" />
