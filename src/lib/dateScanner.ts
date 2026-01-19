@@ -336,13 +336,18 @@ export function sortDatesChronologically(dates: TaggedDate[]): TaggedDate[] {
  * Returns the parsed Date or null if no date pattern matches.
  */
 export function parseDateFromRawText(rawText: string): Date | null {
+  // Try each pattern in order (they're ordered by specificity)
   for (const { regex, parser } of DATE_PATTERNS) {
     regex.lastIndex = 0;
     const match = regex.exec(rawText);
     if (match) {
       const parsed = parser(match);
-      if (parsed) return parsed;
+      if (parsed) {
+        console.log(`[parseDateFromRawText] "${rawText}" -> matched pattern, parsed to ${parsed.toISOString()}`);
+        return parsed;
+      }
     }
   }
+  console.log(`[parseDateFromRawText] "${rawText}" -> no pattern matched`);
   return null;
 }
