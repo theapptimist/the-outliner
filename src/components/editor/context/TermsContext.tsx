@@ -1,5 +1,6 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { scanForTermUsages } from '@/lib/termScanner';
@@ -91,9 +92,9 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
     localStorageKey: `defined-terms:${documentId}`,
   });
 
-  const [inspectedTerm, setInspectedTerm] = useState<DefinedTerm | null>(null);
-  const [highlightedTerm, setHighlightedTerm] = useState<DefinedTerm | null>(null);
-  const [highlightMode, setHighlightMode] = useState<HighlightMode>('all');
+  const [inspectedTerm, setInspectedTerm] = useSessionStorage<DefinedTerm | null>(`inspected-term:${documentId}`, null);
+  const [highlightedTerm, setHighlightedTerm] = useSessionStorage<DefinedTerm | null>(`highlighted-term:${documentId}`, null);
+  const [highlightMode, setHighlightMode] = useSessionStorage<HighlightMode>('terms-highlight-mode', 'all');
 
   // Clear states when document changes
   useEffect(() => {

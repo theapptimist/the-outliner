@@ -1,5 +1,6 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
@@ -154,9 +155,9 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
     localStorageKey: `tagged-people:${documentId}`,
   });
 
-  const [inspectedPerson, setInspectedPerson] = useState<Person | null>(null);
-  const [highlightedPerson, setHighlightedPerson] = useState<Person | null>(null);
-  const [peopleHighlightMode, setPeopleHighlightMode] = useState<PeopleHighlightMode>('all');
+  const [inspectedPerson, setInspectedPerson] = useSessionStorage<Person | null>(`inspected-person:${documentId}`, null);
+  const [highlightedPerson, setHighlightedPerson] = useSessionStorage<Person | null>(`highlighted-person:${documentId}`, null);
+  const [peopleHighlightMode, setPeopleHighlightMode] = useSessionStorage<PeopleHighlightMode>('people-highlight-mode', 'all');
   
   // Track whether we've normalized existing people for this document
   const normalizedRef = useRef<string | null>(null);

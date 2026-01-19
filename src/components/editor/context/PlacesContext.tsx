@@ -1,5 +1,6 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
@@ -153,9 +154,9 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
     localStorageKey: `tagged-places:${documentId}`,
   });
 
-  const [inspectedPlace, setInspectedPlace] = useState<Place | null>(null);
-  const [highlightedPlace, setHighlightedPlace] = useState<Place | null>(null);
-  const [placesHighlightMode, setPlacesHighlightMode] = useState<PlacesHighlightMode>('all');
+  const [inspectedPlace, setInspectedPlace] = useSessionStorage<Place | null>(`inspected-place:${documentId}`, null);
+  const [highlightedPlace, setHighlightedPlace] = useSessionStorage<Place | null>(`highlighted-place:${documentId}`, null);
+  const [placesHighlightMode, setPlacesHighlightMode] = useSessionStorage<PlacesHighlightMode>('places-highlight-mode', 'all');
   
   // Track whether we've normalized existing places for this document
   const normalizedRef = useRef<string | null>(null);

@@ -1,5 +1,6 @@
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
+import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { TaggedDate, DateUsage, scanForDateUsages } from '@/lib/dateScanner';
@@ -112,9 +113,9 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
     });
   }, [setRawDates]);
 
-  const [inspectedDate, setInspectedDate] = useState<TaggedDate | null>(null);
-  const [highlightedDate, setHighlightedDate] = useState<TaggedDate | null>(null);
-  const [dateHighlightMode, setDateHighlightMode] = useState<DateHighlightMode>('all');
+  const [inspectedDate, setInspectedDate] = useSessionStorage<TaggedDate | null>(`inspected-date:${documentId}`, null);
+  const [highlightedDate, setHighlightedDate] = useSessionStorage<TaggedDate | null>(`highlighted-date:${documentId}`, null);
+  const [dateHighlightMode, setDateHighlightMode] = useSessionStorage<DateHighlightMode>('dates-highlight-mode', 'all');
 
   // Clear states when document changes
   useEffect(() => {
