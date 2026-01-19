@@ -114,6 +114,7 @@ export function LibraryPane({
   const [capturedSelection, setCapturedSelection] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const hasAutoExpandedDatesRef = useRef<string | null>(null);
+  const prevActiveTabRef = useRef<EntityTab | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [suggestionsDialogOpen, setSuggestionsDialogOpen] = useState(false);
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
@@ -215,14 +216,20 @@ export function LibraryPane({
     : `doc:${documentId}`;
   
   useEffect(() => {
+    // Track previous tab for detecting tab switches
+    const justSwitchedToTab = activeTab === 'dates' && prevActiveTabRef.current !== 'dates';
+    prevActiveTabRef.current = activeTab;
+    
     if (activeTab !== 'dates') return;
     
     // Get current date IDs
     const currentDates = shouldAggregate ? aggregatedDates : dates;
     const dateIds = currentDates.map(d => d.id);
     
-    // Only auto-expand once per context (document/mode change)
-    if (hasAutoExpandedDatesRef.current !== datesContextKey) {
+    // Force expand if we just switched to the dates tab or context changed
+    const contextChanged = hasAutoExpandedDatesRef.current !== datesContextKey;
+    
+    if (justSwitchedToTab || contextChanged) {
       setExpandedItems(new Set(dateIds));
       hasAutoExpandedDatesRef.current = datesContextKey;
     } else {
@@ -234,6 +241,20 @@ export function LibraryPane({
       });
     }
   }, [activeTab, datesContextKey, shouldAggregate, aggregatedDates, dates]);
+
+  // Fallback: handle late-loading dates (async fetch race condition)
+  useEffect(() => {
+    if (activeTab !== 'dates') return;
+    
+    const currentDates = shouldAggregate ? aggregatedDates : dates;
+    if (currentDates.length === 0) return; // Still loading
+    
+    // If we're on dates tab and no items are expanded, force expand all
+    if (expandedItems.size === 0) {
+      const dateIds = currentDates.map(d => d.id);
+      setExpandedItems(new Set(dateIds));
+    }
+  }, [activeTab, shouldAggregate, aggregatedDates, dates, expandedItems.size]);
 
   // Entity suggestions from AI scan
   const entitySuggestions = useEntitySuggestions({
