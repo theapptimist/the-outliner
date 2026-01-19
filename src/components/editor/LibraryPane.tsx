@@ -1923,20 +1923,33 @@ function EntityCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <DropdownMenuItem 
+                data-allow-pointer
+                onSelect={(e) => { e.preventDefault(); setTimeout(() => onEdit(), 0); }}
+              >
                 <Pencil className="h-3.5 w-3.5 mr-2" />
                 Edit...
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onLink(); }}>
+              <DropdownMenuItem 
+                data-allow-pointer
+                onSelect={(e) => { e.preventDefault(); setTimeout(() => onLink(), 0); }}
+              >
                 <Link2 className="h-3.5 w-3.5 mr-2" />
                 Link entity...
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMerge(); }}>
+              <DropdownMenuItem 
+                data-allow-pointer
+                onSelect={(e) => { e.preventDefault(); setTimeout(() => onMerge(), 0); }}
+              >
                 <Merge className="h-3.5 w-3.5 mr-2" />
                 Merge with...
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem 
+                data-allow-pointer
+                onSelect={(e) => { e.preventDefault(); setTimeout(() => onDelete(), 0); }} 
+                className="text-destructive focus:text-destructive"
+              >
                 <Trash2 className="h-3.5 w-3.5 mr-2" />
                 Delete
               </DropdownMenuItem>
