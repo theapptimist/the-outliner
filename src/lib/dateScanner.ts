@@ -330,3 +330,19 @@ export function getDateGroup(date: Date): { year: number; quarter: number } {
 export function sortDatesChronologically(dates: TaggedDate[]): TaggedDate[] {
   return [...dates].sort((a, b) => a.date.getTime() - b.date.getTime());
 }
+
+/**
+ * Parse a single raw text string to extract a date.
+ * Returns the parsed Date or null if no date pattern matches.
+ */
+export function parseDateFromRawText(rawText: string): Date | null {
+  for (const { regex, parser } of DATE_PATTERNS) {
+    regex.lastIndex = 0;
+    const match = regex.exec(rawText);
+    if (match) {
+      const parsed = parser(match);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+}

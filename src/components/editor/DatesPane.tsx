@@ -24,6 +24,7 @@ import {
   ChevronRight,
   AlertTriangle,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import { formatDateForDisplay, TaggedDate } from '@/lib/dateScanner';
 
@@ -44,6 +45,7 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
     dateHighlightMode,
     setDateHighlightMode,
     recalculateDateUsages,
+    reparseDates,
     hierarchyBlocks,
     outlineStyle,
     mixedConfig,
@@ -57,6 +59,7 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
   const [capturedSelection, setCapturedSelection] = useState<string>('');
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
   const [recalcFeedback, setRecalcFeedback] = useState<'idle' | 'done' | 'empty'>('idle');
+  const [reparseFeedback, setReparseFeedback] = useState<'idle' | 'done' | 'none'>('idle');
   const [orphanWarningDismissed, setOrphanWarningDismissed] = useState(false);
 
   // Backup for undo
@@ -155,6 +158,18 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
     }
     setTimeout(() => setRecalcFeedback('idle'), 1500);
   }, [hasOutline, recalculateDateUsages, hierarchyBlocks, outlineStyle, mixedConfig]);
+
+  const handleReparseDates = useCallback(() => {
+    const count = reparseDates();
+    if (count > 0) {
+      setReparseFeedback('done');
+      toast.success(`Re-parsed ${count} date${count !== 1 ? 's' : ''}`);
+    } else {
+      setReparseFeedback('none');
+      toast.info('All dates already correct');
+    }
+    setTimeout(() => setReparseFeedback('idle'), 1500);
+  }, [reparseDates]);
 
   const toggleExpanded = useCallback((id: string) => {
     setExpandedDates(prev => {
@@ -354,6 +369,38 @@ export function DatesPane({ collapsed, selectedText }: DatesPaneProps) {
                   : 'Recalculate Usages'}
             </TooltipContent>
           </Tooltip>
+
+          {/* Re-parse dates */}
+          {dates.length > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  data-allow-pointer
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReparseDates}
+                  className={cn(
+                    "h-7 w-7 p-0",
+                    reparseFeedback === 'done' && "text-green-500",
+                    reparseFeedback === 'none' && "text-muted-foreground"
+                  )}
+                >
+                  {reparseFeedback === 'done' ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {reparseFeedback === 'done'
+                  ? 'Dates re-parsed!'
+                  : reparseFeedback === 'none'
+                    ? 'All dates correct'
+                    : 'Re-parse Dates from Text'}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           <div className="flex-1" />
 

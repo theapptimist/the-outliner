@@ -3,7 +3,7 @@ import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
-import { TaggedDate, DateUsage, scanForDateUsages } from '@/lib/dateScanner';
+import { TaggedDate, DateUsage, scanForDateUsages, parseDateFromRawText } from '@/lib/dateScanner';
 
 // Re-export types
 export type { TaggedDate, DateUsage } from '@/lib/dateScanner';
@@ -59,6 +59,9 @@ interface DatesContextValue {
     styleConfig?: { style: OutlineStyle; mixedConfig?: MixedStyleConfig }
   ) => void;
 
+  // Re-parse all dates from their rawText to fix incorrect date values
+  reparseDates: () => number;
+
   loading: boolean;
 }
 
@@ -75,6 +78,7 @@ const DatesContext = createContext<DatesContextValue>({
   dateHighlightMode: 'all',
   setDateHighlightMode: () => {},
   recalculateDateUsages: () => {},
+  reparseDates: () => 0,
   loading: false,
 });
 
@@ -166,6 +170,20 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
     })));
   }, [setDates]);
 
+  // Re-parse all dates from their rawText to fix incorrect date values
+  const reparseDates = useCallback(() => {
+    let updatedCount = 0;
+    setDates(prev => prev.map(taggedDate => {
+      const parsed = parseDateFromRawText(taggedDate.rawText);
+      if (parsed && parsed.getTime() !== taggedDate.date.getTime()) {
+        updatedCount++;
+        return { ...taggedDate, date: parsed };
+      }
+      return taggedDate;
+    }));
+    return updatedCount;
+  }, [setDates]);
+
   return (
     <DatesContext.Provider
       value={{
@@ -181,6 +199,7 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
         dateHighlightMode,
         setDateHighlightMode,
         recalculateDateUsages,
+        reparseDates,
         loading,
       }}
     >
