@@ -1912,6 +1912,7 @@ function EntityCard({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
+                data-allow-pointer
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
