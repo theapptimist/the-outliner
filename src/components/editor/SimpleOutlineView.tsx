@@ -1212,10 +1212,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   tabIndex={0}
                   rows={1}
                   className={cn(
-                    "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono resize-none whitespace-pre-wrap break-words leading-6 select-text caret-primary cursor-text",
+                    "w-full min-w-0 bg-transparent border-none outline-none p-0 m-0 text-sm font-mono resize-none whitespace-pre-wrap break-words leading-6 select-text caret-primary",
                     node.linkedDocumentId
-                      ? "text-primary underline decoration-primary/50"
-                      : "text-muted-foreground border-b border-dashed border-muted-foreground/50"
+                      ? "text-primary underline decoration-primary/50 cursor-pointer"
+                      : "text-muted-foreground border-b border-dashed border-muted-foreground/50 cursor-text"
                   )}
                   style={{ caretColor: 'hsl(var(--primary))' }}
                   // Block typing while preserving caret visibility (avoid readOnly which hides caret in some browsers)
@@ -1224,6 +1224,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   }}
                   onChange={() => {
                     // No-op: blocked by onBeforeInput
+                  }}
+                  onClick={(e) => {
+                    // Click navigates to linked document (or opens relink dialog for broken links)
+                    e.preventDefault();
+                    if (node.linkedDocumentId) {
+                      toast({ title: 'Opening linked document…' });
+                      onNavigateToLinkedDocument?.(node.linkedDocumentId, node.linkedDocumentTitle || '');
+                    } else {
+                      toast({ title: 'Link not connected', description: 'Select a document to link to.' });
+                      onRequestRelink?.(node.id);
+                    }
                   }}
                   onFocus={(e) => {
                     lastFocusedNodeIdRef.current = node.id;
