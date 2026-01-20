@@ -535,6 +535,9 @@ export function LibraryPane({
     { id: 'terms', icon: Quote, color: 'text-amber-500', label: 'Terms' },
   ];
 
+  // Linking filter state - must be declared before any conditional returns
+  const [linkingFilter, setLinkingFilter] = useState<'all' | EntityTab>('all');
+
   if (collapsed) {
     return (
       <div className="flex flex-col items-center py-2 gap-1">
@@ -559,8 +562,6 @@ export function LibraryPane({
   }
 
   // Simplified linking mode view - just entity tabs and list
-  // Use a local filter that can be 'all' or a specific type
-  const [linkingFilter, setLinkingFilter] = useState<'all' | EntityTab>('all');
   
   // Build all entities for linking mode
   const allLinkingEntities = useMemo(() => {
