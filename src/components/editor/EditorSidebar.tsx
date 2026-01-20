@@ -163,7 +163,7 @@ export function EditorSidebar({
           collapsed && "justify-center"
         )}>
           {!collapsed && (
-            <span className="text-xs font-semibold text-primary tracking-wide uppercase">Editor</span>
+            <span className="text-xs font-semibold text-primary tracking-wide uppercase">The Outliner</span>
           )}
           <Button
             variant="ghost"
