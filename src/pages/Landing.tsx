@@ -57,7 +57,7 @@ const Landing = () => {
       </nav>
 
       {/* Hero Section */}
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-24">
+      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-8 pb-24">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-sm text-muted-foreground mb-6">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
