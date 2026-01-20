@@ -627,13 +627,21 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     const insertLineBreak = () => {
       e.preventDefault();
       const input = e.currentTarget;
+      const nodeId = node.id; // Capture node ID synchronously
       const currentValue = input.value; // Use actual textarea value to avoid race conditions
       const start = input.selectionStart ?? currentValue.length;
       const end = input.selectionEnd ?? currentValue.length;
       const nextValue = `${currentValue.slice(0, start)}\n${currentValue.slice(end)}`;
       setEditValue(nextValue);
       requestAnimationFrame(() => {
-        input.selectionStart = input.selectionEnd = start + 1;
+        // Get the current DOM element from refs, not the stale event target
+        const currentInput = inputRefs.current.get(nodeId);
+        if (currentInput) {
+          currentInput.selectionStart = currentInput.selectionEnd = start + 1;
+          // Also update height to ensure cursor is visible
+          currentInput.style.height = 'auto';
+          currentInput.style.height = `${currentInput.scrollHeight}px`;
+        }
       });
     };
 
