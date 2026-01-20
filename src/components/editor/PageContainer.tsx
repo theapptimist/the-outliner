@@ -72,7 +72,7 @@ export function PaginatedDocument({ children, className }: PaginatedDocumentProp
         className
       )}
     >
-      <PageContainer>
+      <PageContainer showPageNumber={false}>
         {children}
       </PageContainer>
     </div>
