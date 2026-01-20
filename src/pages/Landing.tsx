@@ -44,7 +44,7 @@ const Landing = () => {
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
             <FileText className="w-4 h-4 text-primary" />
           </div>
-          <span className="font-semibold text-lg tracking-tight">Outline</span>
+          <span className="font-semibold text-lg tracking-tight">The Outliner</span>
         </div>
         <Button 
           variant="ghost" 
@@ -214,7 +214,7 @@ const Landing = () => {
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            <span>Outline</span>
+            <span>The Outliner</span>
           </div>
           <p>Built with precision.</p>
         </div>
