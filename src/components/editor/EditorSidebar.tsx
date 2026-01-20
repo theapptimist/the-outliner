@@ -22,7 +22,7 @@ import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
-type SidebarTab = 'tools' | 'library' | 'ai' | 'master' | 'timeline';
+import type { SidebarTab } from '@/contexts/NavigationContext';
 
 interface EditorSidebarProps {
   outlineStyle: OutlineStyle;
@@ -66,13 +66,16 @@ export function EditorSidebar({
   onNavigateToDocument,
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<SidebarTab>('tools');
   const [libraryFullPage, setLibraryFullPage] = useState(false);
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
   const { editor, onInsertHierarchy, onFindReplace, selectedText, onPasteHierarchy } = useEditorContext();
-  const { isInMasterMode, activeEntityTab } = useNavigation();
+  const { isInMasterMode, activeEntityTab, activeSidebarTab, setActiveSidebarTab } = useNavigation();
+
+  // Use the shared activeTab from NavigationContext
+  const activeTab = activeSidebarTab;
+  const setActiveTab = setActiveSidebarTab;
 
   // Ref to hold pending AI items when we need to create an outline block first
   const pendingAIItemsRef = useRef<Array<{ label: string; depth: number }> | null>(null);

@@ -18,6 +18,7 @@ export interface MasterDocumentInfo {
 }
 
 export type EntityTab = 'people' | 'places' | 'dates' | 'terms';
+export type SidebarTab = 'tools' | 'library' | 'ai' | 'master' | 'timeline';
 
 // Session storage keys for persistence across HMR/reloads
 const MASTER_DOC_KEY = 'outliner:masterDocument';
@@ -52,6 +53,10 @@ interface NavigationContextValue {
   activeEntityTab: EntityTab | null;
   /** Set the active entity tab (persists across subordinate navigation) */
   setActiveEntityTab: (tab: EntityTab | null) => void;
+  /** The currently active sidebar tab */
+  activeSidebarTab: SidebarTab;
+  /** Set the active sidebar tab */
+  setActiveSidebarTab: (tab: SidebarTab) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue>({
@@ -68,6 +73,8 @@ const NavigationContext = createContext<NavigationContextValue>({
   setActiveSubOutlineId: () => {},
   activeEntityTab: null,
   setActiveEntityTab: () => {},
+  activeSidebarTab: 'tools',
+  setActiveSidebarTab: () => {},
 });
 
 interface NavigationProviderProps {
@@ -101,6 +108,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const [activeEntityTab, setActiveEntityTabState] = useState<EntityTab | null>(() =>
     getStoredValue<EntityTab | null>(ENTITY_TAB_KEY, null)
   );
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('tools');
 
   // Persist stack to sessionStorage
   useEffect(() => {
@@ -185,6 +193,8 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         setActiveSubOutlineId,
         activeEntityTab,
         setActiveEntityTab,
+        activeSidebarTab,
+        setActiveSidebarTab,
       }}
     >
       {children}
