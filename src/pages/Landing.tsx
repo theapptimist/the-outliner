@@ -9,7 +9,7 @@ import {
   Sparkles,
   ChevronDown
 } from 'lucide-react';
-
+import heroBackground from '@/assets/hero-background.png';
 const Landing = () => {
   const navigate = useNavigate();
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
@@ -34,9 +34,15 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
-      {/* Subtle background pattern */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.03)_0%,transparent_50%)]" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--accent)/0.05)_0%,transparent_50%)]" />
+      {/* Hero background image */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${heroBackground})` }}
+      />
+      {/* Dark overlay for text readability */}
+      <div className="fixed inset-0 bg-background/85" />
+      {/* Subtle gradient accents */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
       
       {/* Navigation */}
       <nav className="relative z-10 flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
