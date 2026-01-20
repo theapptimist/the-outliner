@@ -77,7 +77,7 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button 
               size="lg"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/editor')}
               className="gap-2 px-6 shadow-lg shadow-primary/20"
             >
               Start writing
@@ -200,7 +200,7 @@ const Landing = () => {
           </p>
           <Button 
             size="lg"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/editor')}
             className="gap-2 px-8"
           >
             Get started — it's free

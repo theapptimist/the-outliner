@@ -21,7 +21,7 @@ export default function Auth() {
   // Redirect if already logged in
   useEffect(() => {
     if (user && !loading) {
-      navigate('/');
+      navigate('/editor');
     }
   }, [user, loading, navigate]);
 
@@ -44,7 +44,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Welcome back!');
-      navigate('/');
+      navigate('/editor');
     }
   };
 
@@ -72,7 +72,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Account created! You can now sign in.');
-      navigate('/');
+      navigate('/editor');
     }
   };
 
