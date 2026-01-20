@@ -70,9 +70,8 @@ const Landing = () => {
             <span className="text-primary">be Buried in Ancient Offline Word Processors?</span>
           </h1>
           
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-            A minimalist outline editor that lets you organize thoughts hierarchically 
-            and link documents together seamlessly.
+          <p className="text-2xl sm:text-3xl font-semibold text-foreground mb-8">
+            Not Anymore!
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
