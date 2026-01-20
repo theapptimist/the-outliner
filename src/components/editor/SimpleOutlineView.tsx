@@ -1454,7 +1454,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                         return;
                       }
                       
+                      // If not in edit mode yet, allow certain keys through
                       if (editingId !== node.id) {
+                        // Enter should enter edit mode and be handled
+                        if (e.key === 'Enter') {
+                          setEditingId(node.id);
+                          setEditValue(node.label);
+                          handleKeyDown(e, node);
+                          return;
+                        }
                         const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
                         if (!isNavKey && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
                           // Will enter edit mode via onChange
