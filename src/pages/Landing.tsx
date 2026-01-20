@@ -64,10 +64,10 @@ const Landing = () => {
             <span>Now with AI outline generation</span>
           </div>
           
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-b from-foreground via-foreground to-muted-foreground/70 bg-clip-text text-transparent">
-            Structure your ideas.
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-6 bg-gradient-to-b from-foreground via-foreground to-muted-foreground/70 bg-clip-text text-transparent leading-tight">
+            Why Should Outline Tools be Buried in
             <br />
-            <span className="text-primary">Connect everything.</span>
+            <span className="text-primary">Ancient Offline Word Processors?</span>
           </h1>
           
           <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
