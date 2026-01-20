@@ -680,7 +680,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   return (
     <NodeViewWrapper 
-      className="hierarchy-block my-2 rounded-lg overflow-hidden group relative"
+      className="hierarchy-block my-2 rounded-lg group relative"
     >
       {/* Import Outline Dialog */}
       <ImportOutlineDialog
