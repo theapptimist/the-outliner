@@ -1456,11 +1456,24 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       
                       // If not in edit mode yet, allow certain keys through
                       if (editingId !== node.id) {
-                        // Enter should enter edit mode and be handled
-                        if (e.key === 'Enter') {
+                        // Enter should create a new sibling node directly
+                        // We can't call handleKeyDown because it uses stale editValue from closure
+                        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                          e.preventDefault();
+                          // Save current textarea value directly (bypass stale state)
+                          const currentVal = e.currentTarget.value;
+                          onUpdateLabel(node.id, currentVal);
                           setEditingId(node.id);
-                          setEditValue(node.label);
-                          handleKeyDown(e, node);
+                          setEditValue(currentVal);
+                          
+                          // Create new sibling
+                          if (autoDescend) {
+                            const newId = onAddChildNode(node.id);
+                            if (newId) pendingNewNodeIdRef.current = newId;
+                          } else {
+                            const newId = onAddNode(node.id);
+                            if (newId) pendingNewNodeIdRef.current = newId;
+                          }
                           return;
                         }
                         const isNavKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'].includes(e.key);
