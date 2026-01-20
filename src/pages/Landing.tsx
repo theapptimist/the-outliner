@@ -114,7 +114,7 @@ const Landing = () => {
               <div className="flex-1 flex justify-center">
                 <div className="px-4 py-1 rounded-md bg-background/50 text-xs text-muted-foreground flex items-center gap-2">
                   <FileText className="w-3 h-3" />
-                  outline.app
+                  theoutliner.app
                 </div>
               </div>
             </div>
