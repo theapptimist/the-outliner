@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, forwardRef } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -56,9 +56,13 @@ interface MenuItemProps {
   destructive?: boolean;
 }
 
-function MenuItem({ icon, label, shortcut, onClick, disabled, destructive }: MenuItemProps) {
+const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(function MenuItem(
+  { icon, label, shortcut, onClick, disabled, destructive },
+  ref
+) {
   return (
     <button
+      ref={ref}
       onClick={onClick}
       disabled={disabled}
       className={cn(
@@ -72,7 +76,7 @@ function MenuItem({ icon, label, shortcut, onClick, disabled, destructive }: Men
       {shortcut && <span className="text-[10px] text-muted-foreground">{shortcut}</span>}
     </button>
   );
-}
+});
 
 interface DiagnosticsData {
   note: string;
