@@ -1301,11 +1301,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       return;
                     }
                     
-                    // Tab: indent/outdent
+                    // Tab: indent/outdent, or convert link to numbered item
                     if (e.key === 'Tab') {
                       e.preventDefault();
                       if (e.shiftKey) {
-                        onOutdent(node.id);
+                        // For link nodes, Shift+Tab converts to numbered outline item
+                        if (onConvertToNumbered) {
+                          onConvertToNumbered(node.id);
+                        } else {
+                          onOutdent(node.id);
+                        }
                       } else {
                         onIndent(node.id);
                       }
