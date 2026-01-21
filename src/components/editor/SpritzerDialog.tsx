@@ -74,6 +74,11 @@ const DEFAULT_WPM = 300;
 const WPM_STEP = 50;
 const NODE_BOUNDARY_PAUSE_MS = 1000;
 
+// Delta controls: difference between CW and PPDT speeds
+const DEFAULT_DELTA = 0.7; // 0.7 means CW=0.7x, PPDT=1.4x (2x difference)
+const MIN_DELTA = 0;       // 0 = no difference
+const MAX_DELTA = 1.0;     // 1.0 = maximum difference
+
 export function SpritzerDialog({
   open,
   onOpenChange,
@@ -108,6 +113,7 @@ export function SpritzerDialog({
   const [globalWordIndex, setGlobalWordIndex] = useState(0);
   const [isPausedAtBoundary, setIsPausedAtBoundary] = useState(false);
   const [nextNodeLabel, setNextNodeLabel] = useState<string>('');
+  const [pacingDelta, setPacingDelta] = useState(DEFAULT_DELTA);
 
   const timerRef = useRef<number | null>(null);
   const totalWords = getTotalWordCount(spritzNodes);
@@ -197,7 +203,26 @@ export function SpritzerDialog({
       return;
     }
 
-    const delay = calculateWordDelay(wpm, currentWord.pauseMultiplier);
+    // Calculate effective pause multiplier based on delta setting
+    // Delta controls the spread: 0 = uniform speed, 1.0 = max difference
+    // CW multiplier: 1.0 - delta * 0.3 (0.7 at max delta)
+    // PPDT multiplier: 1.0 + delta * 0.4 (1.4 at max delta)
+    let effectiveMultiplier = 1.0;
+    if (currentWord.ppdtType) {
+      // PPDT - slow down based on delta
+      effectiveMultiplier = 1.0 + pacingDelta * 0.4;
+    } else {
+      // Common word - speed up based on delta
+      effectiveMultiplier = 1.0 - pacingDelta * 0.3;
+    }
+    
+    // Apply punctuation modifiers from the stored multiplier ratio
+    // The stored pauseMultiplier includes punctuation effects, so we extract just that
+    const baseMultiplier = currentWord.ppdtType ? 1.4 : 0.7;
+    const punctuationRatio = currentWord.pauseMultiplier / baseMultiplier;
+    effectiveMultiplier *= punctuationRatio;
+
+    const delay = calculateWordDelay(wpm, effectiveMultiplier);
     
     timerRef.current = window.setTimeout(() => {
       advanceWord();
@@ -209,7 +234,7 @@ export function SpritzerDialog({
         timerRef.current = null;
       }
     };
-  }, [isPlaying, globalWordIndex, wpm, isPausedAtBoundary, currentWord, advanceWord]);
+  }, [isPlaying, globalWordIndex, wpm, isPausedAtBoundary, currentWord, advanceWord, pacingDelta]);
 
   // Keyboard controls
   useEffect(() => {
@@ -309,9 +334,9 @@ export function SpritzerDialog({
 
     return (
       <div className="flex flex-col items-center gap-2">
-        {/* ORP word display */}
+        {/* ORP word display - whitespace-nowrap prevents hyphenated words from breaking */}
         <div className={cn(
-          'font-mono text-4xl tracking-wider flex items-center justify-center transition-colors',
+          'font-mono text-4xl tracking-wider flex items-center justify-center transition-colors whitespace-nowrap',
           ppdtConfig ? ppdtConfig.color : ''
         )}>
           <span className="text-right w-20">{before}</span>
@@ -525,8 +550,23 @@ export function SpritzerDialog({
             {/* Spacer */}
             <div className="flex-1" />
 
+            {/* Delta Slider - CW/PPDT speed difference */}
+            <div className="flex items-center gap-2 min-w-[140px]">
+              <span className="text-xs text-muted-foreground" title="Speed difference between common words and entities">
+                Δ {Math.round(pacingDelta * 100)}%
+              </span>
+              <Slider
+                value={[pacingDelta]}
+                min={MIN_DELTA}
+                max={MAX_DELTA}
+                step={0.1}
+                onValueChange={([v]) => setPacingDelta(v)}
+                className="flex-1"
+              />
+            </div>
+
             {/* WPM Slider */}
-            <div className="flex items-center gap-3 min-w-[200px]">
+            <div className="flex items-center gap-3 min-w-[160px]">
               <span className="text-sm text-muted-foreground w-16">{wpm} WPM</span>
               <Slider
                 value={[wpm]}

@@ -87,10 +87,17 @@ export function matchesPPDT(
  * - PPDTs (People, Places, Dates, Terms) require more cognitive attention → SLOWER
  * - Common words (CW) are processed reflexively → FASTER
  * - Punctuation adds additional pauses on top
+ * 
+ * @param word - The word to calculate pause for
+ * @param entities - Entity sets for PPDT matching
+ * @param cwMultiplier - Speed multiplier for common words (default 0.7 = faster)
+ * @param ppdtMultiplier - Speed multiplier for PPDTs (default 1.4 = slower)
  */
 export function calculatePauseMultiplier(
   word: string,
-  entities?: CognitivePacingEntities
+  entities?: CognitivePacingEntities,
+  cwMultiplier: number = 0.7,
+  ppdtMultiplier: number = 1.4
 ): number {
   let multiplier = 1.0;
   
@@ -99,10 +106,10 @@ export function calculatePauseMultiplier(
     const ppdtType = matchesPPDT(word, entities);
     if (ppdtType) {
       // PPDT detected - slow down for cognitive processing
-      multiplier = 1.4;
+      multiplier = ppdtMultiplier;
     } else {
       // Common word - speed up
-      multiplier = 0.7;
+      multiplier = cwMultiplier;
     }
   }
   
