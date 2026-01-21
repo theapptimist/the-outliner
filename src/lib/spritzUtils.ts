@@ -51,6 +51,10 @@ export interface CognitivePacingEntities {
   places: Set<string>;
   dates: Set<string>;
   terms: Set<string>;
+  // Full entity names for multi-word matching (normalized lowercase)
+  peopleFullNames: Set<string>;
+  placesFullNames: Set<string>;
+  termsFullNames: Set<string>;
   // Multi-word phrases for token combining (normalized lowercase -> word count)
   multiWordPhrases: Map<string, number>;
 }
@@ -73,11 +77,16 @@ export function matchesPPDT(
   const normalized = normalizeForMatch(word);
   if (!normalized) return null;
   
-  // Check each entity type
-  if (entities.people.has(normalized)) return 'people';
-  if (entities.places.has(normalized)) return 'places';
+  // For multi-word tokens (e.g., "Clayton Eshleman"), normalize the full phrase
+  const normalizedPhrase = word.toLowerCase().split(/\s+/)
+    .map(w => w.replace(/[.,!?;:'"()[\]{}]/g, ''))
+    .join(' ');
+  
+  // Check each entity type - both single words AND multi-word phrases
+  if (entities.people.has(normalized) || entities.peopleFullNames?.has(normalizedPhrase)) return 'people';
+  if (entities.places.has(normalized) || entities.placesFullNames?.has(normalizedPhrase)) return 'places';
   if (entities.dates.has(normalized)) return 'dates';
-  if (entities.terms.has(normalized)) return 'terms';
+  if (entities.terms.has(normalized) || entities.termsFullNames?.has(normalizedPhrase)) return 'terms';
   
   return null;
 }
@@ -404,10 +413,19 @@ export function buildEntitySetsFromLibrary(
     return text.toLowerCase().split(/\s+/).filter(w => w.length > 1);
   };
   
+  const normalizeName = (text: string): string => {
+    return text.toLowerCase().split(/\s+/)
+      .map(w => w.replace(/[.,!?;:'"()[\]{}]/g, ''))
+      .join(' ');
+  };
+  
   const peopleSet = new Set<string>();
   const placesSet = new Set<string>();
   const datesSet = new Set<string>();
   const termsSet = new Set<string>();
+  const peopleFullNames = new Set<string>();
+  const placesFullNames = new Set<string>();
+  const termsFullNames = new Set<string>();
   const multiWordPhrases = new Map<string, number>();
   
   // Helper to add multi-word phrase
@@ -420,10 +438,11 @@ export function buildEntitySetsFromLibrary(
     }
   };
   
-  // Extract individual words from multi-word entity names
+  // Extract individual words from multi-word entity names AND store full names
   people.forEach(p => {
     if (p.name) {
       extractWords(p.name).forEach(w => peopleSet.add(w));
+      peopleFullNames.add(normalizeName(p.name));
       addPhrase(p.name);
     }
   });
@@ -431,6 +450,7 @@ export function buildEntitySetsFromLibrary(
   places.forEach(p => {
     if (p.name) {
       extractWords(p.name).forEach(w => placesSet.add(w));
+      placesFullNames.add(normalizeName(p.name));
       addPhrase(p.name);
     }
   });
@@ -442,9 +462,19 @@ export function buildEntitySetsFromLibrary(
   terms.forEach(t => {
     if (t.term) {
       extractWords(t.term).forEach(w => termsSet.add(w));
+      termsFullNames.add(normalizeName(t.term));
       addPhrase(t.term);
     }
   });
   
-  return { people: peopleSet, places: placesSet, dates: datesSet, terms: termsSet, multiWordPhrases };
+  return { 
+    people: peopleSet, 
+    places: placesSet, 
+    dates: datesSet, 
+    terms: termsSet, 
+    peopleFullNames,
+    placesFullNames,
+    termsFullNames,
+    multiWordPhrases 
+  };
 }
