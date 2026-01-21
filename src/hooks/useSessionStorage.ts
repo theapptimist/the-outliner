@@ -39,14 +39,28 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, (value: 
     }
   }, [storageKey, key]);
 
-  // Persist whenever value changes
+  // Persist whenever value changes (debounced to avoid locking the UI for large payloads)
+  const persistTimeoutRef = useRef<number | null>(null);
   useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(storedValue));
-    } catch (e) {
-      console.warn(`Failed to save ${key} to localStorage:`, e);
+    if (persistTimeoutRef.current) {
+      window.clearTimeout(persistTimeoutRef.current);
     }
-  }, [storageKey, storedValue]);
+
+    persistTimeoutRef.current = window.setTimeout(() => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(storedValue));
+      } catch (e) {
+        console.warn(`Failed to save ${key} to localStorage:`, e);
+      }
+    }, 200);
+
+    return () => {
+      if (persistTimeoutRef.current) {
+        window.clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+    };
+  }, [storageKey, storedValue, key]);
 
   // Stable setter reference
   const setValue = useCallback((value: T | ((prev: T) => T)) => {
