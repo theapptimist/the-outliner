@@ -62,6 +62,12 @@ export function SpritzerDialog({
   startNodeId,
   prefixGenerator,
 }: SpritzerDialogProps) {
+  // Keep latest prefix generator without retriggering rebuild effects on identity changes
+  const prefixGeneratorRef = useRef(prefixGenerator);
+  useEffect(() => {
+    prefixGeneratorRef.current = prefixGenerator;
+  }, [prefixGenerator]);
+
   // Build nodes and sections
   const [selectedSectionId, setSelectedSectionId] = useState<string | undefined>(startNodeId);
   const [spritzNodes, setSpritzNodes] = useState<SpritzNode[]>([]);
@@ -81,22 +87,22 @@ export function SpritzerDialog({
   // Rebuild spritz nodes when section changes
   useEffect(() => {
     if (!open) return;
-    const nodes = buildSpritzNodes(tree, selectedSectionId, prefixGenerator);
+    const nodes = buildSpritzNodes(tree, selectedSectionId, prefixGeneratorRef.current);
     setSpritzNodes(nodes);
     setGlobalWordIndex(0);
     setIsPlaying(false);
     setIsPausedAtBoundary(false);
-  }, [tree, selectedSectionId, prefixGenerator, open]);
+  }, [tree, selectedSectionId, open]);
 
   // Build section options on open
   useEffect(() => {
     if (!open) return;
-    const options = buildSectionOptions(tree, prefixGenerator);
+    const options = buildSectionOptions(tree, prefixGeneratorRef.current);
     setSectionOptions(options);
     if (!selectedSectionId && options.length > 0) {
       setSelectedSectionId(undefined); // "Read All"
     }
-  }, [tree, prefixGenerator, open, selectedSectionId]);
+  }, [tree, open, selectedSectionId]);
 
   // Reset on dialog open
   useEffect(() => {
