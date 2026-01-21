@@ -51,6 +51,8 @@ export interface CognitivePacingEntities {
   places: Set<string>;
   dates: Set<string>;
   terms: Set<string>;
+  // Multi-word phrases for token combining (normalized lowercase -> word count)
+  multiWordPhrases: Map<string, number>;
 }
 
 /**
@@ -139,37 +141,58 @@ const DAY_PATTERN = '\\d{1,2}(?:st|nd|rd|th)?';
 const YEAR_PATTERN = '\\d{4}|\\d{2}';
 
 /**
- * Combine date-like sequences into single tokens.
+ * Combine date-like sequences and multi-word entity names into single tokens.
  * Handles patterns like:
  * - "May 12, 2007" → "May 12, 2007"
  * - "12 May 2007" → "12 May 2007"
- * - "January 1" → "January 1"
- * - "1966-67" (already single token)
+ * - "Clayton Eshleman" → "Clayton Eshleman" (if in entity library)
+ * - "La Plata" → "La Plata" (if in entity library)
  */
-function combineDateTokens(words: string[]): string[] {
+function combineTokens(words: string[], multiWordPhrases?: Map<string, number>): string[] {
   const result: string[] = [];
   let i = 0;
+  
+  // Check for "Month Day, Year" or "Month Day Year" or "Month Day"
+  const monthFirst = new RegExp(`^${MONTH_NAMES}$`, 'i');
+  const dayFirst = new RegExp(`^${DAY_PATTERN},?$`, 'i');
+  const yearMatch = new RegExp(`^(${YEAR_PATTERN})[.,]?$`);
   
   while (i < words.length) {
     const current = words[i];
     const next = words[i + 1];
     const afterNext = words[i + 2];
     
-    // Check for "Month Day, Year" or "Month Day Year" or "Month Day"
-    const monthFirst = new RegExp(`^${MONTH_NAMES}$`, 'i');
-    const dayFirst = new RegExp(`^${DAY_PATTERN},?$`, 'i');
-    const yearMatch = new RegExp(`^(${YEAR_PATTERN})[.,]?$`);
+    // First, try to match multi-word entity phrases (longest match first)
+    if (multiWordPhrases && multiWordPhrases.size > 0) {
+      let matched = false;
+      
+      // Try matching phrases of decreasing length (max 5 words)
+      for (let len = Math.min(5, words.length - i); len >= 2; len--) {
+        const candidateWords = words.slice(i, i + len);
+        const candidateNormalized = candidateWords.map(w => 
+          w.toLowerCase().replace(/[.,!?;:'"()[\]{}]/g, '')
+        ).join(' ');
+        
+        if (multiWordPhrases.has(candidateNormalized)) {
+          // Found a match! Combine these words
+          result.push(candidateWords.join(' '));
+          i += len;
+          matched = true;
+          break;
+        }
+      }
+      
+      if (matched) continue;
+    }
     
+    // Check for date patterns: "Month Day, Year" or "Month Day Year" or "Month Day"
     if (monthFirst.test(current)) {
-      // "May 12, 2007" or "May 12 2007" or "May 12"
       if (next && dayFirst.test(next)) {
         if (afterNext && yearMatch.test(afterNext)) {
-          // Full date: Month Day Year
           result.push(`${current} ${next} ${afterNext}`);
           i += 3;
           continue;
         } else {
-          // Month Day only
           result.push(`${current} ${next}`);
           i += 2;
           continue;
@@ -181,12 +204,10 @@ function combineDateTokens(words: string[]): string[] {
     if (dayFirst.test(current)) {
       if (next && monthFirst.test(next)) {
         if (afterNext && yearMatch.test(afterNext)) {
-          // Full date: Day Month Year
           result.push(`${current} ${next} ${afterNext}`);
           i += 3;
           continue;
         } else {
-          // Day Month only
           result.push(`${current} ${next}`);
           i += 2;
           continue;
@@ -194,7 +215,7 @@ function combineDateTokens(words: string[]): string[] {
       }
     }
     
-    // No date pattern matched, keep as-is
+    // No pattern matched, keep as-is
     result.push(current);
     i++;
   }
@@ -205,7 +226,7 @@ function combineDateTokens(words: string[]): string[] {
 /**
  * Parse a string into SpritzWord objects with ORP and pause data.
  * If entities are provided, applies Adaptive Cognitive Pacing.
- * Combines multi-word dates into single tokens for smoother reading.
+ * Combines multi-word dates and entity names into single tokens.
  */
 export function parseTextToWords(
   text: string,
@@ -216,8 +237,8 @@ export function parseTextToWords(
   // Split on whitespace, keeping punctuation attached to words
   const rawWords = text.split(/\s+/).filter(w => w.length > 0);
   
-  // Combine date patterns into single tokens
-  const combinedWords = combineDateTokens(rawWords);
+  // Combine date patterns and multi-word entities into single tokens
+  const combinedWords = combineTokens(rawWords, entities?.multiWordPhrases);
   
   return combinedWords.map(word => ({
     text: word,
@@ -370,7 +391,8 @@ export function buildSectionOptions(
 
 /**
  * Build entity sets from library data for cognitive pacing.
- * Extracts individual words from multi-word names for matching.
+ * Extracts individual words from multi-word names for matching,
+ * and tracks full multi-word phrases for token combining.
  */
 export function buildEntitySetsFromLibrary(
   people: Array<{ name?: string }>,
@@ -386,14 +408,31 @@ export function buildEntitySetsFromLibrary(
   const placesSet = new Set<string>();
   const datesSet = new Set<string>();
   const termsSet = new Set<string>();
+  const multiWordPhrases = new Map<string, number>();
+  
+  // Helper to add multi-word phrase
+  const addPhrase = (text: string | undefined) => {
+    if (!text) return;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length > 1) {
+      // Store normalized (lowercase) version with word count
+      multiWordPhrases.set(words.map(w => w.toLowerCase()).join(' '), words.length);
+    }
+  };
   
   // Extract individual words from multi-word entity names
   people.forEach(p => {
-    if (p.name) extractWords(p.name).forEach(w => peopleSet.add(w));
+    if (p.name) {
+      extractWords(p.name).forEach(w => peopleSet.add(w));
+      addPhrase(p.name);
+    }
   });
   
   places.forEach(p => {
-    if (p.name) extractWords(p.name).forEach(w => placesSet.add(w));
+    if (p.name) {
+      extractWords(p.name).forEach(w => placesSet.add(w));
+      addPhrase(p.name);
+    }
   });
   
   dates.forEach(d => {
@@ -401,8 +440,11 @@ export function buildEntitySetsFromLibrary(
   });
   
   terms.forEach(t => {
-    if (t.term) extractWords(t.term).forEach(w => termsSet.add(w));
+    if (t.term) {
+      extractWords(t.term).forEach(w => termsSet.add(w));
+      addPhrase(t.term);
+    }
   });
   
-  return { people: peopleSet, places: placesSet, dates: datesSet, terms: termsSet };
+  return { people: peopleSet, places: placesSet, dates: datesSet, terms: termsSet, multiWordPhrases };
 }
