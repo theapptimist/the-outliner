@@ -316,14 +316,18 @@ export default function Editor() {
   }, []);
 
   // Debounced auto-save for document changes
+  const [isSaving, setIsSaving] = useState(false);
   const { flush: flushAutoSave } = useDebouncedAutoSave({
     document,
     userId: user?.id,
     enabled: autoSaveEnabled && hasUnsavedChanges,
     delayMs: 3000,
+    onSaveStart: () => setIsSaving(true),
     onSaveComplete: () => {
+      setIsSaving(false);
       setHasUnsavedChanges(false);
     },
+    onSaveError: () => setIsSaving(false),
   });
 
   // Persist current doc ID
@@ -572,6 +576,7 @@ export default function Editor() {
   const fileMenuProps = {
     documentTitle: document.meta.title,
     hasUnsavedChanges,
+    isSaving,
     onNew: handleNew,
     onOpen: () => setOpenDialogOpen(true),
     onSave: handleSave,

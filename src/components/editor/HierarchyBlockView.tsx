@@ -1,5 +1,5 @@
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
@@ -25,13 +25,15 @@ import { FindReplaceMatch, FindReplaceProvider, useEditorContext } from './Edito
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, Minimize2, Maximize2, ExternalLink, Upload, Link2, Play } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink, Upload, Link2, Play, Loader2 } from 'lucide-react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
-import { ImportOutlineDialog } from './ImportOutlineDialog';
-import { LinkDocumentDialog } from './LinkDocumentDialog';
-import { SpritzerDialog } from './SpritzerDialog';
 import { getOutlinePrefix, getOutlinePrefixCustom } from '@/lib/outlineStyles';
 import { FlatNode } from '@/types/node';
+
+// Lazy load heavy dialogs
+const ImportOutlineDialog = lazy(() => import('./ImportOutlineDialog').then(m => ({ default: m.ImportOutlineDialog })));
+const LinkDocumentDialog = lazy(() => import('./LinkDocumentDialog').then(m => ({ default: m.LinkDocumentDialog })));
+const SpritzerDialog = lazy(() => import('./SpritzerDialog').then(m => ({ default: m.SpritzerDialog })));
 
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
@@ -712,10 +714,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     <NodeViewWrapper 
       className="hierarchy-block my-2 rounded-lg group relative"
     >
-      {/* Import Outline Dialog */}
-      <ImportOutlineDialog
-        open={importDialogOpen}
-        onOpenChange={setImportDialogOpen}
+      {/* Import Outline Dialog - Lazy loaded */}
+      <Suspense fallback={null}>
+        <ImportOutlineDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
         onImport={handlePasteHierarchyFromContext}
         onLink={(docId, docTitle) => {
           const anchorId = selectedId || flatNodes[flatNodes.length - 1]?.id;
@@ -746,10 +749,12 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           }
         }}
       />
+      </Suspense>
       
-      {/* Link Document Dialog - for creating new links */}
-      <LinkDocumentDialog
-        open={linkDialogOpen}
+      {/* Link Document Dialog - for creating new links - Lazy loaded */}
+      <Suspense fallback={null}>
+        <LinkDocumentDialog
+          open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
         onSelect={(docId, docTitle) => {
           const anchorId = selectedId || flatNodes[flatNodes.length - 1]?.id;
@@ -781,10 +786,12 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         }}
         currentDocId={document?.meta?.id}
       />
+      </Suspense>
       
-      {/* Relink Document Dialog - for fixing broken link nodes */}
-      <LinkDocumentDialog
-        open={relinkDialogOpen}
+      {/* Relink Document Dialog - for fixing broken link nodes - Lazy loaded */}
+      <Suspense fallback={null}>
+        <LinkDocumentDialog
+          open={relinkDialogOpen}
         onOpenChange={(open) => {
           setRelinkDialogOpen(open);
           if (!open) setRelinkNodeId(null);
@@ -808,10 +815,12 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         }}
         currentDocId={document?.meta?.id}
       />
+      </Suspense>
       
-      {/* Spritzer Dialog with Adaptive Cognitive Pacing */}
-      <SpritzerDialog
-        open={spritzerOpen}
+      {/* Spritzer Dialog with Adaptive Cognitive Pacing - Lazy loaded */}
+      <Suspense fallback={null}>
+        <SpritzerDialog
+          open={spritzerOpen}
         onOpenChange={setSpritzerOpen}
         tree={tree}
         startNodeId={selectedId ?? undefined}
@@ -857,6 +866,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         dates={dates}
         terms={terms}
       />
+      </Suspense>
       
       {/* Floating toolbar - appears on hover */}
       <div className="absolute -top-1.5 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
