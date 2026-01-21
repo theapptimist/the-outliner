@@ -418,10 +418,10 @@ export function SpritzerDialog({
         <div className="flex flex-col gap-4">
           {/* ORP Display Zone */}
           <div className="relative bg-muted rounded-lg p-8 flex flex-col items-center justify-center min-h-[120px]">
-            {/* Guide lines */}
+            {/* Guide line - vertical centerline */}
             <div className="absolute left-1/2 top-0 bottom-0 w-px bg-primary/30 -translate-x-1/2" />
-            <div className="absolute left-1/2 top-1/2 w-3 h-3 border-l-2 border-t-2 border-primary -translate-x-1/2 -translate-y-1/2 rotate-45" />
-            
+            {/* Caret at bottom pointing up */}
+            <div className="absolute left-1/2 bottom-2 w-2 h-2 border-l-2 border-b-2 border-primary -translate-x-1/2 rotate-[-45deg]" />
             {isPausedAtBoundary ? (
               <div className="text-center">
                 <div className="text-muted-foreground text-sm mb-2">Next section:</div>
