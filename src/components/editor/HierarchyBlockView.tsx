@@ -995,6 +995,10 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               setRelinkNodeId(nodeId);
               setRelinkDialogOpen(true);
             }}
+            onConvertToNumbered={(nodeId) => {
+              // Convert a BODY/link node back to a numbered 'default' type
+              setTree(prev => updateNode(prev, nodeId, { type: 'default' }));
+            }}
           />
         </div>
       )}

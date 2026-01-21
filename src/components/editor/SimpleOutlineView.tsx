@@ -43,6 +43,8 @@ interface SimpleOutlineViewProps {
   onNavigateToLinkedDocument?: (documentId: string, documentTitle: string) => void;
   /** Handler for requesting to relink a broken link node */
   onRequestRelink?: (nodeId: string) => void;
+  /** Handler for converting a BODY node back to a numbered outline item */
+  onConvertToNumbered?: (id: string) => void;
 }
 
 export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
@@ -74,6 +76,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     autoDescend = false,
     onNavigateToLinkedDocument,
     onRequestRelink,
+    onConvertToNumbered,
   },
   forwardedRef
 ) {
@@ -758,7 +761,12 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       // Indent or outdent
       try {
         if (e.shiftKey) {
-          onOutdent(node.id);
+          // For BODY nodes at root level (or that can't outdent further), convert to numbered
+          if ((node.type === 'body' || node.type === 'link') && node.depth === 0 && onConvertToNumbered) {
+            onConvertToNumbered(node.id);
+          } else {
+            onOutdent(node.id);
+          }
         } else {
           onIndent(node.id);
         }
