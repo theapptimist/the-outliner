@@ -75,9 +75,10 @@ const WPM_STEP = 50;
 const NODE_BOUNDARY_PAUSE_MS = 1000;
 
 // Delta controls: difference between CW and PPDT speeds
-const DEFAULT_DELTA = 0.7; // 0.7 means CW=0.7x, PPDT=1.4x (2x difference)
-const MIN_DELTA = 0;       // 0 = no difference
-const MAX_DELTA = 1.0;     // 1.0 = maximum difference
+// Experimental range - CW can go up to 5x faster, PPDT up to 3x slower
+const DEFAULT_DELTA = 0.5; // Moderate starting point
+const MIN_DELTA = 0;       // 0 = no difference (uniform speed)
+const MAX_DELTA = 1.0;     // 1.0 = maximum difference (CW 0.2x, PPDT 3.0x)
 
 export function SpritzerDialog({
   open,
@@ -205,22 +206,31 @@ export function SpritzerDialog({
 
     // Calculate effective pause multiplier based on delta setting
     // Delta controls the spread: 0 = uniform speed, 1.0 = max difference
-    // CW multiplier: 1.0 - delta * 0.3 (0.7 at max delta)
-    // PPDT multiplier: 1.0 + delta * 0.4 (1.4 at max delta)
+    // EXPERIMENTAL RANGE:
+    // CW multiplier: 1.0 down to 0.2 at max delta (5x faster!)
+    // PPDT multiplier: 1.0 up to 3.0 at max delta (3x slower)
+    // Rationale: function words like "was born in on" are reflexively processed,
+    // while proper nouns like "Vladimir" and "Rostov-on-Don" need actual decoding
     let effectiveMultiplier = 1.0;
     if (currentWord.ppdtType) {
-      // PPDT - slow down based on delta
-      effectiveMultiplier = 1.0 + pacingDelta * 0.4;
+      // PPDT - significant slowdown for cognitive processing
+      effectiveMultiplier = 1.0 + pacingDelta * 2.0; // 1.0 to 3.0
     } else {
-      // Common word - speed up based on delta
-      effectiveMultiplier = 1.0 - pacingDelta * 0.3;
+      // Common word - can go much faster since brain auto-recognizes
+      effectiveMultiplier = 1.0 - pacingDelta * 0.8; // 1.0 to 0.2
     }
     
-    // Apply punctuation modifiers from the stored multiplier ratio
-    // The stored pauseMultiplier includes punctuation effects, so we extract just that
-    const baseMultiplier = currentWord.ppdtType ? 1.4 : 0.7;
-    const punctuationRatio = currentWord.pauseMultiplier / baseMultiplier;
-    effectiveMultiplier *= punctuationRatio;
+    // Apply punctuation modifiers directly (not from stored pauseMultiplier)
+    // since we're now using dynamic CW/PPDT multipliers
+    const lastChar = currentWord.text.slice(-1);
+    if ('.!?'.includes(lastChar)) {
+      effectiveMultiplier *= 1.5; // Sentence end
+    } else if (',;:'.includes(lastChar)) {
+      effectiveMultiplier *= 1.25; // Clause separator
+    }
+    if (currentWord.text.length > 10) {
+      effectiveMultiplier *= 1.15; // Long word
+    }
 
     const delay = calculateWordDelay(wpm, effectiveMultiplier);
     
