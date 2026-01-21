@@ -12,6 +12,7 @@ export interface SpritzWord {
   text: string;
   orpIndex: number;
   pauseMultiplier: number;
+  ppdtType: 'people' | 'places' | 'dates' | 'terms' | null;
 }
 
 export interface SpritzNode {
@@ -43,28 +44,96 @@ export function calculateORP(word: string): number {
 }
 
 /**
- * Calculate the pause multiplier for a word based on punctuation.
- * Certain punctuation marks warrant longer display times.
+ * Entity sets for cognitive pacing - PPDTs (People, Places, Dates, Terms)
  */
-export function calculatePauseMultiplier(word: string): number {
+export interface CognitivePacingEntities {
+  people: Set<string>;
+  places: Set<string>;
+  dates: Set<string>;
+  terms: Set<string>;
+}
+
+/**
+ * Normalize a word for entity matching (lowercase, strip punctuation)
+ */
+function normalizeForMatch(word: string): string {
+  return word.toLowerCase().replace(/[.,!?;:'"()[\]{}]/g, '');
+}
+
+/**
+ * Check if a word matches any entity in the PPDT sets.
+ * Returns the entity type if matched, null otherwise.
+ */
+export function matchesPPDT(
+  word: string,
+  entities: CognitivePacingEntities
+): 'people' | 'places' | 'dates' | 'terms' | null {
+  const normalized = normalizeForMatch(word);
+  if (!normalized) return null;
+  
+  // Check each entity type
+  if (entities.people.has(normalized)) return 'people';
+  if (entities.places.has(normalized)) return 'places';
+  if (entities.dates.has(normalized)) return 'dates';
+  if (entities.terms.has(normalized)) return 'terms';
+  
+  return null;
+}
+
+/**
+ * Calculate the pause multiplier for a word based on cognitive load.
+ * 
+ * Adaptive Cognitive Pacing™:
+ * - PPDTs (People, Places, Dates, Terms) require more cognitive attention → SLOWER
+ * - Common words (CW) are processed reflexively → FASTER
+ * - Punctuation adds additional pauses on top
+ */
+export function calculatePauseMultiplier(
+  word: string,
+  entities?: CognitivePacingEntities
+): number {
+  let multiplier = 1.0;
+  
+  // Base cognitive pacing: check if this is a PPDT
+  if (entities) {
+    const ppdtType = matchesPPDT(word, entities);
+    if (ppdtType) {
+      // PPDT detected - slow down for cognitive processing
+      multiplier = 1.4;
+    } else {
+      // Common word - speed up
+      multiplier = 0.7;
+    }
+  }
+  
+  // Apply punctuation modifiers on top of cognitive pacing
   const lastChar = word.slice(-1);
   
-  // Sentence-ending punctuation: 2x pause
-  if ('.!?'.includes(lastChar)) return 2.0;
+  // Sentence-ending punctuation: additional pause
+  if ('.!?'.includes(lastChar)) {
+    multiplier *= 1.5;
+  }
+  // Clause-separating punctuation: slight additional pause
+  else if (',;:'.includes(lastChar)) {
+    multiplier *= 1.25;
+  }
   
-  // Clause-separating punctuation: 1.5x pause
-  if (',;:'.includes(lastChar)) return 1.5;
+  // Long words (>10 chars): slight additional pause
+  if (word.length > 10) {
+    multiplier *= 1.15;
+  }
   
-  // Long words (>10 chars): 1.3x pause
-  if (word.length > 10) return 1.3;
-  
-  return 1.0;
+  return multiplier;
 }
 
 /**
  * Parse a string into SpritzWord objects with ORP and pause data.
+ * If entities are provided, applies Adaptive Cognitive Pacing.
  */
-export function parseTextToWords(text: string): SpritzWord[] {
+export function parseTextToWords(
+  text: string,
+  entities?: CognitivePacingEntities
+): SpritzWord[] {
   if (!text || text.trim() === '') return [];
   
   // Split on whitespace, keeping punctuation attached to words
@@ -73,7 +142,8 @@ export function parseTextToWords(text: string): SpritzWord[] {
   return rawWords.map(word => ({
     text: word,
     orpIndex: calculateORP(word),
-    pauseMultiplier: calculatePauseMultiplier(word),
+    pauseMultiplier: calculatePauseMultiplier(word, entities),
+    ppdtType: entities ? matchesPPDT(word, entities) : null,
   }));
 }
 
@@ -88,11 +158,13 @@ export function extractNodeText(node: FlatNode | HierarchyNode): string {
 /**
  * Build a flat list of SpritzNode objects from a tree, starting from a given node.
  * If startNodeId is provided, only includes that node and its descendants.
+ * If entities are provided, applies Adaptive Cognitive Pacing.
  */
 export function buildSpritzNodes(
   tree: HierarchyNode[],
   startNodeId?: string,
-  prefixGenerator?: (node: FlatNode) => string
+  prefixGenerator?: (node: FlatNode) => string,
+  entities?: CognitivePacingEntities
 ): SpritzNode[] {
   const flat = flattenTree(tree);
   
@@ -124,7 +196,7 @@ export function buildSpritzNodes(
       label: text,
       prefix: prefixGenerator ? prefixGenerator(node) : '',
       depth: node.depth,
-      words: parseTextToWords(text),
+      words: parseTextToWords(text, entities),
     });
   }
   
@@ -193,7 +265,8 @@ export interface SectionOption {
 
 export function buildSectionOptions(
   tree: HierarchyNode[],
-  prefixGenerator: (node: FlatNode) => string
+  prefixGenerator: (node: FlatNode) => string,
+  entities?: CognitivePacingEntities
 ): SectionOption[] {
   const flat = flattenTree(tree);
   
@@ -201,7 +274,7 @@ export function buildSectionOptions(
     .filter(node => node.type !== 'body') // Only numbered/heading nodes
     .map(node => {
       // Count words in this node and its descendants
-      const subtree = buildSpritzNodes(tree, node.id, prefixGenerator);
+      const subtree = buildSpritzNodes(tree, node.id, prefixGenerator, entities);
       const wordCount = getTotalWordCount(subtree);
       
       return {
@@ -213,4 +286,43 @@ export function buildSectionOptions(
       };
     })
     .filter(opt => opt.wordCount > 0);
+}
+
+/**
+ * Build entity sets from library data for cognitive pacing.
+ * Extracts individual words from multi-word names for matching.
+ */
+export function buildEntitySetsFromLibrary(
+  people: Array<{ name?: string }>,
+  places: Array<{ name?: string }>,
+  dates: Array<{ rawText?: string }>,
+  terms: Array<{ term?: string }>
+): CognitivePacingEntities {
+  const extractWords = (text: string): string[] => {
+    return text.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+  };
+  
+  const peopleSet = new Set<string>();
+  const placesSet = new Set<string>();
+  const datesSet = new Set<string>();
+  const termsSet = new Set<string>();
+  
+  // Extract individual words from multi-word entity names
+  people.forEach(p => {
+    if (p.name) extractWords(p.name).forEach(w => peopleSet.add(w));
+  });
+  
+  places.forEach(p => {
+    if (p.name) extractWords(p.name).forEach(w => placesSet.add(w));
+  });
+  
+  dates.forEach(d => {
+    if (d.rawText) extractWords(d.rawText).forEach(w => datesSet.add(w));
+  });
+  
+  terms.forEach(t => {
+    if (t.term) extractWords(t.term).forEach(w => termsSet.add(w));
+  });
+  
+  return { people: peopleSet, places: placesSet, dates: datesSet, terms: termsSet };
 }
