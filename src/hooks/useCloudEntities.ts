@@ -77,11 +77,9 @@ export function useCloudEntities<T extends { id: string }>({
   // Load entities on mount and handle migration
   useEffect(() => {
     mountedRef.current = true;
-
-    // When documentId changes, immediately clear entities to prevent stale data from showing
-    if (lastDocIdRef.current !== null && lastDocIdRef.current !== documentId) {
-      setEntities([]);
-    }
+    
+    // Detect if this is a document switch (not initial mount)
+    const isDocumentChange = lastDocIdRef.current !== null && lastDocIdRef.current !== documentId;
     lastDocIdRef.current = documentId;
 
     async function loadAndMigrate() {
@@ -108,8 +106,10 @@ export function useCloudEntities<T extends { id: string }>({
           deserialize
         );
 
-        // If cloud returned empty, fall back to local mirror (avoids the "everything vanished" feeling)
-        const fallbackLocal = loadedEntities.length === 0
+        // If switching documents and cloud is empty, DON'T fall back to local
+        // (the new document genuinely has no entities)
+        // Only use local fallback on initial load of same document
+        const fallbackLocal = loadedEntities.length === 0 && !isDocumentChange
           ? loadFromLocal<T>(localStorageKey, deserialize)
           : loadedEntities;
 
@@ -121,8 +121,8 @@ export function useCloudEntities<T extends { id: string }>({
         console.error(`Failed to load ${entityType} entities:`, e);
         if (mountedRef.current) {
           setError(e instanceof Error ? e : new Error('Failed to load entities'));
-          // Always fall back to local mirror on errors
-          setEntities(loadFromLocal<T>(localStorageKey, deserialize));
+          // On error during document switch, start fresh; otherwise fall back to local
+          setEntities(isDocumentChange ? [] : loadFromLocal<T>(localStorageKey, deserialize));
         }
       } finally {
         if (mountedRef.current) {
