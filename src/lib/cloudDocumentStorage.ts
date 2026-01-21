@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { DocumentState, createEmptyDocument, HierarchyBlockData } from '@/types/document';
 import { Json } from '@/integrations/supabase/types';
+import { withRetry } from './fetchWithRetry';
 
 export interface CloudDocumentMetadata {
   id: string;
@@ -44,51 +45,59 @@ function parseHierarchyBlocks(json: Json | null): Record<string, HierarchyBlockD
 
 // List all documents for the current user
 export async function listCloudDocuments(): Promise<CloudDocumentMetadata[]> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('id, title, created_at, updated_at')
-    .order('updated_at', { ascending: false });
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('id, title, created_at, updated_at')
+      .order('updated_at', { ascending: false });
 
-  if (error) {
-    console.error('[CloudStorage] Failed to list documents:', error);
-    return [];
-  }
+    if (error) {
+      console.error('[CloudStorage] Failed to list documents:', error);
+      throw error;
+    }
 
-  return data.map(d => ({
-    id: d.id,
-    title: d.title,
-    createdAt: d.created_at,
-    updatedAt: d.updated_at,
-  }));
+    return data.map(d => ({
+      id: d.id,
+      title: d.title,
+      createdAt: d.created_at,
+      updatedAt: d.updated_at,
+    }));
+  });
 }
 
 // Load a specific document
 export async function loadCloudDocument(id: string): Promise<DocumentState | null> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-  if (error || !data) {
-    console.error('[CloudStorage] Failed to load document:', error);
-    return null;
-  }
+    if (error) {
+      console.error('[CloudStorage] Failed to load document:', error);
+      throw error;
+    }
 
-  // Track "recent" by opens (not just saves)
-  addToRecentCloudDocuments(data.id);
+    if (!data) {
+      return null;
+    }
 
-  return {
-    meta: {
-      id: data.id,
-      title: data.title,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      isMaster: data.is_master ?? false,
-    },
-    content: data.content || {},
-    hierarchyBlocks: parseHierarchyBlocks(data.hierarchy_blocks),
-  };
+    // Track "recent" by opens (not just saves)
+    addToRecentCloudDocuments(data.id);
+
+    return {
+      meta: {
+        id: data.id,
+        title: data.title,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        isMaster: data.is_master ?? false,
+      },
+      content: data.content || {},
+      hierarchyBlocks: parseHierarchyBlocks(data.hierarchy_blocks),
+    };
+  });
 }
 
 // Save a document (upsert)

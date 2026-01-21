@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { withRetry } from './fetchWithRetry';
 
 export type EntityType = 'person' | 'place' | 'date' | 'term';
 
@@ -20,22 +21,24 @@ export async function loadEntities<T>(
   documentId: string,
   entityType: EntityType
 ): Promise<T[]> {
-  const { data, error } = await supabase
-    .from('document_entities')
-    .select('*')
-    .eq('document_id', documentId)
-    .eq('entity_type', entityType);
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('document_entities')
+      .select('*')
+      .eq('document_id', documentId)
+      .eq('entity_type', entityType);
 
-  if (error) {
-    console.error(`Failed to load ${entityType} entities:`, error);
-    return [];
-  }
+    if (error) {
+      console.error(`Failed to load ${entityType} entities:`, error);
+      throw error;
+    }
 
-  // Extract the data field from each row and cast to T
-  return (data || []).map(row => ({
-    ...(row.data as Record<string, unknown>),
-    id: row.id, // Use the database ID as the entity ID
-  })) as T[];
+    // Extract the data field from each row and cast to T
+    return (data || []).map(row => ({
+      ...(row.data as Record<string, unknown>),
+      id: row.id, // Use the database ID as the entity ID
+    })) as T[];
+  });
 }
 
 /**
@@ -47,22 +50,24 @@ export async function loadEntitiesForDocuments<T>(
 ): Promise<Array<T & { sourceDocId: string }>> {
   if (documentIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from('document_entities')
-    .select('*')
-    .in('document_id', documentIds)
-    .eq('entity_type', entityType);
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('document_entities')
+      .select('*')
+      .in('document_id', documentIds)
+      .eq('entity_type', entityType);
 
-  if (error) {
-    console.error(`Failed to load ${entityType} entities for aggregation:`, error);
-    return [];
-  }
+    if (error) {
+      console.error(`Failed to load ${entityType} entities for aggregation:`, error);
+      throw error;
+    }
 
-  return (data || []).map(row => ({
-    ...(row.data as Record<string, unknown>),
-    id: row.id,
-    sourceDocId: row.document_id,
-  })) as unknown as Array<T & { sourceDocId: string }>;
+    return (data || []).map(row => ({
+      ...(row.data as Record<string, unknown>),
+      id: row.id,
+      sourceDocId: row.document_id,
+    })) as unknown as Array<T & { sourceDocId: string }>;
+  });
 }
 
 /**
