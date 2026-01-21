@@ -133,9 +133,79 @@ export function calculatePauseMultiplier(
   return multiplier;
 }
 
+// Regex patterns for date detection
+const MONTH_NAMES = '(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)';
+const DAY_PATTERN = '\\d{1,2}(?:st|nd|rd|th)?';
+const YEAR_PATTERN = '\\d{4}|\\d{2}';
+
+/**
+ * Combine date-like sequences into single tokens.
+ * Handles patterns like:
+ * - "May 12, 2007" → "May 12, 2007"
+ * - "12 May 2007" → "12 May 2007"
+ * - "January 1" → "January 1"
+ * - "1966-67" (already single token)
+ */
+function combineDateTokens(words: string[]): string[] {
+  const result: string[] = [];
+  let i = 0;
+  
+  while (i < words.length) {
+    const current = words[i];
+    const next = words[i + 1];
+    const afterNext = words[i + 2];
+    
+    // Check for "Month Day, Year" or "Month Day Year" or "Month Day"
+    const monthFirst = new RegExp(`^${MONTH_NAMES}$`, 'i');
+    const dayFirst = new RegExp(`^${DAY_PATTERN},?$`, 'i');
+    const yearMatch = new RegExp(`^(${YEAR_PATTERN})[.,]?$`);
+    
+    if (monthFirst.test(current)) {
+      // "May 12, 2007" or "May 12 2007" or "May 12"
+      if (next && dayFirst.test(next)) {
+        if (afterNext && yearMatch.test(afterNext)) {
+          // Full date: Month Day Year
+          result.push(`${current} ${next} ${afterNext}`);
+          i += 3;
+          continue;
+        } else {
+          // Month Day only
+          result.push(`${current} ${next}`);
+          i += 2;
+          continue;
+        }
+      }
+    }
+    
+    // Check for "Day Month Year" or "Day Month"
+    if (dayFirst.test(current)) {
+      if (next && monthFirst.test(next)) {
+        if (afterNext && yearMatch.test(afterNext)) {
+          // Full date: Day Month Year
+          result.push(`${current} ${next} ${afterNext}`);
+          i += 3;
+          continue;
+        } else {
+          // Day Month only
+          result.push(`${current} ${next}`);
+          i += 2;
+          continue;
+        }
+      }
+    }
+    
+    // No date pattern matched, keep as-is
+    result.push(current);
+    i++;
+  }
+  
+  return result;
+}
+
 /**
  * Parse a string into SpritzWord objects with ORP and pause data.
  * If entities are provided, applies Adaptive Cognitive Pacing.
+ * Combines multi-word dates into single tokens for smoother reading.
  */
 export function parseTextToWords(
   text: string,
@@ -146,7 +216,10 @@ export function parseTextToWords(
   // Split on whitespace, keeping punctuation attached to words
   const rawWords = text.split(/\s+/).filter(w => w.length > 0);
   
-  return rawWords.map(word => ({
+  // Combine date patterns into single tokens
+  const combinedWords = combineDateTokens(rawWords);
+  
+  return combinedWords.map(word => ({
     text: word,
     orpIndex: calculateORP(word),
     pauseMultiplier: calculatePauseMultiplier(word, entities),
