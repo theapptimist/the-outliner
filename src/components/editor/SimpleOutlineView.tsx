@@ -1250,7 +1250,28 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     // No-op: blocked by onBeforeInput
                   }}
                   onClick={(e) => {
-                    // Click navigates to linked document (or opens relink dialog for broken links)
+                    // Only navigate if clicking directly on the link text, not padding/empty space
+                    const target = e.currentTarget;
+                    const rect = target.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    
+                    // Measure text width using canvas
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      const computedStyle = window.getComputedStyle(target);
+                      ctx.font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+                      const textWidth = ctx.measureText(target.value).width;
+                      const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+                      
+                      // If click is beyond the text (plus small margin), just focus, don't navigate
+                      if (clickX > paddingLeft + textWidth + 8) {
+                        // Just focus, don't navigate
+                        return;
+                      }
+                    }
+                    
+                    // Click is on the text - navigate
                     e.preventDefault();
                     if (node.linkedDocumentId) {
                       toast({ title: 'Opening linked document…' });
