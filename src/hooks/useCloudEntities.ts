@@ -71,9 +71,18 @@ export function useCloudEntities<T extends { id: string }>({
   const lastSavedRef = useRef<string>('');
   const mountedRef = useRef(true);
 
+  // Track the last loaded documentId to detect changes
+  const lastDocIdRef = useRef<string | null>(null);
+
   // Load entities on mount and handle migration
   useEffect(() => {
     mountedRef.current = true;
+
+    // When documentId changes, immediately clear entities to prevent stale data from showing
+    if (lastDocIdRef.current !== null && lastDocIdRef.current !== documentId) {
+      setEntities([]);
+    }
+    lastDocIdRef.current = documentId;
 
     async function loadAndMigrate() {
       setLoading(true);
