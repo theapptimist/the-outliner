@@ -85,6 +85,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [editValue, setEditValue] = useState('');
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+  // Avoid layout thrash by coalescing textarea auto-resize to 1x RAF per node.
+  const resizeRafByIdRef = useRef<Map<string, number>>(new Map());
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const { 
@@ -112,6 +114,42 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     placesHighlightMode,
     highlightedPlace,
   } = useEditorContext();
+
+  const scheduleTextareaResize = useCallback((nodeId: string) => {
+    const existing = resizeRafByIdRef.current.get(nodeId);
+    if (existing) cancelAnimationFrame(existing);
+
+    const raf = requestAnimationFrame(() => {
+      resizeRafByIdRef.current.delete(nodeId);
+      const el = inputRefs.current.get(nodeId);
+      if (!el) return;
+
+      // scrollHeight reads layout; only write style.height if it will change.
+      const next = el.scrollHeight;
+      const current = Number.parseFloat(el.style.height || '');
+
+      // If we don't have a numeric height yet, do the classic auto->px set once.
+      if (!Number.isFinite(current)) {
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+        return;
+      }
+
+      // Grow: set px directly (no need for 'auto').
+      if (next > current + 1) {
+        el.style.height = `${next}px`;
+        return;
+      }
+
+      // Shrink: need 'auto' to allow smaller scrollHeight.
+      if (next < current - 1) {
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+      }
+    });
+
+    resizeRafByIdRef.current.set(nodeId, raf);
+  }, []);
 
   // Track last focused position for term insertion when clicking sidebar
   const lastFocusedNodeIdRef = useRef<string | null>(null);
@@ -642,8 +680,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         if (currentInput) {
           currentInput.selectionStart = currentInput.selectionEnd = start + 1;
           // Also update height to ensure cursor is visible
-          currentInput.style.height = 'auto';
-          currentInput.style.height = `${currentInput.scrollHeight}px`;
+          scheduleTextareaResize(nodeId);
         }
       });
     };
@@ -921,7 +958,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       }
       // Otherwise let arrow work normally within multi-line text
     }
-  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard, onNavigateUp, onNavigateDown, outlineStyle, mixedConfig]);
+  }, [handleEndEdit, onAddNode, onAddBodyNode, onAddBodyNodeWithSpacer, onAddChildNode, onIndent, onOutdent, onVisualIndent, editValue, onDelete, onUpdateLabel, onMergeIntoParent, autoDescend, nodes, onCopyNode, onPasteNodes, nodeClipboard, setNodeClipboard, onNavigateUp, onNavigateDown, outlineStyle, mixedConfig, scheduleTextareaResize]);
 
   // Handle paste event to detect outline patterns
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>, nodeId: string) => {
@@ -972,8 +1009,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             el.selectionEnd = newPos;
             el.focus();
             // Resize textarea
-            el.style.height = 'auto';
-            el.style.height = `${el.scrollHeight}px`;
+            scheduleTextareaResize(nodeId);
           }
         });
       }
@@ -986,7 +1022,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
     setSmartPasteData(null);
     smartPasteNodeIdRef.current = null;
-  }, [onPasteHierarchy]);
+  }, [onPasteHierarchy, scheduleTextareaResize]);
 
   // Global keyboard handler
   useEffect(() => {
@@ -1096,10 +1132,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         if (el) {
           inputRefs.current.set(id, el);
           // Auto-resize on mount
-          requestAnimationFrame(() => {
-            el.style.height = 'auto';
-            el.style.height = `${el.scrollHeight}px`;
-          });
+            scheduleTextareaResize(id);
           // Focus-on-mount: if this textarea is the one we're waiting for, focus it now
           if (pendingProgramFocusIdRef.current === id) {
             pendingProgramFocusIdRef.current = null;
@@ -1480,8 +1513,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       } else {
                         setEditValue(newValue);
                       }
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${e.target.scrollHeight}px`;
+                      scheduleTextareaResize(node.id);
                     }}
                     onKeyDown={(e) => {
                       // Always allow Escape to exit outline
