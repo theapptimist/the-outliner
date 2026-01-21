@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -7,6 +7,7 @@ import {
   Sparkles,
   Network,
   Clock,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -15,12 +16,14 @@ import { useEditorContext } from './EditorContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { LibraryPane } from './LibraryPane';
 import { LinkingWorkspace } from './LinkingWorkspace';
-import { AIGeneratePane } from './AIGeneratePane';
 import { ToolsPane } from './ToolsPane';
 import { MasterOutlinePane } from './MasterOutlinePane';
 import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
+
+// Lazy load the AI pane since it's rarely used immediately
+const AIGeneratePane = lazy(() => import('./AIGeneratePane').then(m => ({ default: m.AIGeneratePane })));
 
 import type { SidebarTab } from '@/contexts/NavigationContext';
 
@@ -305,9 +308,15 @@ export function EditorSidebar({
       
       {activeTab === 'ai' && (
         <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
-          <AIGeneratePane 
-            onInsertHierarchy={handleAIInsertHierarchy}
-          />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          }>
+            <AIGeneratePane 
+              onInsertHierarchy={handleAIInsertHierarchy}
+            />
+          </Suspense>
         </div>
       )}
       

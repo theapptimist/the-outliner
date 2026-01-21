@@ -29,10 +29,12 @@ import { getRecentCloudDocuments, CloudDocumentMetadata } from '@/lib/cloudDocum
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { AutoSaveIndicator } from './AutoSaveIndicator';
 
 interface FileMenuProps {
   documentTitle: string;
   hasUnsavedChanges: boolean;
+  isSaving?: boolean;
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
@@ -149,6 +151,7 @@ function DiagnosticsPanel({
 export function FileMenu({
   documentTitle,
   hasUnsavedChanges,
+  isSaving = false,
   onNew,
   onOpen,
   onSave,
@@ -338,11 +341,16 @@ export function FileMenu({
                   className="text-xs font-medium flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer text-left"
                 >
                   {documentTitle}
-                  {hasUnsavedChanges && <span className="text-warning">•</span>}
                   <Pencil className="h-2.5 w-2.5 opacity-50" />
                 </button>
               )}
             </SheetTitle>
+            {/* Auto-save indicator */}
+            <AutoSaveIndicator 
+              hasUnsavedChanges={hasUnsavedChanges} 
+              isSaving={isSaving} 
+              className="mt-1"
+            />
           </SheetHeader>
 
           {showDiagnostics ? (

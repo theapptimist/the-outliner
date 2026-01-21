@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { 
   User, 
   MapPin, 
@@ -1794,7 +1794,7 @@ interface EntityCardProps {
   alwaysExpanded?: boolean;
 }
 
-function EntityCard({
+const EntityCard = memo(function EntityCard({
   id,
   title,
   subtitle,
@@ -2043,7 +2043,7 @@ function EntityCard({
       )}
     </div>
   );
-}
+});
 
 // Read-only card for aggregated entities from sub-documents
 interface AggregatedEntityCardProps {
@@ -2058,7 +2058,7 @@ interface AggregatedEntityCardProps {
   onToggleExpand: () => void;
 }
 
-function AggregatedEntityCard({
+const AggregatedEntityCard = memo(function AggregatedEntityCard({
   title,
   subtitle,
   description,
@@ -2115,4 +2115,4 @@ function AggregatedEntityCard({
       )}
     </div>
   );
-}
+});
