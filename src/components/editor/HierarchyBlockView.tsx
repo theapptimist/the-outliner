@@ -25,10 +25,13 @@ import { FindReplaceMatch, FindReplaceProvider, useEditorContext } from './Edito
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, Minimize2, Maximize2, ExternalLink, Upload, Link2 } from 'lucide-react';
+import { Trash2, Minimize2, Maximize2, ExternalLink, Upload, Link2, Play } from 'lucide-react';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { ImportOutlineDialog } from './ImportOutlineDialog';
 import { LinkDocumentDialog } from './LinkDocumentDialog';
+import { SpritzerDialog } from './SpritzerDialog';
+import { getOutlinePrefix, getOutlinePrefixCustom } from '@/lib/outlineStyles';
+import { FlatNode } from '@/types/node';
 
 interface HierarchyBlockViewProps extends NodeViewProps {
   updateAttributes: (attrs: Record<string, any>) => void;
@@ -79,6 +82,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   // Relink dialog state for fixing broken link nodes
   const [relinkDialogOpen, setRelinkDialogOpen] = useState(false);
   const [relinkNodeId, setRelinkNodeId] = useState<string | null>(null);
+  // Spritz reader dialog state
+  const [spritzerOpen, setSpritzerOpen] = useState(false);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -779,8 +784,61 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         currentDocId={document?.meta?.id}
       />
       
+      {/* Spritzer Dialog */}
+      <SpritzerDialog
+        open={spritzerOpen}
+        onOpenChange={setSpritzerOpen}
+        tree={tree}
+        startNodeId={selectedId ?? undefined}
+        prefixGenerator={(node: FlatNode) => {
+          // Build indices array for the node
+          const nodeFlat = flattenTree(tree);
+          const indices: number[] = [];
+          let currentDepth = 0;
+          const counters: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+          
+          for (const n of nodeFlat) {
+            // Reset counters for deeper levels when going to shallower depth
+            if (n.depth < currentDepth) {
+              for (let d = n.depth + 1; d < counters.length; d++) {
+                counters[d] = 0;
+              }
+            }
+            currentDepth = n.depth;
+            
+            // Only count numbered nodes (not body type)
+            if (n.type !== 'body') {
+              counters[n.depth]++;
+            }
+            
+            if (n.id === node.id) {
+              for (let d = 0; d <= n.depth; d++) {
+                indices[d] = counters[d];
+              }
+              break;
+            }
+          }
+          
+          if (node.type === 'body') return '';
+          
+          if (outlineStyle === 'mixed' && mixedConfig) {
+            return getOutlinePrefixCustom(node.depth, indices, mixedConfig);
+          }
+          return getOutlinePrefix(outlineStyle, node.depth, indices);
+        }}
+      />
+      
       {/* Floating toolbar - appears on hover */}
       <div className="absolute -top-1.5 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+          onClick={() => setSpritzerOpen(true)}
+          title="Speed Read"
+        >
+          <Play className="h-3 w-3" />
+        </Button>
         <Button
           variant="ghost"
           size="sm"
