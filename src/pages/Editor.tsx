@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DocumentEditor } from '@/components/editor/DocumentEditor';
 import { EditorSidebar } from '@/components/editor/EditorSidebar';
@@ -14,6 +14,7 @@ import { SaveAsMasterDialog } from '@/components/editor/SaveAsMasterDialog';
 import { DocumentState, createEmptyDocument, HierarchyBlockData } from '@/types/document';
 import { HierarchyNode } from '@/types/node';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDebouncedAutoSave } from '@/hooks/useDebouncedAutoSave';
 import {
   loadCloudDocument,
   saveCloudDocument,
@@ -250,6 +251,7 @@ export default function Editor() {
   const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Undo/redo state passed up from document
@@ -312,6 +314,17 @@ export default function Editor() {
     setCanUndo(canU);
     setCanRedo(canR);
   }, []);
+
+  // Debounced auto-save for document changes
+  const { flush: flushAutoSave } = useDebouncedAutoSave({
+    document,
+    userId: user?.id,
+    enabled: autoSaveEnabled && hasUnsavedChanges,
+    delayMs: 3000,
+    onSaveComplete: () => {
+      setHasUnsavedChanges(false);
+    },
+  });
 
   // Persist current doc ID
   useEffect(() => {
