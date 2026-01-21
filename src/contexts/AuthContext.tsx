@@ -22,9 +22,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        // Only update state if we have a valid session OR if this is a definitive sign-out
+        // Don't clear state during token refresh which can briefly have null session
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+        } else if (event === 'SIGNED_OUT') {
+          // Only clear state on explicit sign out
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+        }
+        // For TOKEN_REFRESHED with null session (refresh in progress), keep existing state
       }
     );
 
