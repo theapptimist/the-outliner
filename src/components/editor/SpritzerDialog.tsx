@@ -321,11 +321,6 @@ export function SpritzerDialog({
           )}>{pivot}</span>
           <span className="text-left w-20">{after}</span>
         </div>
-        
-        {/* Speed indicator - show when not a PPDT (fast) */}
-        {!ppdtType && (
-          <div className="text-[10px] text-muted-foreground/50">⚡ fast</div>
-        )}
       </div>
     );
   };
@@ -406,10 +401,6 @@ export function SpritzerDialog({
         <div className="flex flex-col gap-4">
           {/* ORP Display Zone */}
           <div className="relative bg-muted rounded-lg p-8 flex flex-col items-center justify-center min-h-[120px]">
-            {/* Guide line - vertical centerline */}
-            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-primary/30 -translate-x-1/2" />
-            {/* Caret at bottom pointing up */}
-            <div className="absolute left-1/2 bottom-2 w-2 h-2 border-l-2 border-b-2 border-primary -translate-x-1/2 rotate-[-45deg]" />
             {isPausedAtBoundary ? (
               <div className="text-center">
                 <div className="text-muted-foreground text-sm mb-2">Next section:</div>
