@@ -119,9 +119,39 @@ export function SpritzerDialog({
   const currentNode = position ? spritzNodes[position.nodeIndex] : null;
   const currentWord = currentNode?.words[position?.wordIndex ?? 0];
 
-  // Playback loop
+  // Advance to next word
+  const advanceWord = useCallback(() => {
+    setGlobalWordIndex((prev) => {
+      const next = prev + 1;
+
+      // Check if we've reached the end
+      if (next >= totalWords) {
+        setIsPlaying(false);
+        return prev;
+      }
+
+      // Check if we're crossing a node boundary
+      const currentPos = findWordPosition(spritzNodes, prev);
+      const nextPos = findWordPosition(spritzNodes, next);
+      if (nextPos && currentPos && nextPos.nodeIndex !== currentPos.nodeIndex) {
+        // About to enter a new node - pause at boundary
+        const nextNode = spritzNodes[nextPos.nodeIndex];
+        setNextNodeLabel(nextNode?.label?.slice(0, 50) ?? '');
+        setIsPausedAtBoundary(true);
+
+        // Auto-continue after boundary pause
+        setTimeout(() => {
+          setIsPausedAtBoundary(false);
+        }, NODE_BOUNDARY_PAUSE_MS);
+      }
+
+      return next;
+    });
+  }, [totalWords, spritzNodes]);
+
+  // Playback loop using ref to track current state
   useEffect(() => {
-    if (!isPlaying || !currentWord || isPausedAtBoundary) {
+    if (!isPlaying || isPausedAtBoundary) {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
@@ -129,34 +159,14 @@ export function SpritzerDialog({
       return;
     }
 
+    if (!currentWord) {
+      return;
+    }
+
     const delay = calculateWordDelay(wpm, currentWord.pauseMultiplier);
-
+    
     timerRef.current = window.setTimeout(() => {
-      setGlobalWordIndex((prev) => {
-        const next = prev + 1;
-
-        // Check if we've reached the end
-        if (next >= totalWords) {
-          setIsPlaying(false);
-          return prev;
-        }
-
-        // Check if we're crossing a node boundary
-        const nextPosition = findWordPosition(spritzNodes, next);
-        if (nextPosition && position && nextPosition.nodeIndex !== position.nodeIndex) {
-          // About to enter a new node - pause at boundary
-          const nextNode = spritzNodes[nextPosition.nodeIndex];
-          setNextNodeLabel(nextNode?.label?.slice(0, 50) ?? '');
-          setIsPausedAtBoundary(true);
-
-          // Auto-continue after boundary pause
-          setTimeout(() => {
-            setIsPausedAtBoundary(false);
-          }, NODE_BOUNDARY_PAUSE_MS);
-        }
-
-        return next;
-      });
+      advanceWord();
     }, delay);
 
     return () => {
@@ -165,7 +175,7 @@ export function SpritzerDialog({
         timerRef.current = null;
       }
     };
-  }, [isPlaying, globalWordIndex, wpm, currentWord, isPausedAtBoundary, totalWords, spritzNodes, position]);
+  }, [isPlaying, globalWordIndex, wpm, isPausedAtBoundary, currentWord, advanceWord]);
 
   // Keyboard controls
   useEffect(() => {
