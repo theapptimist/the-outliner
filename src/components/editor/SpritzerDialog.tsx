@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -25,14 +25,20 @@ import {
   ChevronRight,
   Eye,
   Focus,
+  User,
+  MapPin,
+  Calendar,
+  BookOpen,
 } from 'lucide-react';
 import { HierarchyNode, FlatNode } from '@/types/node';
 import {
   SpritzNode,
   SpritzWord,
   SectionOption,
+  CognitivePacingEntities,
   buildSpritzNodes,
   buildSectionOptions,
+  buildEntitySetsFromLibrary,
   calculateWordDelay,
   getTotalWordCount,
   findWordPosition,
@@ -45,9 +51,22 @@ interface SpritzerDialogProps {
   tree: HierarchyNode[];
   startNodeId?: string;
   prefixGenerator: (node: FlatNode) => string;
+  // Entity data for Adaptive Cognitive Pacing
+  people?: Array<{ name?: string }>;
+  places?: Array<{ name?: string }>;
+  dates?: Array<{ rawText?: string }>;
+  terms?: Array<{ term?: string }>;
 }
 
 type ViewMode = 'focus' | 'context';
+
+// PPDT type colors and icons
+const PPDT_CONFIG = {
+  people: { color: 'text-purple-500', bg: 'bg-purple-500/20', icon: User, label: 'Person' },
+  places: { color: 'text-green-500', bg: 'bg-green-500/20', icon: MapPin, label: 'Place' },
+  dates: { color: 'text-blue-500', bg: 'bg-blue-500/20', icon: Calendar, label: 'Date' },
+  terms: { color: 'text-amber-500', bg: 'bg-amber-500/20', icon: BookOpen, label: 'Term' },
+};
 
 const MIN_WPM = 100;
 const MAX_WPM = 800;
@@ -61,12 +80,21 @@ export function SpritzerDialog({
   tree,
   startNodeId,
   prefixGenerator,
+  people = [],
+  places = [],
+  dates = [],
+  terms = [],
 }: SpritzerDialogProps) {
   // Keep latest prefix generator without retriggering rebuild effects on identity changes
   const prefixGeneratorRef = useRef(prefixGenerator);
   useEffect(() => {
     prefixGeneratorRef.current = prefixGenerator;
   }, [prefixGenerator]);
+
+  // Build entity sets for Adaptive Cognitive Pacing
+  const entities = useMemo<CognitivePacingEntities>(() => {
+    return buildEntitySetsFromLibrary(people, places, dates, terms);
+  }, [people, places, dates, terms]);
 
   // Build nodes and sections
   const [selectedSectionId, setSelectedSectionId] = useState<string | undefined>(startNodeId);
@@ -84,25 +112,25 @@ export function SpritzerDialog({
   const timerRef = useRef<number | null>(null);
   const totalWords = getTotalWordCount(spritzNodes);
 
-  // Rebuild spritz nodes when section changes
+  // Rebuild spritz nodes when section or entities change
   useEffect(() => {
     if (!open) return;
-    const nodes = buildSpritzNodes(tree, selectedSectionId, prefixGeneratorRef.current);
+    const nodes = buildSpritzNodes(tree, selectedSectionId, prefixGeneratorRef.current, entities);
     setSpritzNodes(nodes);
     setGlobalWordIndex(0);
     setIsPlaying(false);
     setIsPausedAtBoundary(false);
-  }, [tree, selectedSectionId, open]);
+  }, [tree, selectedSectionId, open, entities]);
 
   // Build section options on open
   useEffect(() => {
     if (!open) return;
-    const options = buildSectionOptions(tree, prefixGeneratorRef.current);
+    const options = buildSectionOptions(tree, prefixGeneratorRef.current, entities);
     setSectionOptions(options);
     if (!selectedSectionId && options.length > 0) {
       setSelectedSectionId(undefined); // "Read All"
     }
-  }, [tree, open, selectedSectionId]);
+  }, [tree, open, selectedSectionId, entities]);
 
   // Reset on dialog open
   useEffect(() => {
@@ -260,7 +288,7 @@ export function SpritzerDialog({
     setWpm((prev) => Math.max(MIN_WPM, Math.min(MAX_WPM, prev + delta)));
   }, []);
 
-  // Render the ORP word display
+  // Render the ORP word display with PPDT indicator
   const renderORPWord = () => {
     if (!currentWord) {
       return (
@@ -270,16 +298,46 @@ export function SpritzerDialog({
       );
     }
 
-    const { text, orpIndex } = currentWord;
+    const { text, orpIndex, ppdtType } = currentWord;
     const before = text.slice(0, orpIndex);
     const pivot = text[orpIndex] || '';
     const after = text.slice(orpIndex + 1);
+    
+    // Get PPDT styling if applicable
+    const ppdtConfig = ppdtType ? PPDT_CONFIG[ppdtType] : null;
+    const PpdtIcon = ppdtConfig?.icon;
 
     return (
-      <div className="font-mono text-4xl tracking-wider flex items-center justify-center">
-        <span className="text-right w-20 text-foreground">{before}</span>
-        <span className="text-primary font-bold mx-px">{pivot}</span>
-        <span className="text-left w-20 text-foreground">{after}</span>
+      <div className="flex flex-col items-center gap-2">
+        {/* PPDT indicator badge */}
+        {ppdtConfig && (
+          <div className={cn(
+            'flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium animate-in fade-in duration-150',
+            ppdtConfig.bg,
+            ppdtConfig.color
+          )}>
+            {PpdtIcon && <PpdtIcon className="h-3 w-3" />}
+            <span>{ppdtConfig.label}</span>
+          </div>
+        )}
+        
+        {/* ORP word display */}
+        <div className={cn(
+          'font-mono text-4xl tracking-wider flex items-center justify-center transition-colors',
+          ppdtConfig ? ppdtConfig.color : ''
+        )}>
+          <span className="text-right w-20">{before}</span>
+          <span className={cn(
+            'font-bold mx-px',
+            ppdtConfig ? '' : 'text-primary'
+          )}>{pivot}</span>
+          <span className="text-left w-20">{after}</span>
+        </div>
+        
+        {/* Speed indicator - show when not a PPDT (fast) */}
+        {!ppdtType && (
+          <div className="text-[10px] text-muted-foreground/50">⚡ fast</div>
+        )}
       </div>
     );
   };

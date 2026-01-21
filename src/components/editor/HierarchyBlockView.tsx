@@ -55,6 +55,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     removeHierarchyBlock,
     document,
     navigateToDocument,
+    // Entity data for Adaptive Cognitive Pacing
+    terms,
+    dates,
+    people,
+    places,
   } = useEditorContext();
   
   // Compute initial tree: prefer saved data from document, fallback to empty node
@@ -784,7 +789,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         currentDocId={document?.meta?.id}
       />
       
-      {/* Spritzer Dialog */}
+      {/* Spritzer Dialog with Adaptive Cognitive Pacing */}
       <SpritzerDialog
         open={spritzerOpen}
         onOpenChange={setSpritzerOpen}
@@ -826,6 +831,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           }
           return getOutlinePrefix(outlineStyle, node.depth, indices);
         }}
+        // Pass entity data for Adaptive Cognitive Pacing™
+        people={people}
+        places={places}
+        dates={dates}
+        terms={terms}
       />
       
       {/* Floating toolbar - appears on hover */}
