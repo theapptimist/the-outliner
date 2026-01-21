@@ -1301,12 +1301,14 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       return;
                     }
                     
-                    // Tab: indent/outdent, or convert link to numbered item
+                    // Tab: indent/outdent, or convert BODY/link nodes back to numbered.
+                    // Note: link-like nodes may still render with this handler even after conversion
+                    // (because they can keep linkedDocumentId). So only convert when the *type* is
+                    // still 'link' or 'body'; otherwise, Shift+Tab should outdent normally.
                     if (e.key === 'Tab') {
                       e.preventDefault();
                       if (e.shiftKey) {
-                        // For link nodes, Shift+Tab converts to numbered outline item
-                        if (onConvertToNumbered) {
+                        if ((node.type === 'link' || node.type === 'body') && onConvertToNumbered) {
                           onConvertToNumbered(node.id);
                         } else {
                           onOutdent(node.id);
