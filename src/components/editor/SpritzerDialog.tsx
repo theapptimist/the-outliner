@@ -309,18 +309,6 @@ export function SpritzerDialog({
 
     return (
       <div className="flex flex-col items-center gap-2">
-        {/* PPDT indicator badge */}
-        {ppdtConfig && (
-          <div className={cn(
-            'flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium animate-in fade-in duration-150',
-            ppdtConfig.bg,
-            ppdtConfig.color
-          )}>
-            {PpdtIcon && <PpdtIcon className="h-3 w-3" />}
-            <span>{ppdtConfig.label}</span>
-          </div>
-        )}
-        
         {/* ORP word display */}
         <div className={cn(
           'font-mono text-4xl tracking-wider flex items-center justify-center transition-colors',
