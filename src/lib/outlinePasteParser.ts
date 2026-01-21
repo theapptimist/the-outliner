@@ -202,6 +202,31 @@ function isDocumentTitle(text: string): boolean {
 }
 
 /**
+ * Checks if a line looks like a sub-point or continuation (likely child of previous line).
+ * Used when no indentation is available (e.g., pasted from Google Docs).
+ */
+function isLikelySubPoint(text: string): boolean {
+  const trimmed = text.trim();
+  
+  // Short lines are often sub-points
+  if (trimmed.length < 40) return false; // Too short to tell, might be a header
+  
+  // Lines starting with lowercase are likely continuations
+  if (/^[a-z]/.test(trimmed)) return true;
+  
+  // Lines starting with "- " or "• " without a prefix already detected
+  if (/^[-•]\s/.test(trimmed)) return true;
+  
+  // Lines that are parenthetical or explanatory
+  if (/^\(/.test(trimmed) || /^Note:/i.test(trimmed) || /^Example:/i.test(trimmed)) return true;
+  
+  // Lines with specific continuation phrases
+  if (/^(This |These |The |It |They |He |She |For |With |In |On |At |By |From )/i.test(trimmed)) return true;
+  
+  return false;
+}
+
+/**
  * Converts parsed outline to a hierarchy structure for importing as nodes.
  * Enhanced to handle date-based and indentation-only hierarchies.
  * Returns an array of { label, depth } objects.
@@ -269,12 +294,16 @@ export function parseOutlineHierarchy(result: SmartPasteResult): Array<{ label: 
       });
     }
   } else {
-    // Traditional prefix-based hierarchy
+  // Traditional prefix-based hierarchy with enhanced indent detection
     const prefixTypeOrder: ParsedOutlineLine['prefixType'][] = [];
+    let lastNonEmptyDepth = 0;
+    let lastLineEndsWithColon = false;
     
-    for (const line of result.lines) {
+    for (let i = 0; i < result.lines.length; i++) {
+      const line = result.lines[i];
       if (!line.strippedText.trim()) continue; // Skip empty lines
       
+      const text = line.strippedText.trim();
       let depth = 0;
       
       if (line.prefixType !== 'none' && line.prefixType !== 'date' && line.prefixType !== 'section') {
@@ -288,17 +317,42 @@ export function parseOutlineHierarchy(result: SmartPasteResult): Array<{ label: 
           depth = prefixTypeOrder.length - 1;
         }
         
-        // Also consider indentation
-        depth = Math.max(depth, line.indentLevel);
+        // Also consider indentation if present
+        if (line.indentLevel > 0) {
+          depth = Math.max(depth, line.indentLevel);
+        }
       } else {
-        // No prefix - use indentation level
-        depth = line.indentLevel;
+        // No prefix - use indentation level if present
+        if (line.indentLevel > 0) {
+          depth = line.indentLevel;
+        } else {
+          // No indentation either - try to infer from context
+          // If previous line ended with colon, this is likely a child
+          if (lastLineEndsWithColon) {
+            depth = lastNonEmptyDepth + 1;
+          } else if (isLikelySubPoint(text)) {
+            // Lines that look like sub-points (short elaborations, parentheticals, etc.)
+            depth = lastNonEmptyDepth + 1;
+          } else {
+            // Check if this looks like a new major section or continuation
+            const looksLikeHeader = /^[A-Z][A-Za-z\s]+:?\s*$/.test(text) && text.length < 60;
+            if (looksLikeHeader && !lastLineEndsWithColon) {
+              depth = 0; // Reset to top level for headers
+            } else {
+              // Default: same level as previous
+              depth = lastNonEmptyDepth;
+            }
+          }
+        }
       }
       
       hierarchy.push({
-        label: line.strippedText.trim(),
+        label: text,
         depth: Math.min(depth, 5), // Cap at reasonable depth
       });
+      
+      lastNonEmptyDepth = depth;
+      lastLineEndsWithColon = text.endsWith(':');
     }
   }
   
