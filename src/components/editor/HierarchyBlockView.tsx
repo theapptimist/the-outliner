@@ -546,16 +546,36 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     const afterNode = findNode(tree, afterId);
     if (!afterNode) return;
 
+    // Filter out empty items
+    const filteredItems = items.filter(item => item.label.trim().length > 0);
+    if (filteredItems.length === 0) return;
+
+    // If anchor node is empty and first item is depth 0, replace anchor content instead of inserting after
+    const anchorIsEmpty = !afterNode.label.trim();
+    const firstItem = filteredItems[0];
+    const shouldReplaceAnchor = anchorIsEmpty && firstItem.depth === 0;
+
     // Build hierarchy nodes from the parsed items
     // We need to track parent IDs at each depth level
     const parentStack: (string | null)[] = [afterNode.parentId];
     let lastInsertedId: string | undefined;
     let insertIndex = getNodeIndex(getSiblings(tree, afterId), afterId) + 1;
+    let startIndex = 0;
 
     setTree(prev => {
       let next = prev;
       
-      for (const item of items) {
+      // If we should replace anchor, update its label with first item
+      if (shouldReplaceAnchor) {
+        next = updateNode(next, afterId, { label: firstItem.label });
+        lastInsertedId = afterId;
+        parentStack[1] = afterId; // First item now occupies the anchor
+        startIndex = 1; // Skip first item in the loop
+      }
+      
+      for (let i = startIndex; i < filteredItems.length; i++) {
+        const item = filteredItems[i];
+        
         // Adjust parent stack based on depth
         while (parentStack.length > item.depth + 1) {
           parentStack.pop();
