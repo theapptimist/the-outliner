@@ -544,7 +544,7 @@ export default function Editor() {
 
   const handleSignOut = useCallback(async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
   }, [signOut, navigate]);
 
   // Loading states
