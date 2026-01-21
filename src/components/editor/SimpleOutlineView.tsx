@@ -756,10 +756,18 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       // Save current value first
       onUpdateLabel(node.id, editValue);
       // Indent or outdent
-      if (e.shiftKey) {
-        onOutdent(node.id);
-      } else {
-        onIndent(node.id);
+      try {
+        if (e.shiftKey) {
+          onOutdent(node.id);
+        } else {
+          onIndent(node.id);
+        }
+      } catch (err) {
+        console.error('[outline] Tab indent/outdent failed', {
+          nodeId: node.id,
+          shiftKey: e.shiftKey,
+          err,
+        });
       }
       // Re-focus the textarea after indent/outdent to maintain edit mode
       requestAnimationFrame(() => {
