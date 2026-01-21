@@ -761,8 +761,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       // Indent or outdent
       try {
         if (e.shiftKey) {
-          // For BODY nodes at root level (or that can't outdent further), convert to numbered
-          if ((node.type === 'body' || node.type === 'link') && node.depth === 0 && onConvertToNumbered) {
+          // For BODY or link nodes, Shift+Tab converts to numbered outline item
+          if ((node.type === 'body' || node.type === 'link') && onConvertToNumbered) {
             onConvertToNumbered(node.id);
           } else {
             onOutdent(node.id);
