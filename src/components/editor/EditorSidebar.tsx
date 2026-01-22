@@ -70,6 +70,7 @@ export function EditorSidebar({
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryFullPage, setLibraryFullPage] = useState(false);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
@@ -191,7 +192,7 @@ export function EditorSidebar({
           collapsed && "flex-col"
         )}>
           {/* File Menu Icon */}
-          <FileMenu {...fileMenuProps} iconOnly />
+          <FileMenu {...fileMenuProps} iconOnly onOpenChange={setFileMenuOpen} />
           
           <Tooltip>
             <TooltipTrigger asChild>
@@ -200,7 +201,7 @@ export function EditorSidebar({
                 onClick={() => setActiveTab('tools')}
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  activeTab === 'tools'
+                  !fileMenuOpen && activeTab === 'tools'
                     ? "bg-primary/15 text-primary"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
@@ -217,7 +218,7 @@ export function EditorSidebar({
                 onClick={() => setActiveTab('library')}
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  activeTab === 'library'
+                  !fileMenuOpen && activeTab === 'library'
                     ? "bg-accent/15 text-accent"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
@@ -234,7 +235,7 @@ export function EditorSidebar({
                 onClick={() => setActiveTab('ai')}
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  activeTab === 'ai'
+                  !fileMenuOpen && activeTab === 'ai'
                     ? "bg-success/15 text-success"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
@@ -253,7 +254,7 @@ export function EditorSidebar({
                 onClick={() => setActiveTab('timeline')}
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                  activeTab === 'timeline'
+                  !fileMenuOpen && activeTab === 'timeline'
                     ? "bg-info/15 text-info"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
@@ -273,7 +274,7 @@ export function EditorSidebar({
                   onClick={() => setActiveTab('master')}
                   className={cn(
                     "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                    activeTab === 'master'
+                    !fileMenuOpen && activeTab === 'master'
                       ? "bg-warning/15 text-warning"
                       : "hover:bg-muted/50 text-muted-foreground"
                   )}
