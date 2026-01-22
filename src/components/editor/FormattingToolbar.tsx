@@ -134,7 +134,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
 
       {/* Headings - horizontal row */}
       {!collapsed && (
-        <span className="text-[10px] font-medium text-foreground/70 uppercase tracking-wider px-1">
+        <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
           Headings
         </span>
       )}

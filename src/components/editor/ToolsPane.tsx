@@ -76,7 +76,7 @@ export function ToolsPane({
       <div className="relative flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
         {/* Outline - NOW AT TOP */}
         {!collapsed && (
-          <span className="text-[10px] font-medium text-foreground/70 uppercase tracking-wider px-1">
+          <span className="text-[10px] font-medium text-warning uppercase tracking-wider px-1">
             Outline
           </span>
         )}
