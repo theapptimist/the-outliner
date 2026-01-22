@@ -284,7 +284,7 @@ export function FileMenu({
           <button
             data-allow-pointer
             className={cn(
-              "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+              "h-7 w-7 rounded-md flex items-center justify-center transition-colors outline-none focus:outline-none focus-visible:outline-none",
               sheetOpen
                 ? "bg-primary/15 text-primary"
                 : "hover:bg-muted/50 text-muted-foreground",
