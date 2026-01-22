@@ -20,6 +20,7 @@ import {
   getNodeIndex,
 } from '@/lib/nodeOperations';
 import { SimpleOutlineView } from './SimpleOutlineView';
+import { VirtualizedOutline, useVirtualizationEnabled } from './VirtualizedOutline';
 import { RevealCodes } from './RevealCodes';
 import { FindReplaceMatch, FindReplaceProvider, useEditorContext } from './EditorContext';
 import { Button } from '@/components/ui/button';
@@ -921,8 +922,24 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         </Button>
       </div>
       
-      {/* Outline view */}
-      {!isCollapsed && (
+      {/* Outline view - use virtualized version for large outlines */}
+      {!isCollapsed && flatNodes.length >= 100 && (
+        <div className="h-[500px]">
+          <VirtualizedOutline
+            nodes={flatNodes}
+            selectedId={selectedId}
+            outlineStyle={outlineStyle}
+            mixedConfig={mixedConfig}
+            onSelect={setSelectedId}
+            onUpdateLabel={handleUpdateLabel}
+            onNavigateUp={navigateUp}
+            onNavigateDown={navigateDown}
+            className="h-full"
+          />
+        </div>
+      )}
+      
+      {!isCollapsed && flatNodes.length < 100 && (
         <div>
           <SimpleOutlineView
             nodes={flatNodes}
