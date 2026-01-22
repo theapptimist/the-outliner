@@ -99,7 +99,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignLeft className="h-4 w-4" />}
           label="Left"
           tooltip="Align Left"
-          collapsed={collapsed}
+          collapsed={true}
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('center').run()}
@@ -108,7 +108,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignCenter className="h-4 w-4" />}
           label="Center"
           tooltip="Align Center"
-          collapsed={collapsed}
+          collapsed={true}
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('right').run()}
@@ -117,7 +117,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignRight className="h-4 w-4" />}
           label="Right"
           tooltip="Align Right"
-          collapsed={collapsed}
+          collapsed={true}
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
@@ -126,7 +126,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignJustify className="h-4 w-4" />}
           label="Justify"
           tooltip="Justify"
-          collapsed={collapsed}
+          collapsed={true}
         />
       </div>
 
