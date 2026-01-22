@@ -199,3 +199,5 @@ export function AIGeneratePane({ onInsertHierarchy, getDocumentContext }: AIGene
     </div>
   );
 }
+
+export default AIGeneratePane;
