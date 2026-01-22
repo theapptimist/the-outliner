@@ -23,7 +23,7 @@ import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
 // Lazy load the AI pane since it's rarely used immediately
-const AIGeneratePane = lazy(() => import('./AIGeneratePane').then(m => ({ default: m.AIGeneratePane })));
+const LazyAIGeneratePane = lazy(() => import('./AIGeneratePane'));
 
 import type { SidebarTab } from '@/contexts/NavigationContext';
 
@@ -314,7 +314,7 @@ export function EditorSidebar({
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           }>
-            <AIGeneratePane 
+            <LazyAIGeneratePane 
               onInsertHierarchy={handleAIInsertHierarchy}
             />
           </Suspense>
