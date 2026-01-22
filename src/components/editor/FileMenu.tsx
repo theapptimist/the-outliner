@@ -47,6 +47,7 @@ interface FileMenuProps {
   onSignOut?: () => void;
   hasDocument: boolean;
   iconOnly?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface MenuItemProps {
@@ -164,6 +165,7 @@ export function FileMenu({
   onSignOut,
   hasDocument,
   iconOnly = false,
+  onOpenChange,
 }: FileMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -274,7 +276,10 @@ export function FileMenu({
         onChange={handleFileChange}
       />
       
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={(open) => {
+          setSheetOpen(open);
+          onOpenChange?.(open);
+        }}>
         <SheetTrigger asChild>
           <button
             data-allow-pointer
