@@ -87,7 +87,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
 
       {/* Alignment - horizontal row */}
       {!collapsed && (
-        <span className="text-[10px] font-medium text-secondary uppercase tracking-wider px-1">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1">
           Alignment
         </span>
       )}
