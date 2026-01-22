@@ -85,13 +85,13 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
 
       <Separator className="my-2" />
 
-      {/* Alignment */}
+      {/* Alignment - horizontal row */}
       {!collapsed && (
         <span className="text-[10px] font-medium text-secondary uppercase tracking-wider px-1">
           Alignment
         </span>
       )}
-      <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+      <div className={cn("flex gap-1 flex-wrap", collapsed && "flex-col items-center")}>
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('left').run()}
           isActive={editor?.isActive({ textAlign: 'left' })}
@@ -99,7 +99,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignLeft className="h-4 w-4" />}
           label="Left"
           tooltip="Align Left"
-          collapsed={collapsed}
+          collapsed={true}
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('center').run()}
@@ -108,7 +108,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignCenter className="h-4 w-4" />}
           label="Center"
           tooltip="Align Center"
-          collapsed={collapsed}
+          collapsed={true}
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('right').run()}
@@ -117,7 +117,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignRight className="h-4 w-4" />}
           label="Right"
           tooltip="Align Right"
-          collapsed={collapsed}
+          collapsed={true}
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
@@ -126,27 +126,27 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<AlignJustify className="h-4 w-4" />}
           label="Justify"
           tooltip="Justify"
-          collapsed={collapsed}
+          collapsed={true}
         />
       </div>
 
       <Separator className="my-2" />
 
-      {/* Headings */}
+      {/* Headings - horizontal row */}
       {!collapsed && (
         <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
           Headings
         </span>
       )}
-      <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+      <div className={cn("flex gap-1 flex-wrap", collapsed && "flex-col items-center")}>
         <ToolButton
           onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
           isActive={editor?.isActive('heading', { level: 1 })}
           disabled={!editor}
           icon={<Heading1 className="h-4 w-4" />}
-          label="Heading 1"
+          label="H1"
           tooltip="Heading 1"
-          collapsed={collapsed}
+          collapsed={true}
           color="accent"
         />
         <ToolButton
@@ -154,9 +154,9 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           isActive={editor?.isActive('heading', { level: 2 })}
           disabled={!editor}
           icon={<Heading2 className="h-4 w-4" />}
-          label="Heading 2"
+          label="H2"
           tooltip="Heading 2"
-          collapsed={collapsed}
+          collapsed={true}
           color="accent"
         />
         <ToolButton
@@ -164,30 +164,30 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           isActive={editor?.isActive('heading', { level: 3 })}
           disabled={!editor}
           icon={<Heading3 className="h-4 w-4" />}
-          label="Heading 3"
+          label="H3"
           tooltip="Heading 3"
-          collapsed={collapsed}
+          collapsed={true}
           color="accent"
         />
       </div>
 
       <Separator className="my-2" />
 
-      {/* Lists & Blocks */}
+      {/* Lists & Blocks - 2x2 grid */}
       {!collapsed && (
         <span className="text-[10px] font-medium text-success uppercase tracking-wider px-1">
           Blocks
         </span>
       )}
-      <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+      <div className={cn("grid grid-cols-2 gap-1", collapsed && "grid-cols-1")}>
         <ToolButton
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
           isActive={editor?.isActive('bulletList')}
           disabled={!editor}
           icon={<List className="h-4 w-4" />}
-          label="Bullet List"
+          label="Bullets"
           tooltip="Bullet List"
-          collapsed={collapsed}
+          collapsed={true}
           color="success"
         />
         <ToolButton
@@ -195,9 +195,9 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           isActive={editor?.isActive('orderedList')}
           disabled={!editor}
           icon={<ListOrdered className="h-4 w-4" />}
-          label="Numbered List"
+          label="Numbers"
           tooltip="Numbered List"
-          collapsed={collapsed}
+          collapsed={true}
           color="success"
         />
         <ToolButton
@@ -207,7 +207,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<Quote className="h-4 w-4" />}
           label="Quote"
           tooltip="Block Quote"
-          collapsed={collapsed}
+          collapsed={true}
           color="success"
         />
         <ToolButton
@@ -216,7 +216,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           icon={<Minus className="h-4 w-4" />}
           label="Divider"
           tooltip="Horizontal Rule"
-          collapsed={collapsed}
+          collapsed={true}
           color="success"
         />
       </div>
