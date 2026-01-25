@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,17 +13,47 @@ import { FileText, Loader2, ArrowLeft } from 'lucide-react';
 export default function Auth() {
   const { user, loading, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetReady, setResetReady] = useState(false);
 
-  // Redirect if already logged in
+  // Handle password reset callback
   useEffect(() => {
-    if (user && !loading) {
+    const isResetFlow = searchParams.get('reset') === 'true';
+    
+    if (isResetFlow) {
+      // Listen for the PASSWORD_RECOVERY event from Supabase
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setShowResetPassword(true);
+          setResetReady(true);
+        }
+      });
+
+      // Also check if we already have a session from the recovery flow
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session && isResetFlow) {
+          setShowResetPassword(true);
+          setResetReady(true);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    }
+  }, [searchParams]);
+
+  // Redirect if already logged in (but not during password reset)
+  useEffect(() => {
+    if (user && !loading && !showResetPassword) {
       navigate('/editor');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, showResetPassword]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,10 +127,106 @@ export default function Auth() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newPassword || !confirmPassword) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setIsSubmitting(false);
+    
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Password updated successfully!');
+      setShowResetPassword(false);
+      navigate('/editor');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Password Reset Form (after clicking email link)
+  if (showResetPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 rounded-full bg-primary/10">
+                <FileText className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Set New Password</CardTitle>
+            <CardDescription>
+              {resetReady 
+                ? 'Enter your new password below'
+                : 'Verifying your reset link...'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {resetReady ? (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
