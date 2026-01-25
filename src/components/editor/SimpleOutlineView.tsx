@@ -160,6 +160,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [smartPasteDialogOpen, setSmartPasteDialogOpen] = useState(false);
   const [smartPasteData, setSmartPasteData] = useState<SmartPasteResult | null>(null);
   const smartPasteNodeIdRef = useRef<string | null>(null);
+  // Store cursor position and value when smart paste dialog opens (since textarea loses focus)
+  const smartPasteCursorRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+  const smartPasteValueRef = useRef<string>('');
 
   // Track mouse drag state for distinguishing clicks from text selection
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -971,7 +974,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     if (analysis.hasOutlinePatterns) {
       // Show dialog to let user choose how to handle it
       e.preventDefault();
+      
+      // Save cursor position and current value BEFORE dialog opens and steals focus
+      const textarea = e.currentTarget;
       smartPasteNodeIdRef.current = nodeId;
+      smartPasteCursorRef.current = { 
+        start: textarea.selectionStart ?? 0, 
+        end: textarea.selectionEnd ?? 0 
+      };
+      smartPasteValueRef.current = textarea.value;
+      
       setSmartPasteData(analysis);
       setSmartPasteDialogOpen(true);
     }
@@ -985,34 +997,44 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
 
     const textarea = inputRefs.current.get(nodeId);
     
+    // Use saved cursor position and value (captured before dialog stole focus)
+    const savedStart = smartPasteCursorRef.current.start;
+    const savedEnd = smartPasteCursorRef.current.end;
+    const savedValue = smartPasteValueRef.current;
+    
     if (action === 'cancel') {
-      // Refocus the textarea
-      textarea?.focus();
+      // Refocus the textarea and restore cursor position
+      if (textarea) {
+        textarea.focus();
+        textarea.selectionStart = savedStart;
+        textarea.selectionEnd = savedEnd;
+      }
+      // Clear refs
+      setSmartPasteData(null);
+      smartPasteNodeIdRef.current = null;
       return;
     }
 
     if (action === 'strip' || action === 'raw') {
-      // Insert text at cursor position
+      // Insert text at the saved cursor position
       const textToInsert = data as string;
-      if (textarea) {
-        const start = textarea.selectionStart ?? 0;
-        const end = textarea.selectionEnd ?? 0;
-        const currentVal = textarea.value;
-        const newVal = currentVal.slice(0, start) + textToInsert + currentVal.slice(end);
-        setEditValue(newVal);
-        
-        requestAnimationFrame(() => {
-          const el = inputRefs.current.get(nodeId);
-          if (el) {
-            const newPos = start + textToInsert.length;
-            el.selectionStart = newPos;
-            el.selectionEnd = newPos;
-            el.focus();
-            // Resize textarea
-            scheduleTextareaResize(nodeId);
-          }
-        });
-      }
+      const newVal = savedValue.slice(0, savedStart) + textToInsert + savedValue.slice(savedEnd);
+      
+      // Ensure we're in edit mode for this node
+      setEditingId(nodeId);
+      setEditValue(newVal);
+      
+      requestAnimationFrame(() => {
+        const el = inputRefs.current.get(nodeId);
+        if (el) {
+          const newPos = savedStart + textToInsert.length;
+          el.selectionStart = newPos;
+          el.selectionEnd = newPos;
+          el.focus();
+          // Resize textarea
+          scheduleTextareaResize(nodeId);
+        }
+      });
     } else if (action === 'hierarchy' && onPasteHierarchy) {
       // Create hierarchy nodes
       const items = data as Array<{ label: string; depth: number }>;
