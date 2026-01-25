@@ -50,10 +50,12 @@ export default function Auth() {
 
   // Redirect if already logged in (but not during password reset)
   useEffect(() => {
-    if (user && !loading && !showResetPassword) {
+    const isResetFlow = searchParams.get('reset') === 'true';
+    // Don't redirect if we're in the password reset flow
+    if (user && !loading && !showResetPassword && !isResetFlow) {
       navigate('/editor');
     }
-  }, [user, loading, navigate, showResetPassword]);
+  }, [user, loading, navigate, showResetPassword, searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
