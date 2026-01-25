@@ -45,10 +45,10 @@ export const STANDARD_MIXED_CONFIG: MixedStyleConfig = {
   ]
 };
 
-// Default: underlined level 1 followed by colon
+// Default: level 1 followed by colon (no underline by default)
 export const DEFAULT_MIXED_CONFIG: MixedStyleConfig = {
   levels: [
-    { format: 'numeric', underline: true, suffix: ':' },
+    { format: 'numeric', underline: false, suffix: ':' },
     { format: 'alpha-lower' },
     { format: 'roman-lower' },
     { format: 'numeric-paren' },
