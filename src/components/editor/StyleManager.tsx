@@ -303,141 +303,145 @@ export function StyleManager({
               ← Back to Styles
             </Button>
 
-            {/* Style name and description */}
-            <div className="grid gap-3">
-              <div>
-                <label className="text-sm font-medium">Style Name</label>
-                <Input
-                  value={styleName}
-                  onChange={(e) => setStyleName(e.target.value)}
-                  placeholder="My Custom Style"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <Input
-                  value={styleDescription}
-                  onChange={(e) => setStyleDescription(e.target.value)}
-                  placeholder="Optional description"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Level configuration */}
-            <div>
-              <label className="text-sm font-medium">Level Formatting</label>
-              <div className="mt-2 space-y-2">
-                {editConfig.levels.map((level, index) => (
-                  <div key={index} className="flex items-center gap-2 p-2 rounded bg-secondary/30">
-                    {/* Reorder buttons */}
-                    <div className="flex flex-col">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-5 p-0"
-                        onClick={() => moveLevel(index, 'up')}
-                        disabled={index === 0}
-                      >
-                        <ChevronUp className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-5 p-0"
-                        onClick={() => moveLevel(index, 'down')}
-                        disabled={index === editConfig.levels.length - 1}
-                      >
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    
-                    <span className="text-xs text-muted-foreground w-12">Level {index + 1}</span>
-                    
-                    <Select
-                      value={level.format}
-                      onValueChange={(val) => handleLevelChange(index, val as FormatType)}
-                    >
-                      <SelectTrigger className="h-8 text-xs w-24">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FORMAT_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.id} value={opt.id} className="text-xs">
-                            <span className="font-mono mr-2">{opt.example}</span>
-                            <span className="text-muted-foreground">{opt.label}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Auto-underline */}
-                    <div className="flex items-center gap-1">
-                      <Checkbox
-                        id={`underline-${index}`}
-                        checked={level.underline || false}
-                        onCheckedChange={(checked) => handleUnderlineChange(index, !!checked)}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor={`underline-${index}`} className="cursor-pointer" title="Auto-underline">
-                        <Underline className="h-3.5 w-3.5 text-muted-foreground" />
-                      </label>
-                    </div>
-
-                    {/* Auto-italic */}
-                    <div className="flex items-center gap-1">
-                      <Checkbox
-                        id={`italic-${index}`}
-                        checked={level.italic || false}
-                        onCheckedChange={(checked) => handleItalicChange(index, !!checked)}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor={`italic-${index}`} className="cursor-pointer" title="Auto-italic">
-                        <Italic className="h-3.5 w-3.5 text-muted-foreground" />
-                      </label>
-                    </div>
-
-                    {/* Suffix */}
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-4">
+                {/* Style name and description */}
+                <div className="grid gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Style Name</label>
                     <Input
-                      value={level.suffix || ''}
-                      onChange={(e) => handleSuffixChange(index, e.target.value)}
-                      placeholder=":"
-                      className="h-8 w-10 text-xs text-center px-1"
-                      maxLength={2}
-                      title="Suffix (e.g., ':')"
+                      value={styleName}
+                      onChange={(e) => setStyleName(e.target.value)}
+                      placeholder="My Custom Style"
+                      className="mt-1"
                     />
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div>
+                    <label className="text-sm font-medium">Description</label>
+                    <Input
+                      value={styleDescription}
+                      onChange={(e) => setStyleDescription(e.target.value)}
+                      placeholder="Optional description"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
 
-            {/* Preview */}
-            <div className="p-3 rounded-lg bg-secondary/50">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Preview</div>
-              <div className="text-sm font-mono">
-                {editConfig.levels.map((level, i) => {
-                  const opt = FORMAT_OPTIONS.find(o => o.id === level.format);
-                  let preview = opt?.example || '?';
-                  if (level.suffix) preview = `${preview}${level.suffix}`;
-                  
-                  return (
-                    <span 
-                      key={i} 
-                      className={cn(
-                        level.underline && 'underline',
-                        level.italic && 'italic',
-                      )}
-                    >
-                      {preview}
-                      {i < editConfig.levels.length - 1 && ' → '}
-                    </span>
-                  );
-                })}
+                <Separator />
+
+                {/* Level configuration */}
+                <div>
+                  <label className="text-sm font-medium">Level Formatting</label>
+                  <div className="mt-2 space-y-2">
+                    {editConfig.levels.map((level, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 rounded bg-secondary/30">
+                        {/* Reorder buttons */}
+                        <div className="flex flex-col">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-5 p-0"
+                            onClick={() => moveLevel(index, 'up')}
+                            disabled={index === 0}
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-5 p-0"
+                            onClick={() => moveLevel(index, 'down')}
+                            disabled={index === editConfig.levels.length - 1}
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        <span className="text-xs text-muted-foreground w-12">Level {index + 1}</span>
+                        
+                        <Select
+                          value={level.format}
+                          onValueChange={(val) => handleLevelChange(index, val as FormatType)}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FORMAT_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.id} value={opt.id} className="text-xs">
+                                <span className="font-mono mr-2">{opt.example}</span>
+                                <span className="text-muted-foreground">{opt.label}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {/* Auto-underline */}
+                        <div className="flex items-center gap-1">
+                          <Checkbox
+                            id={`underline-${index}`}
+                            checked={level.underline || false}
+                            onCheckedChange={(checked) => handleUnderlineChange(index, !!checked)}
+                            className="h-4 w-4"
+                          />
+                          <label htmlFor={`underline-${index}`} className="cursor-pointer" title="Auto-underline">
+                            <Underline className="h-3.5 w-3.5 text-muted-foreground" />
+                          </label>
+                        </div>
+
+                        {/* Auto-italic */}
+                        <div className="flex items-center gap-1">
+                          <Checkbox
+                            id={`italic-${index}`}
+                            checked={level.italic || false}
+                            onCheckedChange={(checked) => handleItalicChange(index, !!checked)}
+                            className="h-4 w-4"
+                          />
+                          <label htmlFor={`italic-${index}`} className="cursor-pointer" title="Auto-italic">
+                            <Italic className="h-3.5 w-3.5 text-muted-foreground" />
+                          </label>
+                        </div>
+
+                        {/* Suffix */}
+                        <Input
+                          value={level.suffix || ''}
+                          onChange={(e) => handleSuffixChange(index, e.target.value)}
+                          placeholder=":"
+                          className="h-8 w-10 text-xs text-center px-1"
+                          maxLength={2}
+                          title="Suffix (e.g., ':')"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preview */}
+                <div className="p-3 rounded-lg bg-secondary/50">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Preview</div>
+                  <div className="text-sm font-mono">
+                    {editConfig.levels.map((level, i) => {
+                      const opt = FORMAT_OPTIONS.find(o => o.id === level.format);
+                      let preview = opt?.example || '?';
+                      if (level.suffix) preview = `${preview}${level.suffix}`;
+                      
+                      return (
+                        <span 
+                          key={i} 
+                          className={cn(
+                            level.underline && 'underline',
+                            level.italic && 'italic',
+                          )}
+                        >
+                          {preview}
+                          {i < editConfig.levels.length - 1 && ' → '}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
+            </ScrollArea>
 
             {/* Save button */}
             <div className="flex justify-end gap-2">
