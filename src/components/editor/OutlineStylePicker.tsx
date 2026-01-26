@@ -13,10 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronDown, Settings2, Underline, ChevronUp, GripVertical } from 'lucide-react';
+import { ChevronDown, Settings2, Underline, ChevronUp, Italic, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { StyleManager } from './StyleManager';
+import { Separator } from '@/components/ui/separator';
 
 interface OutlineStylePickerProps {
   value: OutlineStyle;
@@ -31,6 +33,7 @@ export function OutlineStylePicker({
   mixedConfig = DEFAULT_MIXED_CONFIG,
   onMixedConfigChange 
 }: OutlineStylePickerProps) {
+  const [showStyleManager, setShowStyleManager] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   
   const currentStyle = OUTLINE_STYLES.find(s => s.id === value);
@@ -50,6 +53,12 @@ export function OutlineStylePicker({
     return currentStyle?.example.join(' ') || '1. a. i.';
   };
 
+  const handleApplyFromManager = (config: MixedStyleConfig) => {
+    if (!onMixedConfigChange) return;
+    onChange('mixed');
+    onMixedConfigChange(config);
+  };
+
   const handleLevelChange = (levelIndex: number, format: FormatType) => {
     if (!onMixedConfigChange) return;
     const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
@@ -61,6 +70,13 @@ export function OutlineStylePicker({
     if (!onMixedConfigChange) return;
     const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
     newLevels[levelIndex] = { ...newLevels[levelIndex], underline };
+    onMixedConfigChange({ levels: newLevels });
+  };
+
+  const handleItalicChange = (levelIndex: number, italic: boolean) => {
+    if (!onMixedConfigChange) return;
+    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
+    newLevels[levelIndex] = { ...newLevels[levelIndex], italic };
     onMixedConfigChange({ levels: newLevels });
   };
 
@@ -102,6 +118,20 @@ export function OutlineStylePicker({
       <PopoverContent className="w-80 p-2" align="start">
         {!showCustomize ? (
           <>
+            {/* Manage Styles button at top */}
+            <button
+              onClick={() => setShowStyleManager(true)}
+              className="flex items-center gap-2 w-full px-2 py-2 rounded text-left transition-colors hover:bg-secondary mb-2"
+            >
+              <Settings className="h-4 w-4" />
+              <div className="flex-1">
+                <div className="text-sm font-medium">Manage Styles</div>
+                <div className="text-xs text-muted-foreground">Create and edit custom styles</div>
+              </div>
+            </button>
+            
+            <Separator className="my-2" />
+            
             <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
               Numbering Style
             </div>
@@ -180,7 +210,6 @@ export function OutlineStylePicker({
                 className="h-6 text-xs flex-1"
                 onClick={() => applyPreset(DEFAULT_MIXED_CONFIG)}
               >
-                <Underline className="h-3 w-3 mr-1" />
                 Heading:
               </Button>
             </div>
@@ -235,8 +264,19 @@ export function OutlineStylePicker({
                         onCheckedChange={(checked) => handleUnderlineChange(index, !!checked)}
                         className="h-4 w-4"
                       />
-                      <label htmlFor={`underline-${index}`} className="cursor-pointer">
+                      <label htmlFor={`underline-${index}`} className="cursor-pointer" title="Auto-underline">
                         <Underline className="h-3 w-3 text-muted-foreground" />
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      <Checkbox
+                        id={`italic-${index}`}
+                        checked={level.italic || false}
+                        onCheckedChange={(checked) => handleItalicChange(index, !!checked)}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor={`italic-${index}`} className="cursor-pointer" title="Auto-italic">
+                        <Italic className="h-3 w-3 text-muted-foreground" />
                       </label>
                     </div>
                     <Input
@@ -255,15 +295,33 @@ export function OutlineStylePicker({
                 Preview: {mixedConfig.levels.map((level, i) => {
                   const opt = FORMAT_OPTIONS.find(o => o.id === level.format);
                   let preview = opt?.example || '?';
-                  if (level.underline) preview = `̲${preview}`;
                   if (level.suffix) preview = `${preview}${level.suffix}`;
-                  return preview;
-                }).join(' → ')}
+                  return (
+                    <span 
+                      key={i}
+                      className={cn(
+                        level.underline && 'underline',
+                        level.italic && 'italic',
+                      )}
+                    >
+                      {preview}
+                      {i < mixedConfig.levels.length - 1 && ' → '}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </>
         )}
       </PopoverContent>
+      
+      {/* Style Manager Dialog */}
+      <StyleManager
+        open={showStyleManager}
+        onOpenChange={setShowStyleManager}
+        onSelectStyle={handleApplyFromManager}
+        currentConfig={mixedConfig}
+      />
     </Popover>
   );
 }
