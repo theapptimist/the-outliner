@@ -26,6 +26,7 @@ export type FormatType =
 export interface LevelStyle {
   format: FormatType;
   underline?: boolean;
+  italic?: boolean;
   suffix?: string; // e.g., ":" to add after the text
 }
 
@@ -233,17 +234,18 @@ export function getOutlinePrefixCustom(
   return formatIndex(currentIndex, format);
 }
 
-// Get level style info (underline, suffix) for rendering
+// Get level style info (underline, italic, suffix) for rendering
 export function getLevelStyle(
   depth: number,
   config: MixedStyleConfig
-): { underline: boolean; suffix: string } {
+): { underline: boolean; italic: boolean; suffix: string } {
   const levelStyle = config.levels[depth % config.levels.length];
   if (typeof levelStyle === 'string') {
-    return { underline: false, suffix: '' };
+    return { underline: false, italic: false, suffix: '' };
   }
   return {
     underline: levelStyle.underline || false,
+    italic: levelStyle.italic || false,
     suffix: levelStyle.suffix || ''
   };
 }

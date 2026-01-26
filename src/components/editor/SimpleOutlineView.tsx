@@ -1208,7 +1208,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         // Get level styling for mixed mode
         const levelStyle = outlineStyle === 'mixed' && !isBody
           ? getLevelStyle(node.depth, mixedConfig)
-          : { underline: false, suffix: '' };
+          : { underline: false, italic: false, suffix: '' };
 
         // Body nodes are logically children, but should visually align under the parent's text.
         // Also add visualIndent for Block Tab feature
@@ -1495,6 +1495,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               // Display value is just the text - suffix is rendered separately
               const displayValue = baseValue;
               const shouldUnderline = levelStyle.underline && (isEditing ? editValue : node.label);
+              const shouldItalic = levelStyle.italic && (isEditing ? editValue : node.label);
 
               return (
                 <div 
@@ -1516,8 +1517,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                     style={{ gridArea: '1 / 1' }}
                     aria-hidden="true"
                   >
-                    {/* Underline only the base text, not the suffix */}
-                    <span className={cn(shouldUnderline && "underline decoration-foreground")}>
+                    {/* Underline and/or italicize only the base text, not the suffix */}
+                    <span className={cn(
+                      shouldUnderline && "underline decoration-foreground",
+                      shouldItalic && "italic"
+                    )}>
                       {renderHighlightedText(baseValue)}
                     </span>
                     {suffix && <span className="select-none">{suffix}</span>}
