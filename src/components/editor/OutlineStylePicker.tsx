@@ -282,9 +282,10 @@ export function OutlineStylePicker({
                     <Input
                       value={level.suffix || ''}
                       onChange={(e) => handleSuffixChange(index, e.target.value)}
-                      placeholder=":"
+                      placeholder=""
                       className="h-7 w-8 text-xs text-center px-0.5"
                       maxLength={2}
+                      title="Suffix"
                     />
                   </div>
                 );
