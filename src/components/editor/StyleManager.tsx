@@ -204,7 +204,12 @@ export function StyleManager({
                     className="flex items-center gap-2 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors"
                   >
                     <div className="flex-1">
-                      <div className="font-medium text-sm">{preset.name}</div>
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        {preset.name}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-normal">
+                          Default
+                        </span>
+                      </div>
                       <div className="text-xs text-muted-foreground">{preset.description}</div>
                       <div className="text-xs font-mono mt-1 text-muted-foreground">
                         {preset.config.levels.slice(0, 3).map((level, i) => {
