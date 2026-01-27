@@ -406,10 +406,10 @@ export function StyleManager({
                         <Input
                           value={level.suffix || ''}
                           onChange={(e) => handleSuffixChange(index, e.target.value)}
-                          placeholder=":"
+                          placeholder=""
                           className="h-8 w-10 text-xs text-center px-1"
                           maxLength={2}
-                          title="Suffix (e.g., ':')"
+                          title="Suffix character (e.g., : or .)"
                         />
                       </div>
                     ))}
