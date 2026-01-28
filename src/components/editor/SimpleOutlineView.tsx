@@ -1700,7 +1700,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             {/* Section AI Panel Toggle Button (depth-0 rows only, absolute positioned to align with toolbar) */}
             {isDepth0 && (
               <div className={cn(
-                "absolute top-[0.4rem] right-[calc(0.5rem+9rem)] -translate-y-1/2 flex items-center transition-opacity z-10",
+                "absolute top-[0.275rem] right-[calc(0.5rem+9rem-3px)] -translate-y-1/2 flex items-center transition-opacity z-10",
                 isSectionPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}>
                 <SectionPanelToggle
