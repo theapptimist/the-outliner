@@ -1,0 +1,145 @@
+import React from 'react';
+import { HierarchyNode } from '@/types/node';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ChevronDown, ChevronUp, Sparkles, Settings, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { SectionAIChat } from './SectionAIChat';
+
+export interface SectionControlPanelProps {
+  sectionId: string;
+  sectionLabel: string;
+  sectionChildren: HierarchyNode[];
+  documentContext?: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onInsertContent: (items: Array<{ label: string; depth: number }>) => void;
+}
+
+export function SectionControlPanel({
+  sectionId,
+  sectionLabel,
+  sectionChildren,
+  documentContext,
+  isOpen,
+  onToggle,
+  onInsertContent,
+}: SectionControlPanelProps) {
+  // Flatten children to text for context
+  const flattenChildren = (nodes: HierarchyNode[], depth = 0): string => {
+    return nodes
+      .map(node => {
+        const indent = '  '.repeat(depth);
+        const childrenText = node.children?.length 
+          ? '\n' + flattenChildren(node.children, depth + 1) 
+          : '';
+        return `${indent}${node.label}${childrenText}`;
+      })
+      .join('\n');
+  };
+
+  const sectionContent = flattenChildren(sectionChildren);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={onToggle}>
+      <CollapsibleContent>
+        <div className="relative mx-2 mb-2 rounded-md border border-foreground/10 bg-background/50 backdrop-blur-sm overflow-hidden">
+          {/* Top accent line */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+          
+          {/* Sci-fi corner accents */}
+          <div className="absolute top-0 left-0 w-3 h-3 border-l border-t border-foreground/20" />
+          <div className="absolute top-0 right-0 w-3 h-3 border-r border-t border-foreground/20" />
+          <div className="absolute bottom-0 left-0 w-3 h-3 border-l border-b border-foreground/20" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-r border-b border-foreground/20" />
+
+          <Tabs defaultValue="ai" className="w-full">
+            <div className="flex items-center justify-between px-3 pt-2 pb-1">
+              <TabsList className="h-7 bg-foreground/5">
+                <TabsTrigger 
+                  value="ai" 
+                  className="h-6 px-2 text-xs gap-1 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  AI
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="info" 
+                  className="h-6 px-2 text-xs gap-1 data-[state=active]:bg-foreground/10"
+                >
+                  <Info className="w-3 h-3" />
+                  Info
+                </TabsTrigger>
+              </TabsList>
+              
+              <button
+                onClick={onToggle}
+                className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+                title="Close panel"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+            </div>
+
+            <TabsContent value="ai" className="mt-0 p-2 pt-1">
+              <SectionAIChat
+                sectionId={sectionId}
+                sectionLabel={sectionLabel}
+                sectionContent={sectionContent}
+                documentContext={documentContext}
+                onInsertContent={onInsertContent}
+              />
+            </TabsContent>
+
+            <TabsContent value="info" className="mt-0 p-3 pt-2">
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div>
+                  <span className="text-foreground/70">Section:</span>{' '}
+                  <span className="text-foreground">{sectionLabel}</span>
+                </div>
+                <div>
+                  <span className="text-foreground/70">Children:</span>{' '}
+                  <span className="text-foreground">{sectionChildren.length} items</span>
+                </div>
+                {sectionContent && (
+                  <div className="mt-2 p-2 rounded bg-foreground/5 max-h-32 overflow-y-auto">
+                    <pre className="text-[10px] font-mono whitespace-pre-wrap text-muted-foreground">
+                      {sectionContent.slice(0, 500)}
+                      {sectionContent.length > 500 && '...'}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// Toggle button component for depth-0 rows
+export function SectionPanelToggle({
+  isOpen,
+  onToggle,
+}: {
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        "p-0.5 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors",
+        isOpen && "text-primary bg-primary/10"
+      )}
+      title={isOpen ? "Close AI panel" : "Open AI panel"}
+    >
+      <Sparkles className="w-3.5 h-3.5" />
+    </button>
+  );
+}

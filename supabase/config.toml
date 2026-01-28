@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.detect-entities]
 verify_jwt = false
+
+[functions.section-ai-chat]
+verify_jwt = false
