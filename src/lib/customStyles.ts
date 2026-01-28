@@ -9,6 +9,7 @@ export interface CustomStyle {
 }
 
 const STORAGE_KEY = 'outliner-custom-styles';
+const DEFAULT_STYLE_KEY = 'outliner-default-style';
 
 // Get all custom styles from localStorage
 export function getCustomStyles(): CustomStyle[] {
@@ -63,6 +64,12 @@ export function deleteCustomStyle(id: string): boolean {
   if (filtered.length === styles.length) return false;
   
   saveCustomStyles(filtered);
+  
+  // If the deleted style was the default, clear the default
+  if (getDefaultStyleId() === id) {
+    clearDefaultStyle();
+  }
+  
   return true;
 }
 
@@ -86,19 +93,64 @@ export function createDefaultCustomConfig(): MixedStyleConfig {
   };
 }
 
-// Built-in presets
-export const PRESET_STYLES: Omit<CustomStyle, 'id' | 'createdAt'>[] = [
+// Default style management
+export function getDefaultStyleId(): string | null {
+  try {
+    return localStorage.getItem(DEFAULT_STYLE_KEY);
+  } catch (e) {
+    console.error('Failed to get default style:', e);
+    return null;
+  }
+}
+
+export function setDefaultStyleId(id: string): void {
+  try {
+    localStorage.setItem(DEFAULT_STYLE_KEY, id);
+  } catch (e) {
+    console.error('Failed to set default style:', e);
+  }
+}
+
+export function clearDefaultStyle(): void {
+  try {
+    localStorage.removeItem(DEFAULT_STYLE_KEY);
+  } catch (e) {
+    console.error('Failed to clear default style:', e);
+  }
+}
+
+// Get the default style config (returns null if no default is set)
+export function getDefaultStyleConfig(): MixedStyleConfig | null {
+  const defaultId = getDefaultStyleId();
+  if (!defaultId) return null;
+  
+  // Check presets first
+  const preset = PRESET_STYLES.find(p => p.id === defaultId);
+  if (preset) return preset.config;
+  
+  // Check custom styles
+  const custom = getCustomStyle(defaultId);
+  if (custom) return custom.config;
+  
+  return null;
+}
+
+// Built-in presets (now with IDs for default selection)
+export const PRESET_STYLES: (Omit<CustomStyle, 'createdAt'> & { id: string })[] = [
   {
+    id: 'preset-standard',
     name: 'Standard',
     description: 'Clean numbering without formatting',
     config: STANDARD_MIXED_CONFIG,
   },
   {
+    id: 'preset-heading',
     name: 'Heading Style',
     description: 'Level 1 with colon separator',
     config: DEFAULT_MIXED_CONFIG,
   },
   {
+    id: 'preset-academic',
     name: 'Academic',
     description: 'Underlined headers for formal documents',
     config: {
