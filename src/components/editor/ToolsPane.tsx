@@ -281,7 +281,14 @@ export function ToolsPane({
         </div>
 
         <Separator className="my-2" />
-        <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}>
+
+        {/* Undo / Redo */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-primary uppercase tracking-wider px-1">
+            Edit
+          </span>
+        )}
+        <div className={cn("flex gap-1", collapsed ? "flex-col items-center" : "")}> 
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
