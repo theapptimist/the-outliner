@@ -2,6 +2,7 @@ import React from 'react';
 import { HierarchyNode } from '@/types/node';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronDown, ChevronUp, Sparkles, Settings, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionAIChat } from './SectionAIChat';
@@ -127,19 +128,25 @@ export function SectionPanelToggle({
   onToggle: () => void;
 }) {
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggle();
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-      className={cn(
-        "p-0.5 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors",
-        isOpen && "text-primary bg-primary/10"
-      )}
-      title={isOpen ? "Close AI panel" : "Open AI panel"}
-    >
-      <Sparkles className="w-3.5 h-3.5" />
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={cn(
+            "p-0.5 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors",
+            isOpen && "text-primary bg-primary/10"
+          )}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="left">
+        <p>{isOpen ? "Close AI panel" : "Open AI panel"}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
