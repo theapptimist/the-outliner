@@ -205,6 +205,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_style_preferences: {
+        Row: {
+          created_at: string
+          current_mixed_config: Json | null
+          custom_styles: Json
+          default_style_id: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_mixed_config?: Json | null
+          custom_styles?: Json
+          default_style_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_mixed_config?: Json | null
+          custom_styles?: Json
+          default_style_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
