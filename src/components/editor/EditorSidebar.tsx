@@ -297,6 +297,13 @@ export function EditorSidebar({
             </Tooltip>
           )}
         </div>
+        
+        {/* Bottom sci-fi accent lines */}
+        <div className="relative h-[3px] overflow-hidden">
+          <div className="absolute inset-0 bg-foreground/10" />
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-foreground/30" />
+          <div className="absolute bottom-[2px] left-0 right-0 h-px bg-foreground/15" />
+        </div>
       </div>
 
       {/* Conditional Content - now properly conditional rendering */}
