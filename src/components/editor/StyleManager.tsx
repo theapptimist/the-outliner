@@ -206,8 +206,8 @@ export function StyleManager({
                     <div className="flex-1">
                       <div className="font-medium text-sm flex items-center gap-2">
                         {preset.name}
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-normal">
-                          Default
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-normal">
+                          Preset
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">{preset.description}</div>
