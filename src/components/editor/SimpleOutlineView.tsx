@@ -6,10 +6,14 @@ import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
 import { toast } from '@/hooks/use-toast';
 import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
 import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
-import { ExternalLink, FileText } from 'lucide-react';
+import { ExternalLink, FileText, Sparkles } from 'lucide-react';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
+import { SectionControlPanel, SectionPanelToggle } from './SectionControlPanel';
+
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
+  /** The hierarchical tree (needed for section control panels to access children) */
+  tree?: HierarchyNode[];
   selectedId: string | null;
   outlineStyle: OutlineStyle;
   mixedConfig?: MixedStyleConfig;
@@ -38,6 +42,8 @@ interface SimpleOutlineViewProps {
   onCopyNode?: (id: string) => HierarchyNode | null;
   onPasteNodes?: (afterId: string, nodes: HierarchyNode[]) => string | undefined;
   onPasteHierarchy?: (afterId: string, items: Array<{ label: string; depth: number }>) => void;
+  /** Handler to insert AI-generated content as children of a section */
+  onInsertSectionContent?: (sectionId: string, items: Array<{ label: string; depth: number }>) => void;
   autoDescend?: boolean;
   /** Handler for navigating to a linked document */
   onNavigateToLinkedDocument?: (documentId: string, documentTitle: string) => void;
@@ -50,6 +56,7 @@ interface SimpleOutlineViewProps {
 export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
   {
     nodes,
+    tree,
     selectedId,
     outlineStyle,
     mixedConfig = DEFAULT_MIXED_CONFIG,
@@ -73,6 +80,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onCopyNode,
     onPasteNodes,
     onPasteHierarchy,
+    onInsertSectionContent,
     autoDescend = false,
     onNavigateToLinkedDocument,
     onRequestRelink,
@@ -84,6 +92,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const editingIdRef = useRef<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  // Track which section panels are open
+  const [openSectionPanels, setOpenSectionPanels] = useState<Set<string>>(new Set());
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   // Avoid layout thrash by coalescing textarea auto-resize to 1x RAF per node.
   const resizeRafByIdRef = useRef<Map<string, number>>(new Map());
@@ -1216,25 +1226,47 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           ? Math.max(0, node.depth - 1) + (node.visualIndent || 0)
           : node.depth;
 
-        return (
-          <div
-            key={node.id}
-            ref={(el) => {
-              if (el) {
-                nodeRefs.current.set(node.id, el);
-              } else {
-                nodeRefs.current.delete(node.id);
+        // Check if this is a depth-0 node (major section)
+        const isDepth0 = node.depth === 0 && !isBody;
+        const isSectionPanelOpen = isDepth0 && openSectionPanels.has(node.id);
+
+        // Find the tree node for section children
+        const getTreeNode = (id: string): HierarchyNode | null => {
+          if (!tree) return null;
+          const findNode = (nodes: HierarchyNode[]): HierarchyNode | null => {
+            for (const n of nodes) {
+              if (n.id === id) return n;
+              if (n.children?.length) {
+                const found = findNode(n.children);
+                if (found) return found;
               }
-            }}
-            className={cn(
-              'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
-              highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md',
-              showRowHighlight && selectedId === node.id && highlightedNodeId !== node.id && 'bg-secondary/60 rounded-sm'
-            )}
-            style={{
-              paddingLeft: `${visualDepth * 24 + 8}px`,
-              gridTemplateColumns: '3.5rem 1fr'
-            }}
+            }
+            return null;
+          };
+          return findNode(tree);
+        };
+
+        const sectionTreeNode = isDepth0 ? getTreeNode(node.id) : null;
+
+        return (
+          <React.Fragment key={node.id}>
+            <div
+              ref={(el) => {
+                if (el) {
+                  nodeRefs.current.set(node.id, el);
+                } else {
+                  nodeRefs.current.delete(node.id);
+                }
+              }}
+              className={cn(
+                'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
+                highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md',
+                showRowHighlight && selectedId === node.id && highlightedNodeId !== node.id && 'bg-secondary/60 rounded-sm'
+              )}
+              style={{
+                paddingLeft: `${visualDepth * 24 + 8}px`,
+                gridTemplateColumns: isDepth0 ? '3.5rem 1fr auto' : '3.5rem 1fr'
+              }}
             onMouseDown={(e) => {
               // Capture mouse down position to detect drag vs click
               mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
@@ -1664,7 +1696,57 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 </div>
               );
             })()}
+
+            {/* Section AI Panel Toggle Button (depth-0 rows only) */}
+            {isDepth0 && (
+              <div className="flex items-start justify-end pt-0.5">
+                <SectionPanelToggle
+                  isOpen={isSectionPanelOpen}
+                  onToggle={() => {
+                    setOpenSectionPanels(prev => {
+                      const next = new Set(prev);
+                      if (next.has(node.id)) {
+                        next.delete(node.id);
+                      } else {
+                        next.add(node.id);
+                      }
+                      return next;
+                    });
+                  }}
+                />
+              </div>
+            )}
           </div>
+
+          {/* Section Control Panel (depth-0 rows only) */}
+          {isDepth0 && sectionTreeNode && (
+            <SectionControlPanel
+              sectionId={node.id}
+              sectionLabel={node.label}
+              sectionChildren={sectionTreeNode.children || []}
+              isOpen={isSectionPanelOpen}
+              onToggle={() => {
+                setOpenSectionPanels(prev => {
+                  const next = new Set(prev);
+                  if (next.has(node.id)) {
+                    next.delete(node.id);
+                  } else {
+                    next.add(node.id);
+                  }
+                  return next;
+                });
+              }}
+              onInsertContent={(items) => {
+                if (onInsertSectionContent) {
+                  onInsertSectionContent(node.id, items);
+                } else if (onPasteHierarchy) {
+                  // Fallback: use paste hierarchy after this node
+                  onPasteHierarchy(node.id, items);
+                }
+              }}
+            />
+          )}
+        </React.Fragment>
         );
       })}
       

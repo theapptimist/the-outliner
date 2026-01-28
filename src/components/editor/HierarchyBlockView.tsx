@@ -943,6 +943,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         <div>
           <SimpleOutlineView
             nodes={flatNodes}
+            tree={tree}
             selectedId={selectedId}
             outlineStyle={outlineStyle}
             mixedConfig={mixedConfig}
@@ -1015,6 +1016,29 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onCopyNode={handleCopyNode}
             onPasteNodes={handlePasteNodes}
             onPasteHierarchy={handlePasteHierarchy}
+            onInsertSectionContent={(sectionId, items) => {
+              // Insert AI-generated items as children of the section
+              const sectionNode = findNode(tree, sectionId);
+              if (!sectionNode) return;
+              
+              // Create nodes from items and insert as children
+              items.forEach((item, idx) => {
+                const parentId = item.depth === 0 ? sectionId : null;
+                // For now, insert all at depth 0 as direct children of section
+                // TODO: handle nested depths properly
+                const newNode = createNode(sectionId, 'default', item.label);
+                setTree(prev => insertNode(prev, newNode, sectionId, (sectionNode.children?.length || 0) + idx));
+              });
+              
+              // Focus the first inserted item
+              if (items.length > 0) {
+                const firstChild = findNode(tree, sectionId)?.children?.[0];
+                if (firstChild) {
+                  setSelectedId(firstChild.id);
+                  setAutoFocusId(firstChild.id);
+                }
+              }
+            }}
             autoDescend={autoDescend}
             onNavigateToLinkedDocument={navigateToDocument ?? undefined}
             onRequestRelink={(nodeId) => {
