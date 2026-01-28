@@ -139,8 +139,8 @@ export function getDefaultStyleConfig(): MixedStyleConfig | null {
 export const PRESET_STYLES: (Omit<CustomStyle, 'createdAt'> & { id: string })[] = [
   {
     id: 'preset-standard',
-    name: 'Standard',
-    description: 'Clean numbering without formatting',
+    name: 'Standard Mixed',
+    description: '1. a. i. (1) (a) (i)',
     config: STANDARD_MIXED_CONFIG,
   },
   {
@@ -150,17 +150,122 @@ export const PRESET_STYLES: (Omit<CustomStyle, 'createdAt'> & { id: string })[] 
     config: DEFAULT_MIXED_CONFIG,
   },
   {
-    id: 'preset-academic',
-    name: 'Academic',
-    description: 'Underlined headers for formal documents',
+    id: 'preset-numeric',
+    name: 'Numeric',
+    description: '1. 2. 3. at all levels',
     config: {
       levels: [
-        { format: 'roman', underline: true, suffix: '' },
-        { format: 'alpha', underline: false, suffix: '' },
-        { format: 'numeric', underline: false, suffix: '' },
-        { format: 'alpha-lower', underline: false, suffix: '' },
-        { format: 'roman-lower', underline: false, suffix: '' },
-        { format: 'numeric-paren', underline: false, suffix: '' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+      ]
+    },
+  },
+  {
+    id: 'preset-bullet',
+    name: 'Bullets',
+    description: '• ○ ■ bullet points',
+    config: {
+      levels: [
+        { format: 'bullet' },
+        { format: 'bullet' },
+        { format: 'bullet' },
+        { format: 'bullet' },
+        { format: 'bullet' },
+        { format: 'bullet' },
+      ]
+    },
+  },
+  {
+    id: 'preset-roman',
+    name: 'Roman',
+    description: 'I. II. III. uppercase Roman',
+    config: {
+      levels: [
+        { format: 'roman' },
+        { format: 'roman' },
+        { format: 'roman' },
+        { format: 'roman' },
+        { format: 'roman' },
+        { format: 'roman' },
+      ]
+    },
+  },
+  {
+    id: 'preset-roman-lower',
+    name: 'Roman Lower',
+    description: 'i. ii. iii. lowercase Roman',
+    config: {
+      levels: [
+        { format: 'roman-lower' },
+        { format: 'roman-lower' },
+        { format: 'roman-lower' },
+        { format: 'roman-lower' },
+        { format: 'roman-lower' },
+        { format: 'roman-lower' },
+      ]
+    },
+  },
+  {
+    id: 'preset-alpha',
+    name: 'Alphabetic',
+    description: 'A. B. C. uppercase letters',
+    config: {
+      levels: [
+        { format: 'alpha' },
+        { format: 'alpha' },
+        { format: 'alpha' },
+        { format: 'alpha' },
+        { format: 'alpha' },
+        { format: 'alpha' },
+      ]
+    },
+  },
+  {
+    id: 'preset-alpha-lower',
+    name: 'Alpha Lower',
+    description: 'a. b. c. lowercase letters',
+    config: {
+      levels: [
+        { format: 'alpha-lower' },
+        { format: 'alpha-lower' },
+        { format: 'alpha-lower' },
+        { format: 'alpha-lower' },
+        { format: 'alpha-lower' },
+        { format: 'alpha-lower' },
+      ]
+    },
+  },
+  {
+    id: 'preset-legal',
+    name: 'Legal',
+    description: '1.1, 1.1.1 hierarchical numbering',
+    config: {
+      levels: [
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+        { format: 'numeric' },
+      ]
+    },
+  },
+  {
+    id: 'preset-academic',
+    name: 'Academic',
+    description: 'Roman → Alpha → Numeric',
+    config: {
+      levels: [
+        { format: 'roman', underline: true },
+        { format: 'alpha' },
+        { format: 'numeric' },
+        { format: 'alpha-lower' },
+        { format: 'roman-lower' },
+        { format: 'numeric-paren' },
       ]
     },
   },
