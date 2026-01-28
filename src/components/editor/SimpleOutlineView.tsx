@@ -1700,7 +1700,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             {/* Section AI Panel Toggle Button (depth-0 rows only, visible on hover or when open) */}
             {isDepth0 && (
               <div className={cn(
-                "flex items-start justify-end pt-0.5 mr-32 transition-opacity",
+                "flex items-center justify-end mr-32 transition-opacity",
                 isSectionPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}>
                 <SectionPanelToggle
