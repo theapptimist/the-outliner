@@ -1,99 +1,140 @@
 
-# Plan: Fix AI Icon Vertical Alignment in Outline Hover Toolbar
+# Plan: Fix Section AI Insert to Preserve Hierarchy Structure
 
-## Problem Analysis
+## Problem Summary
 
-The AI sparkle icon and the other toolbar icons (Play, Link, Upload, Expand, Delete) appear misaligned because they use two completely different positioning systems:
+When the Section AI Chat generates hierarchical content (e.g., "Social Strata" at depth 0 with "Division between Patricians and Plebeians" at depth 1), clicking "Insert" flattens everything to the same level. Items that should be nested appear as siblings (1j, 1k, 1l...) instead of parent-child relationships.
 
-**Current Architecture:**
-- **AI Icon (SectionPanelToggle)**: Rendered INSIDE the row grid in `SimpleOutlineView.tsx`, positioned in the third column with `items-center` and `mr-32` right margin
-- **Other Toolbar Icons**: Rendered OUTSIDE the rows in `HierarchyBlockView.tsx` as a floating `absolute top-3 right-2 -translate-y-1/2` container
+## Root Cause
 
-These are fundamentally different coordinate systems, making it very difficult to align them vertically.
+The `onInsertSectionContent` handler in `HierarchyBlockView.tsx` (lines 1049-1070) has this logic:
+
+```typescript
+onInsertSectionContent={(sectionId, items) => {
+  items.forEach((item, idx) => {
+    // BUG: Always uses sectionId as parent, ignoring item.depth
+    const newNode = createNode(sectionId, 'default', item.label);
+    setTree(prev => insertNode(prev, newNode, sectionId, ...));
+  });
+}}
+```
+
+Every item is inserted as a direct child of the section, regardless of its `depth` value.
 
 ## Solution
 
-The cleanest fix is to **move the AI icon INTO the same floating toolbar container** as the other icons in `HierarchyBlockView.tsx`. This ensures all icons share the same positioning logic.
-
-However, this requires passing information about which row is currently hovered (to know if we're on a depth-0 node) up from `SimpleOutlineView` to `HierarchyBlockView`. Since section panels are complex and tied to specific nodes, a simpler approach is:
-
-**Recommended Approach:** Adjust the SectionPanelToggle container to use absolute positioning that matches the floating toolbar:
-
-1. Change the AI icon wrapper from grid-based positioning to absolute positioning
-2. Position it to align with the floating toolbar (which uses `top-3 -translate-y-1/2`)
-3. Use `right-[calc(2rem+X)]` to position it just to the left of the existing toolbar
+Adapt the proven hierarchy-building logic from `handlePasteHierarchy` (lines 546-616) for section content insertion. This function already correctly:
+- Maintains a `parentStack` to track parents at each depth level
+- Inserts items at depth 0 as direct children of the section
+- Inserts deeper items as children of the appropriate parent node
 
 ## Technical Changes
 
-### File: `src/components/editor/SimpleOutlineView.tsx`
+### File: `src/components/editor/HierarchyBlockView.tsx`
 
-**Change the grid template for depth-0 rows back to 2 columns:**
-```tsx
-// Line ~1268: Remove the third column for depth-0 rows
-gridTemplateColumns: '3.5rem 1fr'  // Same for all rows
+Replace the `onInsertSectionContent` handler with a proper hierarchy builder:
+
+**Lines 1049-1070** - Replace with:
+
+```typescript
+onInsertSectionContent={(sectionId, items) => {
+  if (items.length === 0) return;
+  
+  const sectionNode = findNode(tree, sectionId);
+  if (!sectionNode) return;
+  
+  // Filter out empty items
+  const filteredItems = items.filter(item => item.label.trim().length > 0);
+  if (filteredItems.length === 0) return;
+  
+  // Build hierarchy nodes respecting depth
+  // parentStack[0] = sectionId (depth 0 items become children of section)
+  const parentStack: (string)[] = [sectionId];
+  let lastInsertedId: string | undefined;
+  
+  setTree(prev => {
+    let next = prev;
+    const baseIndex = sectionNode.children?.length || 0;
+    let insertIndex = baseIndex;
+    
+    for (let i = 0; i < filteredItems.length; i++) {
+      const item = filteredItems[i];
+      
+      // Adjust parent stack based on depth
+      // Trim stack if we're going back up
+      while (parentStack.length > item.depth + 1) {
+        parentStack.pop();
+      }
+      // Extend stack if we're going deeper
+      while (parentStack.length < item.depth + 1) {
+        parentStack.push(lastInsertedId || parentStack[parentStack.length - 1]);
+      }
+      
+      const parentId = parentStack[item.depth];
+      const newNode = createNode(parentId, 'default', item.label);
+      
+      if (item.depth === 0) {
+        // Top level: insert as child of section
+        next = insertNode(next, newNode, sectionId, insertIndex++);
+      } else {
+        // Nested: add as child of the current parent at this depth
+        const parent = findNode(next, parentId);
+        next = insertNode(next, newNode, parentId, parent?.children.length ?? 0);
+      }
+      
+      lastInsertedId = newNode.id;
+      
+      // Update parent stack for potential children
+      parentStack[item.depth + 1] = newNode.id;
+    }
+    
+    return next;
+  });
+  
+  // Focus the first inserted item
+  if (lastInsertedId) {
+    setSelectedId(lastInsertedId);
+    setAutoFocusId(lastInsertedId);
+  }
+}}
 ```
 
-**Move the AI toggle to absolute positioning within the row:**
-```tsx
-// Line ~1700-1721: Update the wrapper div
-{isDepth0 && (
-  <div className={cn(
-    "absolute top-3 right-[calc(0.5rem+8rem)] -translate-y-1/2 flex items-center transition-opacity z-10",
-    isSectionPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-  )}>
-    <SectionPanelToggle ... />
-  </div>
-)}
+### Key Logic Explained
+
+1. **`parentStack`**: Tracks the parent node ID at each depth level
+   - `parentStack[0]` = section ID (for depth-0 items)
+   - `parentStack[1]` = first depth-0 item (for depth-1 items)
+   - etc.
+
+2. **Stack adjustment**: Before inserting each item:
+   - Pop from stack if current depth is less than stack length (going back up)
+   - Push to stack if current depth is greater (going deeper)
+
+3. **Insertion**: 
+   - Depth-0 items go directly under the section
+   - Deeper items go under their computed parent from the stack
+
+### Example Transformation
+
+AI generates:
+```
+{ label: "Social Strata", depth: 0 }
+{ label: "Division between Patricians and Plebeians", depth: 1 }
+{ label: "Curiate", depth: 0 }
 ```
 
-The key changes:
-- `absolute` positioning instead of grid column
-- `top-3 -translate-y-1/2` matches the floating toolbar exactly
-- `right-[calc(0.5rem+8rem)]` positions it ~8.5rem from the right (leaving room for the 5-icon toolbar at `right-2`)
-- Remove `mr-32` since we're using absolute positioning
-
-**Ensure the row container has `relative` positioning:**
-The row container already has `group` class but needs `relative` for absolute children:
-```tsx
-// Line ~1261: Add relative to the row div
-className={cn(
-  'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300 relative',
-  ...
-)}
+Result in outline:
+```
+1. Article I (section)
+  a. Social Strata           <- depth 0, child of section
+    i. Division between...    <- depth 1, child of "Social Strata"
+  b. Curiate                  <- depth 0, child of section
 ```
 
-### File: `src/components/editor/SectionControlPanel.tsx`
-
-**Match button sizing to the toolbar buttons:**
-```tsx
-// Line ~133-145: Update button styling to match toolbar buttons
-<button
-  onClick={(e) => { ... }}
-  onPointerDown={(e) => e.stopPropagation()}
-  className={cn(
-    "h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors bg-background/80 backdrop-blur-sm",
-    isOpen && "text-primary bg-primary/10"
-  )}
->
-  <Sparkles className="h-3 w-3" />
-</button>
-```
-
-Changes:
-- Add `h-6 w-6 p-0` to match toolbar button sizing
-- Add `flex items-center justify-center` for icon centering
-- Add `bg-background/80 backdrop-blur-sm` to match toolbar button styling
-- Change icon from `w-3.5 h-3.5` to `h-3 w-3` to match other icons
-
-## Summary of Changes
+## Summary
 
 | File | Change |
 |------|--------|
-| `SimpleOutlineView.tsx` | Add `relative` to row container class |
-| `SimpleOutlineView.tsx` | Change AI toggle wrapper to absolute positioning with `top-3 right-[calc(0.5rem+8rem)] -translate-y-1/2` |
-| `SimpleOutlineView.tsx` | Remove third grid column from depth-0 rows |
-| `SectionControlPanel.tsx` | Update button to `h-6 w-6 p-0` with centered flex layout |
-| `SectionControlPanel.tsx` | Change Sparkles icon to `h-3 w-3` to match toolbar |
-| `SectionControlPanel.tsx` | Add `bg-background/80 backdrop-blur-sm` for consistent styling |
+| `HierarchyBlockView.tsx` | Replace flat insertion logic with parent-stack hierarchy builder |
 
-This ensures the AI icon uses the exact same coordinate system and sizing as the other toolbar icons, guaranteeing vertical alignment.
+This reuses the proven pattern from `handlePasteHierarchy` and ensures AI-generated content respects the depth structure.
