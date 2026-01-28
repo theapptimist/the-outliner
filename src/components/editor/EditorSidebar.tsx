@@ -166,16 +166,17 @@ export function EditorSidebar({
       {/* Tool Strip Header - distinguished with stronger background */}
       <div className="relative bg-gradient-to-r from-primary/10 via-accent/8 to-primary/10 border-b border-primary/20 shadow-sm">
         <div className={cn(
-          "flex items-center justify-between px-2 py-2",
-          collapsed && "justify-center"
+          "flex items-center px-2 py-2 relative",
+          collapsed ? "justify-center" : "justify-center"
         )}>
           {!collapsed && (
             <span className="text-xs font-semibold text-primary tracking-wide uppercase">The Outliner</span>
           )}
+          {/* Collapse button positioned absolutely to not affect centering */}
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 hover:bg-primary/15 hover:text-primary transition-colors"
+            className="h-6 w-6 p-0 hover:bg-primary/15 hover:text-primary transition-colors absolute right-2"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
