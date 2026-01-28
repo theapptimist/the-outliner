@@ -1,178 +1,99 @@
 
-# Section-Specific Control Panels with AI Chat
+# Plan: Fix AI Icon Vertical Alignment in Outline Hover Toolbar
 
-## Overview
-Create a system where each major section (depth 0 nodes) of the outline can have its own expandable control panel that includes an AI Chat interface. This allows for contextual AI assistance specific to each section.
+## Problem Analysis
 
-## Core Concept
+The AI sparkle icon and the other toolbar icons (Play, Link, Upload, Expand, Delete) appear misaligned because they use two completely different positioning systems:
 
-```text
-┌─────────────────────────────────────────────────────┐
-│ 1. CONFIDENTIALITY                        [⋯] [▼]  │  ← Control panel toggle
-├─────────────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────────────────┐ │
-│ │ AI Chat for "Confidentiality"                   │ │  ← Contextual AI panel
-│ │ ┌─────────────────────────────────────────────┐ │ │
-│ │ │ "Expand this section with remedies..."      │ │ │
-│ │ └─────────────────────────────────────────────┘ │ │
-│ │ [Generate]                                      │ │
-│ └─────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────┤
-│   a. The Receiving Party agrees to hold...         │
-│   b. "Confidential Information" means...           │
-│      i. Trade secrets and proprietary data         │
-│      ii. Business plans and strategies             │
-└─────────────────────────────────────────────────────┘
-```
+**Current Architecture:**
+- **AI Icon (SectionPanelToggle)**: Rendered INSIDE the row grid in `SimpleOutlineView.tsx`, positioned in the third column with `items-center` and `mr-32` right margin
+- **Other Toolbar Icons**: Rendered OUTSIDE the rows in `HierarchyBlockView.tsx` as a floating `absolute top-3 right-2 -translate-y-1/2` container
 
-## Implementation Phases
+These are fundamentally different coordinate systems, making it very difficult to align them vertically.
 
-### Phase 1: Section Control Panel Component
+## Solution
 
-**New File: `src/components/editor/SectionControlPanel.tsx`**
+The cleanest fix is to **move the AI icon INTO the same floating toolbar container** as the other icons in `HierarchyBlockView.tsx`. This ensures all icons share the same positioning logic.
 
-A collapsible panel that appears below depth-0 nodes:
-- Collapsible container with header showing section name
-- Tab system for different tools (AI Chat, Settings, Metadata)
-- Scoped context for the section (passes section ID, label, and children)
+However, this requires passing information about which row is currently hovered (to know if we're on a depth-0 node) up from `SimpleOutlineView` to `HierarchyBlockView`. Since section panels are complex and tied to specific nodes, a simpler approach is:
 
-**Key Props:**
-- `sectionId: string` - ID of the depth-0 node
-- `sectionLabel: string` - Label/title of the section
-- `sectionTree: HierarchyNode[]` - Children of this section (for context)
-- `onInsertContent: (items: Array<{label: string; depth: number}>) => void` - Insert generated content into section
-- `isOpen: boolean` / `onToggle: () => void` - Controlled open state
+**Recommended Approach:** Adjust the SectionPanelToggle container to use absolute positioning that matches the floating toolbar:
 
-### Phase 2: Section AI Chat Component
+1. Change the AI icon wrapper from grid-based positioning to absolute positioning
+2. Position it to align with the floating toolbar (which uses `top-3 -translate-y-1/2`)
+3. Use `right-[calc(2rem+X)]` to position it just to the left of the existing toolbar
 
-**New File: `src/components/editor/SectionAIChat.tsx`**
+## Technical Changes
 
-An AI chat interface scoped to a specific section:
-- Chat-style interface with message history (session-scoped)
-- Context-aware prompts that include the section's current content
-- Actions: Generate sub-items, Expand section, Summarize, Refine language
-- Streaming response display
+### File: `src/components/editor/SimpleOutlineView.tsx`
 
-**Key Features:**
-- Automatically includes section context in prompts
-- Quick action buttons for common operations
-- Insert generated content directly into the section
-
-### Phase 3: Backend - Section-Scoped AI Edge Function
-
-**New File: `supabase/functions/section-ai-chat/index.ts`**
-
-A new edge function that handles section-scoped AI requests:
-- Accepts section context (label, existing children, full document context)
-- Supports multiple operations: `expand`, `summarize`, `refine`, `chat`
-- Returns structured outline items for insertion
-
-### Phase 4: Integration with SimpleOutlineView
-
-**Modify: `src/components/editor/SimpleOutlineView.tsx`**
-
-Add detection and rendering of control panels for depth-0 nodes:
-- Track which sections have open control panels
-- Render `SectionControlPanel` after each depth-0 row
-- Handle content insertion callbacks
-
-### Phase 5: State Management
-
-**Modify: `src/components/editor/context/DocumentContext.tsx`**
-
-Add section panel state management:
-- Track open/closed state per section ID
-- Store chat history per section (session-scoped)
-- Expose methods to insert content into specific sections
-
----
-
-## Technical Details
-
-### SectionControlPanel Structure
-
+**Change the grid template for depth-0 rows back to 2 columns:**
 ```tsx
-interface SectionControlPanelProps {
-  sectionId: string;
-  sectionLabel: string;
-  sectionChildren: HierarchyNode[];
-  documentContext?: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onInsertAfterSection: (items: Array<{label: string; depth: number}>) => void;
-}
+// Line ~1268: Remove the third column for depth-0 rows
+gridTemplateColumns: '3.5rem 1fr'  // Same for all rows
 ```
 
-### SectionAIChat Message Format
-
+**Move the AI toggle to absolute positioning within the row:**
 ```tsx
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: Date;
-  // For assistant messages with structured output
-  generatedItems?: Array<{label: string; depth: number}>;
-}
+// Line ~1700-1721: Update the wrapper div
+{isDepth0 && (
+  <div className={cn(
+    "absolute top-3 right-[calc(0.5rem+8rem)] -translate-y-1/2 flex items-center transition-opacity z-10",
+    isSectionPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+  )}>
+    <SectionPanelToggle ... />
+  </div>
+)}
 ```
 
-### Edge Function Request Schema
+The key changes:
+- `absolute` positioning instead of grid column
+- `top-3 -translate-y-1/2` matches the floating toolbar exactly
+- `right-[calc(0.5rem+8rem)]` positions it ~8.5rem from the right (leaving room for the 5-icon toolbar at `right-2`)
+- Remove `mr-32` since we're using absolute positioning
 
-```typescript
-interface SectionAIChatRequest {
-  operation: 'expand' | 'summarize' | 'refine' | 'chat';
-  sectionLabel: string;
-  sectionContent: string; // Flattened children text
-  documentContext?: string;
-  userMessage?: string; // For 'chat' operation
-}
+**Ensure the row container has `relative` positioning:**
+The row container already has `group` class but needs `relative` for absolute children:
+```tsx
+// Line ~1261: Add relative to the row div
+className={cn(
+  'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300 relative',
+  ...
+)}
 ```
 
-### UI Toggle Mechanism
+### File: `src/components/editor/SectionControlPanel.tsx`
 
-The control panel toggle button appears:
-- In the row for depth-0 nodes only
-- As a small icon button (⋯ or gear) next to the collapse toggle
-- Positioned at the right edge of the row
-
-### Session Storage for Chat History
-
-```typescript
-// Key: `section-chat-history:${documentId}:${sectionId}`
-// Value: ChatMessage[]
+**Match button sizing to the toolbar buttons:**
+```tsx
+// Line ~133-145: Update button styling to match toolbar buttons
+<button
+  onClick={(e) => { ... }}
+  onPointerDown={(e) => e.stopPropagation()}
+  className={cn(
+    "h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors bg-background/80 backdrop-blur-sm",
+    isOpen && "text-primary bg-primary/10"
+  )}
+>
+  <Sparkles className="h-3 w-3" />
+</button>
 ```
 
----
+Changes:
+- Add `h-6 w-6 p-0` to match toolbar button sizing
+- Add `flex items-center justify-center` for icon centering
+- Add `bg-background/80 backdrop-blur-sm` to match toolbar button styling
+- Change icon from `w-3.5 h-3.5` to `h-3 w-3` to match other icons
 
-## File Changes Summary
+## Summary of Changes
 
-| File | Change Type | Description |
-|------|-------------|-------------|
-| `src/components/editor/SectionControlPanel.tsx` | New | Collapsible control panel container |
-| `src/components/editor/SectionAIChat.tsx` | New | AI chat interface for sections |
-| `supabase/functions/section-ai-chat/index.ts` | New | Edge function for section-scoped AI |
-| `src/components/editor/SimpleOutlineView.tsx` | Modify | Add control panel rendering for depth-0 nodes |
-| `src/components/editor/context/DocumentContext.tsx` | Modify | Add section panel state management |
-| `supabase/config.toml` | Modify | Add new edge function config |
+| File | Change |
+|------|--------|
+| `SimpleOutlineView.tsx` | Add `relative` to row container class |
+| `SimpleOutlineView.tsx` | Change AI toggle wrapper to absolute positioning with `top-3 right-[calc(0.5rem+8rem)] -translate-y-1/2` |
+| `SimpleOutlineView.tsx` | Remove third grid column from depth-0 rows |
+| `SectionControlPanel.tsx` | Update button to `h-6 w-6 p-0` with centered flex layout |
+| `SectionControlPanel.tsx` | Change Sparkles icon to `h-3 w-3` to match toolbar |
+| `SectionControlPanel.tsx` | Add `bg-background/80 backdrop-blur-sm` for consistent styling |
 
----
-
-## User Experience Flow
-
-1. User sees a small toggle icon on depth-0 section rows
-2. Clicking the toggle opens the control panel below that section
-3. The AI Chat tab is the default view
-4. User can type prompts or use quick actions ("Expand this section", "Add remedies")
-5. AI generates content with section context
-6. User clicks "Insert" to add generated items as children of that section
-7. Panel can be collapsed to continue editing
-
----
-
-## Styling Approach
-
-The control panel uses:
-- Collapsible animation matching the sidebar's sci-fi aesthetic
-- Subtle border with gradient accent line at top
-- Semi-transparent background for visual separation
-- Compact design to minimize vertical space when expanded
+This ensures the AI icon uses the exact same coordinate system and sizing as the other toolbar icons, guaranteeing vertical alignment.
