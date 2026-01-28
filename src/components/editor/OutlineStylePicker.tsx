@@ -246,7 +246,8 @@ export function OutlineStylePicker({
       <PopoverContent className="w-80 p-2" align="start">
         {!showCustomize ? (
           <>
-            <ScrollArea className="h-[320px]">
+            {/* Taller list so more presets (e.g. Roman) are visible without needing to notice scrolling */}
+            <ScrollArea className="h-[460px]">
               {/* Presets */}
               <div className="space-y-1.5 mb-3">
                 <div className="text-xs font-medium text-muted-foreground px-1">Presets</div>
