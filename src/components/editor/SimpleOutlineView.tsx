@@ -1259,13 +1259,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 }
               }}
               className={cn(
-                'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300',
+                'grid items-start py-0.5 px-2 cursor-text group transition-all duration-300 relative',
                 highlightedNodeId === node.id && 'bg-sky-500/15 ring-2 ring-sky-500/40 rounded-md',
                 showRowHighlight && selectedId === node.id && highlightedNodeId !== node.id && 'bg-secondary/60 rounded-sm'
               )}
               style={{
                 paddingLeft: `${visualDepth * 24 + 8}px`,
-                gridTemplateColumns: isDepth0 ? '3.5rem 1fr auto' : '3.5rem 1fr'
+                gridTemplateColumns: '3.5rem 1fr'
               }}
             onMouseDown={(e) => {
               // Capture mouse down position to detect drag vs click
@@ -1697,10 +1697,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               );
             })()}
 
-            {/* Section AI Panel Toggle Button (depth-0 rows only, visible on hover or when open) */}
+            {/* Section AI Panel Toggle Button (depth-0 rows only, absolute positioned to align with toolbar) */}
             {isDepth0 && (
               <div className={cn(
-                "flex items-center justify-end mr-32 transition-opacity",
+                "absolute top-3 right-[calc(0.5rem+8rem)] -translate-y-1/2 flex items-center transition-opacity z-10",
                 isSectionPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}>
                 <SectionPanelToggle
