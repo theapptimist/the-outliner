@@ -251,7 +251,12 @@ export function ToolsPane({
 
         <Separator className="my-2" />
 
-        {/* Find & Replace */}
+        {/* Edit section */}
+        {!collapsed && (
+          <span className="text-[10px] font-medium text-primary uppercase tracking-wider px-1">
+            Edit
+          </span>
+        )}
         <div className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
           <Tooltip>
             <TooltipTrigger asChild>
