@@ -1047,26 +1047,68 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onPasteNodes={handlePasteNodes}
             onPasteHierarchy={handlePasteHierarchy}
             onInsertSectionContent={(sectionId, items) => {
-              // Insert AI-generated items as children of the section
+              if (items.length === 0) return;
+              
               const sectionNode = findNode(tree, sectionId);
               if (!sectionNode) return;
               
-              // Create nodes from items and insert as children
-              items.forEach((item, idx) => {
-                const parentId = item.depth === 0 ? sectionId : null;
-                // For now, insert all at depth 0 as direct children of section
-                // TODO: handle nested depths properly
-                const newNode = createNode(sectionId, 'default', item.label);
-                setTree(prev => insertNode(prev, newNode, sectionId, (sectionNode.children?.length || 0) + idx));
+              // Filter out empty items
+              const filteredItems = items.filter(item => item.label.trim().length > 0);
+              if (filteredItems.length === 0) return;
+              
+              // Build hierarchy nodes respecting depth
+              // parentStack[0] = sectionId (depth 0 items become children of section)
+              const parentStack: string[] = [sectionId];
+              let lastInsertedId: string | undefined;
+              let firstInsertedId: string | undefined;
+              
+              setTree(prev => {
+                let next = prev;
+                const currentSectionNode = findNode(next, sectionId);
+                const baseIndex = currentSectionNode?.children?.length || 0;
+                let insertIndex = baseIndex;
+                
+                for (let i = 0; i < filteredItems.length; i++) {
+                  const item = filteredItems[i];
+                  
+                  // Adjust parent stack based on depth
+                  // Trim stack if we're going back up
+                  while (parentStack.length > item.depth + 1) {
+                    parentStack.pop();
+                  }
+                  // Extend stack if we're going deeper
+                  while (parentStack.length < item.depth + 1) {
+                    parentStack.push(lastInsertedId || parentStack[parentStack.length - 1]);
+                  }
+                  
+                  const parentId = parentStack[item.depth];
+                  const newNode = createNode(parentId, 'default', item.label);
+                  
+                  if (item.depth === 0) {
+                    // Top level: insert as child of section
+                    next = insertNode(next, newNode, sectionId, insertIndex++);
+                  } else {
+                    // Nested: add as child of the current parent at this depth
+                    const parent = findNode(next, parentId);
+                    next = insertNode(next, newNode, parentId, parent?.children?.length ?? 0);
+                  }
+                  
+                  if (!firstInsertedId) {
+                    firstInsertedId = newNode.id;
+                  }
+                  lastInsertedId = newNode.id;
+                  
+                  // Update parent stack for potential children
+                  parentStack[item.depth + 1] = newNode.id;
+                }
+                
+                return next;
               });
               
               // Focus the first inserted item
-              if (items.length > 0) {
-                const firstChild = findNode(tree, sectionId)?.children?.[0];
-                if (firstChild) {
-                  setSelectedId(firstChild.id);
-                  setAutoFocusId(firstChild.id);
-                }
+              if (firstInsertedId) {
+                setSelectedId(firstInsertedId);
+                setAutoFocusId(firstInsertedId);
               }
             }}
             autoDescend={autoDescend}
