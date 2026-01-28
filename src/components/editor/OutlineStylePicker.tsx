@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronDown, ChevronUp, Underline, Italic, Settings, Star, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronUp, Underline, Italic, Star, Pencil, Archive, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -115,6 +115,22 @@ export function OutlineStylePicker({
     onMixedConfigChange({ levels: newLevels });
   };
 
+  const handleEditStyle = (id: string) => {
+    // For now, just open the style manager with that style selected
+    setShowStyleManager(true);
+    setPopoverOpen(false);
+  };
+
+  const handleArchiveStyle = (id: string) => {
+    // Archive functionality - for now just a placeholder
+    console.log('Archive style:', id);
+  };
+
+  const handleDeleteStyle = (id: string) => {
+    // Delete functionality - for now just a placeholder for custom styles
+    console.log('Delete style:', id);
+  };
+
   const renderStyleItem = (
     id: string,
     name: string,
@@ -155,21 +171,61 @@ export function OutlineStylePicker({
             }).join(' → ')}
           </div>
         </button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "h-7 w-7 p-0",
-            isDefault && "text-amber-500"
+        <div className="flex flex-col gap-0.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "h-6 w-6 p-0",
+              isDefault && "text-amber-500"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSetDefault(id);
+            }}
+            title={isDefault ? "Current default" : "Set as default"}
+          >
+            <Star className={cn("h-3 w-3", isDefault && "fill-current")} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditStyle(id);
+            }}
+            title="Edit style"
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleArchiveStyle(id);
+            }}
+            title="Archive style"
+          >
+            <Archive className="h-3 w-3" />
+          </Button>
+          {!isPreset && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteStyle(id);
+              }}
+              title="Delete style"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           )}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSetDefault(id);
-          }}
-          title={isDefault ? "Current default" : "Set as default"}
-        >
-          <Star className={cn("h-3.5 w-3.5", isDefault && "fill-current")} />
-        </Button>
+        </div>
       </div>
     );
   };
@@ -215,15 +271,6 @@ export function OutlineStylePicker({
             
             {/* Bottom actions */}
             <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 h-8 text-xs gap-1"
-                onClick={() => setShowStyleManager(true)}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Manage Styles
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
