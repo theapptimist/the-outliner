@@ -144,7 +144,7 @@ export function SectionPanelToggle({
           <Sparkles className="w-3.5 h-3.5" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="left">
+      <TooltipContent side="bottom" sideOffset={4}>
         <p>{isOpen ? "Close AI panel" : "Open AI panel"}</p>
       </TooltipContent>
     </Tooltip>

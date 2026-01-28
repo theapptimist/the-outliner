@@ -871,55 +871,85 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       
       {/* Floating toolbar - appears on hover */}
       <div className="absolute -top-1.5 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-          onClick={() => setSpritzerOpen(true)}
-          title="Speed Read"
-        >
-          <Play className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-          onClick={() => setLinkDialogOpen(true)}
-          title="Link to Document"
-        >
-          <Link2 className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-          onClick={() => setImportDialogOpen(true)}
-          title="Import Outline"
-        >
-          <Upload className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? 'Expand' : 'Collapse'}
-        >
-          {isCollapsed ? (
-            <Maximize2 className="h-3 w-3" />
-          ) : (
-            <Minimize2 className="h-3 w-3" />
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm text-destructive hover:text-destructive"
-          onClick={() => deleteBlockNode()}
-          title="Delete outline"
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => setSpritzerOpen(true)}
+            >
+              <Play className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            <p>Speed Read</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => setLinkDialogOpen(true)}
+            >
+              <Link2 className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            <p>Link to Document</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => setImportDialogOpen(true)}
+            >
+              <Upload className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            <p>Import Outline</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+            >
+              {isCollapsed ? (
+                <Maximize2 className="h-3 w-3" />
+              ) : (
+                <Minimize2 className="h-3 w-3" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            <p>{isCollapsed ? 'Expand' : 'Collapse'}</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm text-destructive hover:text-destructive"
+              onClick={() => deleteBlockNode()}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={4}>
+            <p>Delete outline</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
       
       {/* Outline view - use virtualized version for large outlines */}
