@@ -15,6 +15,7 @@ import { DocumentState, createEmptyDocument, HierarchyBlockData } from '@/types/
 import { HierarchyNode } from '@/types/node';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebouncedAutoSave } from '@/hooks/useDebouncedAutoSave';
+import { useCloudStylePreferences } from '@/hooks/useCloudStylePreferences';
 import {
   loadCloudDocument,
   saveCloudDocument,
@@ -27,31 +28,7 @@ import {
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-const MIXED_CONFIG_STORAGE_KEY = 'outline-mixed-config';
 const CURRENT_DOC_KEY = 'outliner:current-doc-id';
-
-function loadMixedConfig(): MixedStyleConfig {
-  try {
-    const stored = localStorage.getItem(MIXED_CONFIG_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed?.levels?.length === 6) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to load mixed config from localStorage:', e);
-  }
-  return DEFAULT_MIXED_CONFIG;
-}
-
-function saveMixedConfig(config: MixedStyleConfig) {
-  try {
-    localStorage.setItem(MIXED_CONFIG_STORAGE_KEY, JSON.stringify(config));
-  } catch (e) {
-    console.warn('Failed to save mixed config to localStorage:', e);
-  }
-}
 
 // Helper to extract link nodes from hierarchy blocks
 function extractLinkNodes(hierarchyBlocks: Record<string, HierarchyBlockData>): MasterDocumentLink[] {
@@ -230,8 +207,15 @@ export default function Editor() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   
+  // Cloud-synced style preferences
+  const { 
+    currentMixedConfig, 
+    updateMixedConfig,
+    isLoading: stylesLoading,
+  } = useCloudStylePreferences();
+  
   const [outlineStyle, setOutlineStyle] = useState<OutlineStyle>('mixed');
-  const [mixedConfig, setMixedConfig] = useState<MixedStyleConfig>(loadMixedConfig);
+  const [mixedConfig, setMixedConfigLocal] = useState<MixedStyleConfig>(DEFAULT_MIXED_CONFIG);
   const [autoDescend, setAutoDescend] = useState(false);
   const [showRevealCodes, setShowRevealCodes] = useState(false);
   const [showRowHighlight, setShowRowHighlight] = useState(() => {
@@ -242,6 +226,19 @@ export default function Editor() {
     const stored = localStorage.getItem('outliner:showSlashPlaceholder');
     return stored === 'true'; // default false
   });
+  
+  // Sync cloud config to local state when loaded
+  useEffect(() => {
+    if (currentMixedConfig) {
+      setMixedConfigLocal(currentMixedConfig);
+    }
+  }, [currentMixedConfig]);
+  
+  // Wrapper to update both local state and cloud
+  const setMixedConfig = useCallback((config: MixedStyleConfig) => {
+    setMixedConfigLocal(config);
+    updateMixedConfig(config);
+  }, [updateMixedConfig]);
   
   // Document state
   const [document, setDocument] = useState<DocumentState | null>(null);
@@ -337,10 +334,7 @@ export default function Editor() {
     }
   }, [document?.meta?.id]);
 
-  // Save mixed config when it changes
-  useEffect(() => {
-    saveMixedConfig(mixedConfig);
-  }, [mixedConfig]);
+  // Mixed config is now synced via useCloudStylePreferences hook
 
   // Global keyboard handlers
   useEffect(() => {
