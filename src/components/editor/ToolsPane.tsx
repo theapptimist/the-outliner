@@ -104,6 +104,8 @@ export function ToolsPane({
           </Tooltip>
         </div>
 
+        <Separator className="my-2" />
+
         {/* Outline Style */}
         {collapsed ? (
           <div className="flex justify-center">
@@ -119,7 +121,7 @@ export function ToolsPane({
             </Tooltip>
           </div>
         ) : (
-          <div className="space-y-1 mt-2">
+          <div className="space-y-1">
             <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
               Style
             </span>
@@ -131,6 +133,8 @@ export function ToolsPane({
             />
           </div>
         )}
+
+        <Separator className="my-2" />
 
         {/* Options */}
         {!collapsed && (
