@@ -163,10 +163,17 @@ export function EditorSidebar({
       {/* Decorative accent line */}
       <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary via-accent to-primary/50 opacity-50" />
 
-      {/* Tool Strip Header - distinguished with stronger background */}
+      {/* Tool Strip Header - sci-fi styled with horizontal accent lines */}
       <div className="relative bg-gradient-to-r from-primary/10 via-accent/8 to-primary/10 border-b border-primary/20 shadow-sm">
+        {/* Top sci-fi accent lines */}
+        <div className="absolute top-0 left-0 right-0 h-[3px] overflow-hidden">
+          <div className="absolute inset-0 bg-foreground/10" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-foreground/30" />
+          <div className="absolute top-[2px] left-0 right-0 h-px bg-foreground/15" />
+        </div>
+        
         <div className={cn(
-          "flex items-center px-2 py-2 relative",
+          "flex items-center px-2 py-2.5 pt-3 relative",
           collapsed ? "justify-center" : "justify-center"
         )}>
           {!collapsed && (
@@ -186,6 +193,9 @@ export function EditorSidebar({
             )}
           </Button>
         </div>
+        
+        {/* Bottom sci-fi accent line above nav buttons */}
+        <div className="mx-2 mb-1 h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent" />
         
         {/* Navigation bullets */}
         <div className={cn(
