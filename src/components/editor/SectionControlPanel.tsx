@@ -137,11 +137,11 @@ export function SectionPanelToggle({
           }}
           onPointerDown={(e) => e.stopPropagation()}
           className={cn(
-            "p-0.5 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors",
+            "h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors bg-background/80 backdrop-blur-sm",
             isOpen && "text-primary bg-primary/10"
           )}
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="h-3 w-3" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={4}>
