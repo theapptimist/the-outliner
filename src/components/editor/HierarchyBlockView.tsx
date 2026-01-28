@@ -870,7 +870,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       </Suspense>
       
       {/* Floating toolbar - appears on hover */}
-      <div className="absolute -top-1.5 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div className="absolute top-3 right-2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
