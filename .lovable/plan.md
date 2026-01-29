@@ -1,176 +1,142 @@
 
-# Feature: Auto-Execute Queued Prompts (Cascade Mode)
+# Fix: Auto-Write Cascade Stale State Issue
 
-## Problem
+## Problem Analysis
 
-The Document Planner currently:
-1. Creates sections with titles
-2. Queues prompts to those sections
-3. Shows pulsing indicators
+Your architectural idea is sound - using independent AI calls for each section avoids context window deterioration. The current implementation has a **stale closure bug** that causes sections 2-6 to silently fail.
 
-But the user has to manually:
-1. Open each section's AI panel
-2. Click Send to execute the queued prompt
-3. Click Insert to add the generated content
+### Root Cause
 
-The user expects the prompts to **automatically execute** and **populate the outline** without manual intervention - a "cascade" of AI generations that writes the entire document.
+The `onInsertSectionContent` callback captures the tree state at render time. When the auto-write loop runs:
 
-## Solution: Add "Auto-Execute" Mode
+1. Sections 2-6 are created via `onCreateSection` (synchronous)
+2. These trigger `setTree()` calls in `HierarchyBlockView`
+3. React batches these state updates
+4. The async AI calls complete and invoke `onInsertSectionContent`
+5. But `onInsertSectionContent` still has the OLD tree reference (before sections were created)
+6. `findNode(tree, sectionId)` returns null for sections 2-6
+7. The callback silently returns without inserting content
 
-When the user approves the document plan, offer two options:
-1. **Queue Only** (current behavior) - Queue prompts for manual execution later
-2. **Auto-Write** (new) - Automatically execute all prompts and insert results
+### Evidence
 
-### Auto-Write Flow
-
+Looking at `HierarchyBlockView.tsx:1029`:
+```typescript
+const sectionNode = findNode(tree, sectionId);
+if (!sectionNode) return;  // Silently fails!
 ```
-User clicks "Auto-Write Document"
-         ↓
-Show progress indicator (0 of 6 sections)
-         ↓
-For each section with queued prompt:
-  1. Call section-ai-chat with 'expand' operation
-  2. Get generated outline items
-  3. Insert items as children of that section
-  4. Update progress (1 of 6, 2 of 6, etc.)
-         ↓
-All sections populated with AI content
-         ↓
-Show success toast: "Generated content for 6 sections"
-```
+
+## Solution: Deferred Execution with State Synchronization
+
+The fix requires ensuring the tree state is synchronized before attempting to insert content.
+
+### Approach 1: Wait for React State to Settle
+
+Add a small delay after each section creation to allow React to commit the state updates before the AI call runs.
+
+### Approach 2: Use Refs for Latest Tree Access
+
+Pass a ref-based getter that always returns the current tree state instead of a stale closure.
+
+### Approach 3: Batch Section Creation First, Then Execute AI Calls
+
+Separate the two phases completely:
+1. Create all sections first and wait for state to settle
+2. Then execute all AI calls with fresh references
+
+I recommend **Approach 3** as the most robust solution.
 
 ## Technical Changes
 
-### 1. Update `DocumentPlanDialog.tsx`
+### 1. Update `SectionAIChat.tsx` - Two-Phase Execution
 
-Add two approval buttons:
-- "Queue X Prompts" - Current behavior
-- "Auto-Write Document" - New cascade behavior
+Separate section creation from AI execution with an explicit sync point:
 
 ```typescript
-// Add new prop for auto-execute mode
-interface Props {
-  onApprove: (prompts: SectionPrompt[], autoExecute: boolean) => void;
-}
-
-// In the dialog:
-<Button onClick={() => onApprove(enabledPrompts, false)}>
-  Queue {count} Prompts
-</Button>
-<Button onClick={() => onApprove(enabledPrompts, true)}>
-  Auto-Write Document
-</Button>
+const handleApproveplan = useCallback(async (prompts: SectionPrompt[], autoExecute: boolean) => {
+  // Phase 1: Create all sections FIRST
+  const sectionMappings: Array<{ sectionId: string; sectionTitle: string; prompt: string }> = [];
+  
+  // ... section creation logic (unchanged) ...
+  
+  // Close the dialog to allow React to re-render with new sections
+  setPlanDialogOpen(false);
+  
+  // CRITICAL: Wait for React to commit state updates
+  // This ensures the tree has the new sections before we try to insert content
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  if (autoExecute && onInsertSectionContent) {
+    // Phase 2: Now execute AI calls sequentially
+    for (const mapping of sectionMappings) {
+      // AI call and insert...
+    }
+  }
+});
 ```
 
-### 2. Update `SectionAIChat.tsx` - Handle Auto-Execute
+### 2. Update `HierarchyBlockView.tsx` - Better Error Handling
 
-Add logic to execute prompts sequentially after section creation:
+Add logging to help debug and use a ref-based approach for the latest tree:
 
 ```typescript
-const handleApprovePlan = useCallback(async (prompts, autoExecute) => {
-  // ... existing section creation logic ...
+onInsertSectionContent={(sectionId, items) => {
+  if (items.length === 0) return;
   
-  if (autoExecute) {
-    // Execute prompts sequentially with progress
-    setAutoWriteProgress({ current: 0, total: allPromptsToQueue.length });
-    
-    for (const { sectionId, prompt } of allPromptsToQueue) {
-      // Call the AI to generate content
-      const response = await supabase.functions.invoke('section-ai-chat', {
-        body: {
-          operation: 'expand',
-          sectionLabel: getSectionLabel(sectionId),
-          sectionContent: '',
-          userMessage: prompt,
-        },
-      });
-      
-      // Insert the generated items into the section
-      if (response.data?.items?.length > 0) {
-        onInsertSectionContent?.(sectionId, response.data.items);
-      }
-      
-      // Update progress
-      setAutoWriteProgress(prev => ({ ...prev, current: prev.current + 1 }));
+  // Use a callback form to get the LATEST tree state
+  setTree(currentTree => {
+    const sectionNode = findNode(currentTree, sectionId);
+    if (!sectionNode) {
+      console.warn(`Section ${sectionId} not found in tree for content insertion`);
+      return currentTree;
     }
     
-    toast.success(`Generated content for ${allPromptsToQueue.length} sections`);
-  } else {
-    // Queue prompts for manual execution (current behavior)
-    promptQueue.queueMultiplePrompts(allPromptsToQueue);
-  }
-}, [...]);
+    // ... rest of insertion logic using currentTree ...
+  });
+}}
 ```
 
-### 3. Add Progress UI
+This uses React's functional update pattern to always access the latest tree state.
 
-Show a progress indicator during auto-write:
+### 3. Optional: Add Visual Feedback During Cascade
 
-```typescript
-{autoWriteProgress && (
-  <div className="fixed bottom-4 right-4 bg-background border rounded-lg p-4 shadow-lg">
-    <div className="flex items-center gap-3">
-      <Loader2 className="w-5 h-5 animate-spin text-primary" />
-      <div>
-        <div className="font-medium">Writing document...</div>
-        <div className="text-sm text-muted-foreground">
-          Section {autoWriteProgress.current} of {autoWriteProgress.total}
-        </div>
-      </div>
-    </div>
-    <Progress value={(autoWriteProgress.current / autoWriteProgress.total) * 100} />
-  </div>
-)}
-```
-
-### 4. Pass Insert Callback Through Component Chain
-
-Ensure `onInsertSectionContent` is available in `SectionAIChat`:
+Show which section is currently being written:
 
 ```typescript
-// SectionAIChat.tsx - add prop
-interface SectionAIChatProps {
-  onInsertSectionContent?: (sectionId: string, items: Array<...>) => void;
-}
-
-// SectionControlPanel.tsx - pass through
-<SectionAIChat
-  onInsertSectionContent={onInsertSectionContent}
-/>
+// Already implemented with autoWriteProgress state
+setAutoWriteProgress({ 
+  current: i, 
+  total: total, 
+  currentSection: sectionTitle 
+});
 ```
 
 ## Files to Modify
 
-1. **`src/components/editor/DocumentPlanDialog.tsx`**
-   - Add "Auto-Write Document" button
-   - Pass `autoExecute` boolean to onApprove callback
+1. **`src/components/editor/SectionAIChat.tsx`**
+   - Add delay after section creation before AI execution
+   - Add debug logging for troubleshooting
 
-2. **`src/components/editor/SectionAIChat.tsx`**
-   - Handle `autoExecute` mode in handleApprovePlan
-   - Add progress state and UI
-   - Sequential AI calls with content insertion
-   - Add `onInsertSectionContent` prop
+2. **`src/components/editor/HierarchyBlockView.tsx`**
+   - Change `onInsertSectionContent` to use functional update pattern
+   - Add warning log when section not found
 
-3. **`src/components/editor/SectionControlPanel.tsx`**
-   - Accept and pass `onInsertSectionContent` callback
+## Expected Outcome
 
-4. **`src/components/editor/SimpleOutlineView.tsx`**
-   - Already has `onInsertSectionContent` - ensure it's passed through
+After implementation:
+- All 6 sections will be created first
+- React state settles (100ms delay)
+- AI calls execute sequentially for sections 1-6
+- Each section's generated content is inserted correctly
+- Progress indicator shows "Writing section X of 6..."
+- Final toast: "Generated content for 6 sections"
 
-## User Flow After Implementation
+## Alternative: Queue-Based Architecture (Future Enhancement)
 
-```
-1. User types "Write about WWI origins"
-2. Clicks "Plan Doc"
-3. AI generates 6 sections with prompts
-4. User reviews in dialog
-5. Clicks "Auto-Write Document"
-6. Progress indicator: "Writing section 1 of 6..."
-7. Each section fills with AI-generated outline content
-8. Toast: "Generated content for 6 sections"
-9. User sees fully populated document outline
-```
+For even more robust handling, a future enhancement could use a proper queue:
 
-## Alternative: Queue + "Execute All" Button
+1. Store pending AI tasks in a Zustand/Redux store
+2. A background processor picks up tasks
+3. Each task runs independently with its own fresh state access
+4. This completely decouples section creation from AI execution
 
-If the cascade is too aggressive, an alternative is to queue the prompts (current behavior) and add a global "Execute All Queued Prompts" button that triggers the cascade on demand. This gives users more control over when the AI writes.
+This would be more complex but would eliminate all timing issues.
