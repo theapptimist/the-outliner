@@ -6,6 +6,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ChevronDown, ChevronUp, Sparkles, Settings, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionAIChat } from './SectionAIChat';
+import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
+import { useDocumentContext } from './context/DocumentContext';
+
+interface SectionInfo {
+  id: string;
+  title: string;
+}
 
 export interface SectionControlPanelProps {
   sectionId: string;
@@ -15,6 +22,10 @@ export interface SectionControlPanelProps {
   isOpen: boolean;
   onToggle: () => void;
   onInsertContent: (items: Array<{ label: string; depth: number }>) => void;
+  /** Whether this is the first section (enables document planning) */
+  isFirstSection?: boolean;
+  /** All sections in the document */
+  allSections?: SectionInfo[];
 }
 
 export function SectionControlPanel({
@@ -25,7 +36,14 @@ export function SectionControlPanel({
   isOpen,
   onToggle,
   onInsertContent,
+  isFirstSection = false,
+  allSections = [],
 }: SectionControlPanelProps) {
+  const { document } = useDocumentContext();
+  const documentId = document?.meta?.id || 'unknown';
+  const promptQueue = useSectionPromptQueue(documentId);
+  const hasQueuedPrompt = promptQueue.hasQueuedPrompt(sectionId);
+
   // Flatten children to text for context
   const flattenChildren = (nodes: HierarchyNode[], depth = 0): string => {
     return nodes
@@ -89,6 +107,8 @@ export function SectionControlPanel({
                 sectionContent={sectionContent}
                 documentContext={documentContext}
                 onInsertContent={onInsertContent}
+                isFirstSection={isFirstSection}
+                allSections={allSections}
               />
             </TabsContent>
 
@@ -123,9 +143,11 @@ export function SectionControlPanel({
 export function SectionPanelToggle({
   isOpen,
   onToggle,
+  hasQueuedPrompt = false,
 }: {
   isOpen: boolean;
   onToggle: () => void;
+  hasQueuedPrompt?: boolean;
 }) {
   return (
     <Tooltip>
@@ -137,15 +159,20 @@ export function SectionPanelToggle({
           }}
           onPointerDown={(e) => e.stopPropagation()}
           className={cn(
-            "h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors bg-background/80 backdrop-blur-sm",
-            isOpen && "text-primary bg-primary/10"
+            "h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors bg-background/80 backdrop-blur-sm relative",
+            isOpen && "text-primary bg-primary/10",
+            hasQueuedPrompt && !isOpen && "text-primary"
           )}
         >
           <Sparkles className="h-3 w-3" />
+          {/* Queued prompt indicator dot */}
+          {hasQueuedPrompt && !isOpen && (
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full animate-pulse" />
+          )}
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={4}>
-        <p>{isOpen ? "Close AI panel" : "Open AI panel"}</p>
+        <p>{isOpen ? "Close AI panel" : hasQueuedPrompt ? "Open AI panel (prompt queued)" : "Open AI panel"}</p>
       </TooltipContent>
     </Tooltip>
   );

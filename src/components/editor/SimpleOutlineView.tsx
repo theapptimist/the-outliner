@@ -482,6 +482,13 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     return indices;
   }, [nodes]);
 
+  // Compute all sections for document planning
+  const allSections = useMemo(() => {
+    return nodes
+      .filter(n => n.depth === 0 && n.type !== 'body')
+      .map(n => ({ id: n.id, title: n.label }));
+  }, [nodes]);
+
   const handleStartEdit = useCallback(
     (
       id: string,
@@ -1779,6 +1786,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   onPasteHierarchy(node.id, items);
                 }
               }}
+              isFirstSection={isFirstSection}
+              allSections={allSections}
             />
           )}
         </React.Fragment>
