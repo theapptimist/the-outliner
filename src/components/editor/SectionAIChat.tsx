@@ -294,6 +294,10 @@ export function SectionAIChat({
     setPlanDialogOpen(false);
     
     if (autoExecute && onInsertSectionContent) {
+      // CRITICAL: Wait for React to commit state updates from section creation
+      // This ensures the tree has the new sections before we try to insert content
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
       // Auto-execute mode: run prompts sequentially and insert content
       setAutoWriteProgress({ current: 0, total: allPromptsToQueue.length, currentSection: '' });
       

@@ -1026,21 +1026,28 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onInsertSectionContent={(sectionId, items) => {
               if (items.length === 0) return;
               
-              const sectionNode = findNode(tree, sectionId);
-              if (!sectionNode) return;
-              
               // Filter out empty items
               const filteredItems = items.filter(item => item.label.trim().length > 0);
               if (filteredItems.length === 0) return;
               
-              // Build hierarchy nodes respecting depth
-              // parentStack[0] = sectionId (depth 0 items become children of section)
-              const parentStack: string[] = [sectionId];
-              let lastInsertedId: string | undefined;
               let firstInsertedId: string | undefined;
               
-              setTree(prev => {
-                let next = prev;
+              // Use functional update to get LATEST tree state
+              // This is critical for auto-write cascade where sections are created
+              // just before content insertion - avoids stale closure issues
+              setTree(currentTree => {
+                const sectionNode = findNode(currentTree, sectionId);
+                if (!sectionNode) {
+                  console.warn(`[onInsertSectionContent] Section ${sectionId} not found in current tree state`);
+                  return currentTree;
+                }
+                
+                // Build hierarchy nodes respecting depth
+                // parentStack[0] = sectionId (depth 0 items become children of section)
+                const parentStack: string[] = [sectionId];
+                let lastInsertedId: string | undefined;
+                let next = currentTree;
+                
                 const currentSectionNode = findNode(next, sectionId);
                 const baseIndex = currentSectionNode?.children?.length || 0;
                 let insertIndex = baseIndex;
@@ -1082,11 +1089,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
                 return next;
               });
               
-              // Focus the first inserted item
-              if (firstInsertedId) {
-                setSelectedId(firstInsertedId);
-                setAutoFocusId(firstInsertedId);
-              }
+              // Focus the first inserted item (delayed to ensure state committed)
+              setTimeout(() => {
+                if (firstInsertedId) {
+                  setSelectedId(firstInsertedId);
+                  setAutoFocusId(firstInsertedId);
+                }
+              }, 0);
             }}
             autoDescend={autoDescend}
             onNavigateToLinkedDocument={navigateToDocument ?? undefined}
