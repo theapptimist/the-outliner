@@ -53,7 +53,7 @@ export function SectionToolbar({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 bg-primary text-primary-foreground hover:bg-primary/90"
+            className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
             onClick={(e) => {
               e.stopPropagation();
               onSpeedRead();
