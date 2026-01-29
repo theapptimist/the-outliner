@@ -928,43 +928,6 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       />
       </Suspense>
       
-      {/* Floating toolbar - always visible (block-level actions only) */}
-      <div className="absolute top-3 right-2 -translate-y-1/2 flex items-center gap-1 z-10">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-            >
-              {isCollapsed ? (
-                <Maximize2 className="h-3 w-3" />
-              ) : (
-                <Minimize2 className="h-3 w-3" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={4}>
-            <p>{isCollapsed ? 'Expand' : 'Collapse'}</p>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm text-destructive hover:text-destructive"
-              onClick={() => deleteBlockNode()}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={4}>
-            <p>Delete outline</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
       
       {/* Outline view - use virtualized version for large outlines */}
       {!isCollapsed && flatNodes.length >= 100 && (
@@ -1148,6 +1111,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               setTargetSectionId(sectionId);
               setImportDialogOpen(true);
             }}
+            isBlockCollapsed={isCollapsed}
+            onToggleBlockCollapse={() => setIsCollapsed(!isCollapsed)}
+            onDeleteBlock={() => deleteBlockNode()}
           />
         </div>
       )}
