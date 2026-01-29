@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Play, Link2, Upload } from 'lucide-react';
+import { Sparkles, Play, Link2, Upload, Minimize2, Maximize2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,11 @@ export interface SectionToolbarProps {
   onSpeedRead: () => void;
   onLinkDocument: () => void;
   onImport: () => void;
+  /** Block-level actions (only shown on first section) */
+  isFirstSection?: boolean;
+  isBlockCollapsed?: boolean;
+  onToggleBlockCollapse?: () => void;
+  onDeleteBlock?: () => void;
 }
 
 export function SectionToolbar({
@@ -20,6 +25,10 @@ export function SectionToolbar({
   onSpeedRead,
   onLinkDocument,
   onImport,
+  isFirstSection = false,
+  isBlockCollapsed = false,
+  onToggleBlockCollapse,
+  onDeleteBlock,
 }: SectionToolbarProps) {
   return (
     <div className="flex items-center gap-0.5">
@@ -109,6 +118,55 @@ export function SectionToolbar({
           <p>Import outline</p>
         </TooltipContent>
       </Tooltip>
+
+      {/* Block-level actions (only on first section) */}
+      {isFirstSection && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleBlockCollapse?.();
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {isBlockCollapsed ? (
+                  <Maximize2 className="h-3 w-3" />
+                ) : (
+                  <Minimize2 className="h-3 w-3" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={4}>
+              <p>{isBlockCollapsed ? 'Expand' : 'Collapse'}</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteBlock?.();
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={4}>
+              <p>Delete outline</p>
+            </TooltipContent>
+          </Tooltip>
+        </>
+      )}
     </div>
   );
 }

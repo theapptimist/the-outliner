@@ -58,6 +58,10 @@ interface SimpleOutlineViewProps {
   onSectionLinkDocument?: (sectionId: string) => void;
   /** Handler for import on a section */
   onSectionImport?: (sectionId: string) => void;
+  /** Block-level actions (collapse/delete the entire outline block) */
+  isBlockCollapsed?: boolean;
+  onToggleBlockCollapse?: () => void;
+  onDeleteBlock?: () => void;
 }
 
 export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
@@ -95,6 +99,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onSectionSpeedRead,
     onSectionLinkDocument,
     onSectionImport,
+    isBlockCollapsed,
+    onToggleBlockCollapse,
+    onDeleteBlock,
   },
   forwardedRef
 ) {
@@ -1201,7 +1208,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       className="py-2 focus:outline-none" 
       tabIndex={0}
     >
-      {nodes.map((node) => {
+      {nodes.map((node, idx) => {
         const indices = nodeIndices.get(node.id) || [1];
         const isBody = node.type === 'body';
         // A node is "link-like" if it has link properties (even if type is 'body' for hanging links)
@@ -1241,6 +1248,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         // Check if this is a depth-0 node (major section)
         const isDepth0 = node.depth === 0 && !isBody;
         const isSectionPanelOpen = isDepth0 && openSectionPanels.has(node.id);
+        // Check if this is the first depth-0 section (for block-level actions)
+        const firstDepth0Index = nodes.findIndex(n => n.depth === 0 && n.type !== 'body');
+        const isFirstSection = isDepth0 && idx === firstDepth0Index;
 
         // Find the tree node for section children
         const getTreeNode = (id: string): HierarchyNode | null => {
@@ -1734,6 +1744,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   onSpeedRead={() => onSectionSpeedRead?.(node.id)}
                   onLinkDocument={() => onSectionLinkDocument?.(node.id)}
                   onImport={() => onSectionImport?.(node.id)}
+                  isFirstSection={isFirstSection}
+                  isBlockCollapsed={isBlockCollapsed}
+                  onToggleBlockCollapse={onToggleBlockCollapse}
+                  onDeleteBlock={onDeleteBlock}
                 />
               </div>
             )}
