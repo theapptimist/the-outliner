@@ -35,6 +35,8 @@ interface SectionAIChatProps {
   allSections?: SectionInfo[];
   /** Callback to create a new depth-0 section after a given node, returns the new section's ID */
   onCreateSection?: (title: string, afterId?: string | null) => string | undefined;
+  /** Callback to update an existing section's label */
+  onUpdateSectionLabel?: (sectionId: string, newLabel: string) => void;
 }
 
 const QUICK_ACTIONS = [
@@ -52,6 +54,7 @@ export function SectionAIChat({
   isFirstSection = false,
   allSections = [],
   onCreateSection,
+  onUpdateSectionLabel,
 }: SectionAIChatProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -237,15 +240,34 @@ export function SectionAIChat({
     const newSections = prompts.filter(p => p.isNew && p.enabled && p.prompt.trim());
     const existingSections = prompts.filter(p => !p.isNew && p.enabled && p.prompt.trim());
     
-    // Phase 1: Create new sections and collect their IDs
-    // Chain them: each new section is inserted AFTER the previous one
+    // Phase 1: Handle sections
     const createdSectionPrompts: Array<{ sectionId: string; prompt: string }> = [];
     
-    // Find the last existing section to start inserting after
-    const lastExistingSection = allSections.length > 0 ? allSections[allSections.length - 1] : null;
-    let insertAfterId: string | null = lastExistingSection?.id || null;
+    // Check if the first section (where Plan Doc was triggered) is empty
+    const firstSection = allSections.length > 0 ? allSections[0] : null;
+    const isFirstSectionEmpty = firstSection && (!firstSection.title || firstSection.title.trim() === '');
     
-    for (const section of newSections) {
+    let insertAfterId: string | null = firstSection?.id || null;
+    let sectionsToCreate = newSections;
+    
+    // If first section is empty and we have new sections, UPDATE section 1 with the first generated section
+    if (isFirstSectionEmpty && newSections.length > 0 && firstSection) {
+      const firstNewSection = newSections[0];
+      
+      // Update section 1's label instead of creating a new section
+      if (onUpdateSectionLabel) {
+        onUpdateSectionLabel(firstSection.id, firstNewSection.sectionTitle);
+      }
+      
+      // Queue the prompt for section 1
+      createdSectionPrompts.push({ sectionId: firstSection.id, prompt: firstNewSection.prompt });
+      
+      // Skip the first section since we updated section 1
+      sectionsToCreate = newSections.slice(1);
+    }
+    
+    // Create remaining new sections after section 1
+    for (const section of sectionsToCreate) {
       if (onCreateSection) {
         const newId = onCreateSection(section.sectionTitle, insertAfterId);
         if (newId) {
@@ -276,7 +298,7 @@ export function SectionAIChat({
     }
     
     setPlanDialogOpen(false);
-  }, [promptQueue, onCreateSection, allSections]);
+  }, [promptQueue, onCreateSection, onUpdateSectionLabel, allSections]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
