@@ -183,10 +183,7 @@ export function SectionAIChat({
           isNew: true,
         }));
         
-        setGeneratedPlan(planPrompts);
-        setPlanDialogOpen(true);
-        
-        // Add AI message about the plan
+        // Add AI message about the plan FIRST (before opening dialog)
         const assistantMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -194,6 +191,12 @@ export function SectionAIChat({
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, assistantMsg]);
+        
+        // Then set dialog state (in a microtask to ensure messages state is committed)
+        setTimeout(() => {
+          setGeneratedPlan(planPrompts);
+          setPlanDialogOpen(true);
+        }, 0);
       }
       // Handle "existing sections" response (AI is generating prompts for existing sections)
       else if (data.sectionPrompts && Array.isArray(data.sectionPrompts)) {
@@ -205,10 +208,7 @@ export function SectionAIChat({
           isNew: false,
         }));
         
-        setGeneratedPlan(planPrompts);
-        setPlanDialogOpen(true);
-        
-        // Add AI message about the plan
+        // Add AI message about the plan FIRST
         const assistantMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -216,6 +216,12 @@ export function SectionAIChat({
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, assistantMsg]);
+        
+        // Then set dialog state
+        setTimeout(() => {
+          setGeneratedPlan(planPrompts);
+          setPlanDialogOpen(true);
+        }, 0);
       } else {
         toast.error('Failed to parse document plan');
       }
