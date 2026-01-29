@@ -517,6 +517,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     return newId;
   }, [nodes, onAddNode, onUpdateLabel]);
 
+  // Callback to programmatically open multiple section panels (for Auto-Write cascade)
+  const handleOpenSectionPanels = useCallback((sectionIds: string[]) => {
+    setOpenSectionPanels(prev => {
+      const next = new Set(prev);
+      for (const id of sectionIds) {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   const handleStartEdit = useCallback(
     (
       id: string,
@@ -1820,6 +1831,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               onCreateSection={handleCreateSection}
               onUpdateSectionLabel={onUpdateLabel}
               onInsertSectionContent={onInsertSectionContent}
+              onOpenSectionPanels={handleOpenSectionPanels}
             />
           )}
         </React.Fragment>
