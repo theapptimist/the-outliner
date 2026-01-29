@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Check, X } from 'lucide-react';
+import { Sparkles, Check, X, GripVertical } from 'lucide-react';
 
 export interface SectionPrompt {
   sectionId: string;
@@ -37,6 +36,8 @@ export function DocumentPlanDialog({
   onCancel,
 }: DocumentPlanDialogProps) {
   const [prompts, setPrompts] = useState<SectionPrompt[]>(initialPrompts);
+  const [size, setSize] = useState({ width: 672, height: 600 }); // Default max-w-2xl = 672px
+  const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   // Reset when dialog opens with new prompts
   useEffect(() => {
@@ -68,11 +69,50 @@ export function DocumentPlanDialog({
     onOpenChange(false);
   };
 
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: size.width,
+      startH: size.height,
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+      
+      const deltaX = e.clientX - resizeRef.current.startX;
+      const deltaY = e.clientY - resizeRef.current.startY;
+      
+      setSize({
+        width: Math.max(400, Math.min(window.innerWidth - 48, resizeRef.current.startW + deltaX)),
+        height: Math.max(300, Math.min(window.innerHeight - 48, resizeRef.current.startH + deltaY)),
+      });
+    };
+
+    const handleMouseUp = () => {
+      resizeRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const enabledCount = prompts.filter(p => p.enabled && p.prompt.trim()).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent 
+        className="flex flex-col overflow-hidden"
+        style={{ 
+          width: size.width, 
+          height: size.height, 
+          maxWidth: '95vw', 
+          maxHeight: '95vh' 
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -129,7 +169,7 @@ export function DocumentPlanDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <div className="flex items-center justify-end gap-2 pt-4 border-t">
           <Button variant="ghost" onClick={handleCancel}>
             <X className="h-4 w-4 mr-1" />
             Cancel
@@ -138,7 +178,16 @@ export function DocumentPlanDialog({
             <Check className="h-4 w-4 mr-1" />
             Queue {enabledCount} Prompt{enabledCount !== 1 ? 's' : ''}
           </Button>
-        </DialogFooter>
+        </div>
+
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleResizeStart}
+          className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          title="Drag to resize"
+        >
+          <GripVertical className="h-3 w-3 rotate-[-45deg]" />
+        </div>
       </DialogContent>
     </Dialog>
   );
