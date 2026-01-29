@@ -497,13 +497,17 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   }, [nodes]);
 
   // Callback to create a new depth-0 section for document planning
-  const handleCreateSection = useCallback((title: string): string | undefined => {
-    // Find the last depth-0 node to add after
-    const lastSection = nodes.filter(n => n.depth === 0).pop();
-    const afterId = lastSection?.id || null;
+  // Accepts an optional afterId to support chaining (each section inserted after the previous)
+  const handleCreateSection = useCallback((title: string, afterId?: string | null): string | undefined => {
+    // If afterId is provided, use it; otherwise find the last depth-0 node
+    let insertAfterId = afterId;
+    if (insertAfterId === undefined) {
+      const lastSection = nodes.filter(n => n.depth === 0).pop();
+      insertAfterId = lastSection?.id || null;
+    }
     
-    // Create a new node after the last section
-    const newId = onAddNode(afterId, 'default');
+    // Create a new node after the specified position
+    const newId = onAddNode(insertAfterId, 'default');
     
     if (newId) {
       // Update the label with the title

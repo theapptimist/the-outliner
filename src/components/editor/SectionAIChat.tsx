@@ -33,8 +33,8 @@ interface SectionAIChatProps {
   isFirstSection?: boolean;
   /** All sections in the document (for document planning) */
   allSections?: SectionInfo[];
-  /** Callback to create a new depth-0 section, returns the new section's ID */
-  onCreateSection?: (title: string) => string | undefined;
+  /** Callback to create a new depth-0 section after a given node, returns the new section's ID */
+  onCreateSection?: (title: string, afterId?: string | null) => string | undefined;
 }
 
 const QUICK_ACTIONS = [
@@ -238,13 +238,20 @@ export function SectionAIChat({
     const existingSections = prompts.filter(p => !p.isNew && p.enabled && p.prompt.trim());
     
     // Phase 1: Create new sections and collect their IDs
+    // Chain them: each new section is inserted AFTER the previous one
     const createdSectionPrompts: Array<{ sectionId: string; prompt: string }> = [];
+    
+    // Find the last existing section to start inserting after
+    const lastExistingSection = allSections.length > 0 ? allSections[allSections.length - 1] : null;
+    let insertAfterId: string | null = lastExistingSection?.id || null;
     
     for (const section of newSections) {
       if (onCreateSection) {
-        const newId = onCreateSection(section.sectionTitle);
+        const newId = onCreateSection(section.sectionTitle, insertAfterId);
         if (newId) {
           createdSectionPrompts.push({ sectionId: newId, prompt: section.prompt });
+          // Next section should be inserted after THIS one
+          insertAfterId = newId;
         }
       }
     }
@@ -269,7 +276,7 @@ export function SectionAIChat({
     }
     
     setPlanDialogOpen(false);
-  }, [promptQueue, onCreateSection]);
+  }, [promptQueue, onCreateSection, allSections]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
