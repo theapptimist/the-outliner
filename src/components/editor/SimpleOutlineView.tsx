@@ -10,6 +10,8 @@ import { ExternalLink, FileText } from 'lucide-react';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
 import { SectionControlPanel } from './SectionControlPanel';
 import { SectionToolbar } from './SectionToolbar';
+import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
+import { useDocumentContext } from './context/DocumentContext';
 
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
@@ -143,6 +145,11 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     placesHighlightMode,
     highlightedPlace,
   } = useEditorContext();
+
+  // Get document context for prompt queue
+  const { document: docState } = useDocumentContext();
+  const documentId = docState?.meta?.id || 'unknown';
+  const promptQueue = useSectionPromptQueue(documentId);
 
   const scheduleTextareaResize = useCallback((nodeId: string) => {
     const existing = resizeRafByIdRef.current.get(nodeId);
@@ -1755,6 +1762,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   isBlockCollapsed={isBlockCollapsed}
                   onToggleBlockCollapse={onToggleBlockCollapse}
                   onDeleteBlock={onDeleteBlock}
+                  hasQueuedPrompt={promptQueue.hasQueuedPrompt(node.id)}
                 />
               </div>
             )}

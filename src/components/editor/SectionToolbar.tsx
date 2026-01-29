@@ -16,6 +16,8 @@ export interface SectionToolbarProps {
   isBlockCollapsed?: boolean;
   onToggleBlockCollapse?: () => void;
   onDeleteBlock?: () => void;
+  /** Whether this section has a queued AI prompt */
+  hasQueuedPrompt?: boolean;
 }
 
 export function SectionToolbar({
@@ -29,6 +31,7 @@ export function SectionToolbar({
   isBlockCollapsed = false,
   onToggleBlockCollapse,
   onDeleteBlock,
+  hasQueuedPrompt = false,
 }: SectionToolbarProps) {
   return (
     <div className="flex items-center gap-0.5">
@@ -39,8 +42,9 @@ export function SectionToolbar({
             variant="ghost"
             size="sm"
             className={cn(
-              "h-6 w-6 p-0 bg-background/80 backdrop-blur-sm",
-              isAIPanelOpen && "text-primary bg-primary/10"
+              "h-6 w-6 p-0 bg-background/80 backdrop-blur-sm relative",
+              isAIPanelOpen && "text-primary bg-primary/10",
+              hasQueuedPrompt && !isAIPanelOpen && "text-primary"
             )}
             onClick={(e) => {
               e.stopPropagation();
@@ -49,10 +53,17 @@ export function SectionToolbar({
             onPointerDown={(e) => e.stopPropagation()}
           >
             <Sparkles className="h-3 w-3" />
+            {/* Queued prompt indicator */}
+            {hasQueuedPrompt && !isAIPanelOpen && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+              </span>
+            )}
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={4}>
-          <p>{isAIPanelOpen ? "Close AI panel" : "Open AI panel"}</p>
+          <p>{isAIPanelOpen ? "Close AI panel" : hasQueuedPrompt ? "Open AI panel (prompt queued)" : "Open AI panel"}</p>
         </TooltipContent>
       </Tooltip>
 
