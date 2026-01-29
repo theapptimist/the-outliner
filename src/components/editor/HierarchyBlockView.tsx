@@ -898,7 +898,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
-            <p>Link to Document</p>
+            <p>Link document</p>
           </TooltipContent>
         </Tooltip>
         <Tooltip>
