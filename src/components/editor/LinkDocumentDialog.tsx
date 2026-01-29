@@ -50,7 +50,7 @@ export const LinkDocumentDialog = forwardRef<HTMLDivElement, LinkDocumentDialogP
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md" ref={ref}>
           <DialogHeader>
-            <DialogTitle>Link to Document</DialogTitle>
+            <DialogTitle>Link document</DialogTitle>
             <DialogDescription>
               Select a document to create a link to
             </DialogDescription>
