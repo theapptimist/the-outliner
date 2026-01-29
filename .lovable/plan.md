@@ -1,93 +1,169 @@
 
-# Fix: Show Queued Prompt Indicator on Section Toolbar
+# Fix: Document Planner Should Create Sections AND Queue Prompts
 
-## Problem
+## Problem Analysis
 
-When prompts are queued via the Document Plan feature, there's no visual feedback. The `SectionPanelToggle` component was created with the pulsing dot indicator, but it's not actually being used anywhere. Instead, `SectionToolbar` is the component that renders the sparkle button, and it lacks:
+The current implementation has a fundamental mismatch with the user's expectation:
 
-1. The `hasQueuedPrompt` prop
-2. The visual indicator (pulsing dot)
+**What the user expects:**
+1. User enters a topic like "Write an essay about the origins of WWI"
+2. AI generates MULTIPLE new sections (e.g., "Alliance System", "Imperialism", "Militarism", "Nationalism", "The Assassination")
+3. Each new section gets a queued AI prompt
+4. User sees pulsing dots on sections 2, 3, 4, etc.
 
-Additionally, the prompt queue check needs to happen at the `SimpleOutlineView` level so it can be passed down to `SectionToolbar`.
+**What currently happens:**
+1. User enters a topic
+2. The code sends `sectionList` containing only the EXISTING depth-0 nodes
+3. If there's only 1 section (the current one), AI only returns 1 prompt
+4. No new sections are created
 
-## Flow After Fix
-
+Looking at the network request from the session:
 ```
-User clicks "Queue 4 Prompts"
-         ↓
-Prompts saved to sessionStorage
-         ↓
-useSectionPromptQueue notifies all listeners
-         ↓
-SimpleOutlineView re-renders with updated queue state
-         ↓
-Sections 2, 3, 4 show pulsing dot on sparkle icon
-         ↓
-User opens Section 2's AI panel
-         ↓
-Prompt auto-fills in the input field
+sectionList: [{"id":"node_..._72j9pobi7","title":""}]  // Only 1 section!
 ```
+
+The AI correctly returned 1 prompt because it was only told about 1 section.
+
+## Solution
+
+The Document Planner needs a two-phase approach:
+
+### Phase 1: AI Generates New Sections
+
+When the user clicks "Plan Doc" with a topic, the AI should:
+1. Generate a list of new section titles that would structure the document
+2. Return both the section structure AND prompts for each
+
+### Phase 2: Insert Sections AND Queue Prompts
+
+After user approval:
+1. Insert the new sections as sibling depth-0 nodes (after section 1)
+2. Queue the prompts to each newly created section
+3. Show pulsing dots on all new sections
 
 ## Technical Changes
 
-### 1. Update `SectionToolbar` to Accept and Display the Indicator
+### 1. Update Edge Function (`supabase/functions/section-ai-chat/index.ts`)
 
-Add `hasQueuedPrompt` prop and render the pulsing dot on the sparkle button:
+Modify the `plan-document` operation to generate new sections:
 
 ```typescript
-// In SectionToolbar.tsx
-interface SectionToolbarProps {
-  // ... existing props
-  hasQueuedPrompt?: boolean;  // NEW
+// When sectionList has few/empty sections, tell AI to CREATE sections
+systemPrompt = `You are a document planning assistant that creates document structure.
+
+The user wants to write about: [topic]
+
+Create 3-7 major sections that would structure this document well.
+
+IMPORTANT: Return JSON in this format:
+{
+  "message": "Brief summary of the plan",
+  "newSections": [
+    { "title": "Section Title 1", "prompt": "AI prompt for this section" },
+    { "title": "Section Title 2", "prompt": "AI prompt for this section" }
+  ]
+}`;
+```
+
+### 2. Update SectionAIChat.tsx
+
+Handle the new response format that includes sections to create:
+
+```typescript
+// In handlePlanDocument:
+if (data.newSections && Array.isArray(data.newSections)) {
+  // New sections to create AND queue prompts for
+  setGeneratedPlan(data.newSections.map(ns => ({
+    sectionId: null, // Will be assigned after creation
+    sectionTitle: ns.title,
+    prompt: ns.prompt,
+    enabled: true,
+    isNew: true, // Flag indicating this needs to be created
+  })));
 }
-
-// In the sparkle button:
-<Button>
-  <Sparkles />
-  {hasQueuedPrompt && !isAIPanelOpen && (
-    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full animate-pulse" />
-  )}
-</Button>
 ```
 
-### 2. Update `SimpleOutlineView` to Check Queue and Pass Prop
+### 3. Update DocumentPlanDialog.tsx
 
-Use the prompt queue hook at the SimpleOutlineView level and pass the state to SectionToolbar:
+Show that new sections will be created:
+- Add visual indicator for "new sections" vs "existing sections"
+- Change button text to "Create X Sections & Queue Prompts"
+
+### 4. Update Approval Handler
+
+When user approves:
+1. For each new section, create a depth-0 node as a sibling
+2. Capture the new node's ID
+3. Queue the prompt to that ID
 
 ```typescript
-// In SimpleOutlineView.tsx
-const { document } = useDocumentContext();
-const documentId = document?.meta?.id || 'unknown';
-const promptQueue = useSectionPromptQueue(documentId);
-
-// When rendering SectionToolbar:
-<SectionToolbar
-  // ... existing props
-  hasQueuedPrompt={promptQueue.hasQueuedPrompt(node.id)}
-/>
+const handleApproveplan = useCallback(async (prompts: SectionPrompt[]) => {
+  const newSections = prompts.filter(p => p.isNew && p.enabled);
+  const existingSections = prompts.filter(p => !p.isNew && p.enabled);
+  
+  // Create new sections and get their IDs
+  const createdSectionIds: string[] = [];
+  for (const section of newSections) {
+    const newId = onCreateSection?.(section.sectionTitle); // Returns new node ID
+    if (newId) createdSectionIds.push({ id: newId, prompt: section.prompt });
+  }
+  
+  // Queue prompts for both new and existing sections
+  const allPrompts = [
+    ...createdSectionIds.map(({ id, prompt }) => ({ sectionId: id, prompt })),
+    ...existingSections.map(p => ({ sectionId: p.sectionId, prompt: p.prompt })),
+  ];
+  
+  promptQueue.queueMultiplePrompts(allPrompts);
+}, []);
 ```
-
-### 3. Optional: Remove Unused `SectionPanelToggle`
-
-Since `SectionToolbar` now handles the indicator, the standalone `SectionPanelToggle` component can be removed from `SectionControlPanel.tsx` to reduce confusion (or kept for future use).
 
 ## Files to Modify
 
-1. **`src/components/editor/SectionToolbar.tsx`**
-   - Add `hasQueuedPrompt` prop
-   - Add relative positioning to sparkle button
-   - Add pulsing dot indicator when queued
-   - Update tooltip text when prompt is queued
+1. **`supabase/functions/section-ai-chat/index.ts`**
+   - Update prompt for `plan-document` to generate new sections
+   - Return `newSections` array with titles and prompts
 
-2. **`src/components/editor/SimpleOutlineView.tsx`**
-   - Import `useSectionPromptQueue` and `useDocumentContext`
-   - Call the hook to get queue state
-   - Pass `hasQueuedPrompt` to `SectionToolbar`
+2. **`src/components/editor/SectionAIChat.tsx`**
+   - Parse `newSections` from response
+   - Pass section creation callback
+   - Handle two-phase approval (create then queue)
 
-## Expected Result
+3. **`src/components/editor/DocumentPlanDialog.tsx`**
+   - Add visual distinction for new vs existing sections
+   - Update approval button text
 
-After queuing prompts from the Document Plan dialog:
-- Each section with a queued prompt will show a pulsing blue dot on its sparkle icon
-- Hovering shows tooltip: "Open AI panel (prompt queued)"
-- Opening the panel auto-fills the queued prompt in the input field
-- Sending or clearing the prompt removes the indicator
+4. **`src/components/editor/SimpleOutlineView.tsx`**
+   - Add `onCreateSection` callback that creates a new depth-0 node
+   - Pass this callback to `SectionControlPanel`
+
+5. **`src/components/editor/SectionControlPanel.tsx`**
+   - Accept and pass through `onCreateSection` callback
+
+## User Flow After Fix
+
+```
+1. User opens Section 1's AI panel
+2. Types: "Write an essay about the origins of WWI"
+3. Clicks "Plan Doc"
+4. AI returns:
+   - Section 1: "Introduction" → "Write intro about the powder keg..."
+   - Section 2 (NEW): "Alliance System" → "Explain Triple Alliance..."
+   - Section 3 (NEW): "Imperialism" → "Discuss colonial rivalries..."
+   - Section 4 (NEW): "Militarism" → "Analyze arms race..."
+   - Section 5 (NEW): "The Assassination" → "Describe Franz Ferdinand..."
+5. User reviews in DocumentPlanDialog
+6. Clicks "Create 4 Sections & Queue 5 Prompts"
+7. New sections appear in outline
+8. Pulsing dots appear on sections 2-5
+9. User clicks Section 2's sparkle icon
+10. Prompt auto-fills: "Explain Triple Alliance..."
+```
+
+## Expected Outcome
+
+After implementation:
+- "Plan Doc" will create new document sections based on the topic
+- Each new section gets a queued AI prompt
+- Pulsing dots indicate which sections have prompts ready
+- Opening any section's AI panel auto-fills its queued prompt
