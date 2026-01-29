@@ -41,12 +41,45 @@ serve(async (req) => {
     // Handle plan-document operation specially
     if (operation === 'plan-document') {
       const sections = sectionList || [];
-      // Include both index and ID so AI can reference them, but we use index for reliable mapping
-      const sectionListText = sections
-        .map((s, i) => `Section ${i + 1}: "${s.title || '(untitled)'}"`)
-        .join('\n');
+      
+      // Determine if we need to CREATE new sections or just generate prompts for existing ones
+      // Create new sections if: only 1 section exists, OR all sections are untitled
+      const titledSections = sections.filter(s => s.title.trim().length > 0);
+      const needsNewSections = sections.length <= 1 || titledSections.length === 0;
 
-      systemPrompt = `You are a document planning assistant. Your job is to generate specific, actionable AI prompts for each section of a document outline.
+      if (needsNewSections) {
+        // Phase 1: Generate NEW sections based on the user's topic
+        systemPrompt = `You are a document structure planner. Based on the user's topic, create a comprehensive document outline with 4-7 major sections.
+
+For each section, provide:
+1. A clear, descriptive title
+2. A specific AI prompt that would help generate content for that section
+
+IMPORTANT: Respond with a JSON object in this exact format:
+{
+  "message": "Brief summary of the document structure you've created",
+  "newSections": [
+    { "title": "Introduction", "prompt": "Write an engaging introduction that..." },
+    { "title": "Section Title 2", "prompt": "Explain in detail..." },
+    { "title": "Section Title 3", "prompt": "Analyze the key aspects of..." }
+  ]
+}
+
+Guidelines:
+- Create 4-7 sections that logically structure the topic
+- First section should typically be an introduction or overview
+- Last section could be a conclusion, summary, or future directions
+- Each prompt should be specific, actionable, and 2-4 sentences
+- Prompts should guide the AI to generate structured outline content for that section`;
+
+        userPrompt = userMessage || 'Create a document structure for this topic.';
+      } else {
+        // Phase 2: Generate prompts for EXISTING sections
+        const sectionListText = sections
+          .map((s, i) => `Section ${i + 1}: "${s.title || '(untitled)'}"`)
+          .join('\n');
+
+        systemPrompt = `You are a document planning assistant. Your job is to generate specific, actionable AI prompts for each section of a document outline.
 
 The user will describe their document's theme or topic. Based on this, generate a tailored prompt for each section that will help expand and develop that section's content.
 
@@ -77,7 +110,8 @@ Guidelines for prompts:
 - Keep prompts concise but informative (2-4 sentences each)
 - The prompts will be used to guide AI expansion of each section`;
 
-      userPrompt = userMessage || 'Generate prompts for each section based on their titles.';
+        userPrompt = userMessage || 'Generate prompts for each section based on their titles.';
+      }
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -92,7 +126,7 @@ Guidelines for prompts:
             { role: "user", content: userPrompt },
           ],
           temperature: 0.7,
-          max_tokens: 2000,
+          max_tokens: 2500,
         }),
       });
 
@@ -120,9 +154,6 @@ Guidelines for prompts:
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
 
-      // Parse the response and map sectionIndex back to actual section IDs
-      let result: { message: string; sectionPrompts: Array<{ sectionId: string; sectionTitle: string; prompt: string }> };
-      
       try {
         let jsonStr = content;
         const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -132,39 +163,67 @@ Guidelines for prompts:
         
         const parsed = JSON.parse(jsonStr);
         
-        // Map sectionIndex (1-based) back to actual section IDs
-        const mappedPrompts = (parsed.sectionPrompts || [])
-          .map((sp: { sectionIndex?: number; prompt?: string }) => {
-            const idx = (sp.sectionIndex || 1) - 1; // Convert to 0-based
-            const section = sections[idx];
-            if (!section) return null;
-            return {
-              sectionId: section.id,
-              sectionTitle: section.title || '(untitled)',
-              prompt: sp.prompt || '',
-            };
-          })
-          .filter(Boolean);
-        
-        result = {
-          message: parsed.message || 'Generated prompts for your sections.',
-          sectionPrompts: mappedPrompts,
-        };
+        // Check if this is a "new sections" response or "existing sections" response
+        if (parsed.newSections && Array.isArray(parsed.newSections)) {
+          // New sections response - return directly with isNew flag
+          const result = {
+            message: parsed.message || 'Created document structure with new sections.',
+            newSections: parsed.newSections.map((ns: { title: string; prompt: string }) => ({
+              title: ns.title || 'Untitled Section',
+              prompt: ns.prompt || 'Expand this section with relevant details.',
+              isNew: true,
+            })),
+          };
+          
+          return new Response(JSON.stringify(result), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        } else {
+          // Existing sections response - map sectionIndex back to section IDs
+          const mappedPrompts = (parsed.sectionPrompts || [])
+            .map((sp: { sectionIndex?: number; prompt?: string }) => {
+              const idx = (sp.sectionIndex || 1) - 1; // Convert to 0-based
+              const section = sections[idx];
+              if (!section) return null;
+              return {
+                sectionId: section.id,
+                sectionTitle: section.title || '(untitled)',
+                prompt: sp.prompt || '',
+                isNew: false,
+              };
+            })
+            .filter(Boolean);
+          
+          const result = {
+            message: parsed.message || 'Generated prompts for your sections.',
+            sectionPrompts: mappedPrompts,
+          };
+          
+          return new Response(JSON.stringify(result), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       } catch {
-        // If parsing fails, create a basic response for all sections
-        result = {
-          message: "I couldn't generate structured prompts. Here's what I came up with:",
-          sectionPrompts: sections.map(s => ({
-            sectionId: s.id,
-            sectionTitle: s.title || '(untitled)',
-            prompt: `Expand the "${s.title || 'this'}" section with relevant details and subtopics.`
-          })),
-        };
-      }
+        // If parsing fails, create a basic response
+        const result = needsNewSections
+          ? {
+              message: "I couldn't generate structured sections. Please try again with a clearer topic.",
+              newSections: [],
+            }
+          : {
+              message: "I couldn't generate structured prompts. Here's what I came up with:",
+              sectionPrompts: sections.map(s => ({
+                sectionId: s.id,
+                sectionTitle: s.title || '(untitled)',
+                prompt: `Expand the "${s.title || 'this'}" section with relevant details and subtopics.`,
+                isNew: false,
+              })),
+            };
 
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Standard section operations

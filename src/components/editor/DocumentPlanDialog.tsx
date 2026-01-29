@@ -11,13 +11,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Check, X, GripVertical } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles, Check, X, GripVertical, Plus } from 'lucide-react';
 
 export interface SectionPrompt {
-  sectionId: string;
+  sectionId: string | null; // null for new sections
   sectionTitle: string;
   prompt: string;
   enabled: boolean;
+  isNew?: boolean; // true if this section needs to be created
 }
 
 interface DocumentPlanDialogProps {
@@ -46,15 +48,21 @@ export function DocumentPlanDialog({
     }
   }, [open, initialPrompts]);
 
-  const handlePromptChange = (sectionId: string, newPrompt: string) => {
+  const handlePromptChange = (index: number, newPrompt: string) => {
     setPrompts(prev =>
-      prev.map(p => (p.sectionId === sectionId ? { ...p, prompt: newPrompt } : p))
+      prev.map((p, i) => (i === index ? { ...p, prompt: newPrompt } : p))
     );
   };
 
-  const handleToggleEnabled = (sectionId: string) => {
+  const handleTitleChange = (index: number, newTitle: string) => {
     setPrompts(prev =>
-      prev.map(p => (p.sectionId === sectionId ? { ...p, enabled: !p.enabled } : p))
+      prev.map((p, i) => (i === index ? { ...p, sectionTitle: newTitle } : p))
+    );
+  };
+
+  const handleToggleEnabled = (index: number) => {
+    setPrompts(prev =>
+      prev.map((p, i) => (i === index ? { ...p, enabled: !p.enabled } : p))
     );
   };
 
@@ -101,6 +109,16 @@ export function DocumentPlanDialog({
   };
 
   const enabledCount = prompts.filter(p => p.enabled && p.prompt.trim()).length;
+  const newSectionsCount = prompts.filter(p => p.isNew && p.enabled).length;
+
+  // Generate button text based on what will happen
+  const getApproveButtonText = () => {
+    if (newSectionsCount > 0) {
+      const promptCount = enabledCount;
+      return `Create ${newSectionsCount} Section${newSectionsCount !== 1 ? 's' : ''} & Queue ${promptCount} Prompt${promptCount !== 1 ? 's' : ''}`;
+    }
+    return `Queue ${enabledCount} Prompt${enabledCount !== 1 ? 's' : ''}`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -119,7 +137,10 @@ export function DocumentPlanDialog({
             Review Document Plan
           </DialogTitle>
           <DialogDescription>
-            Review and edit the AI-generated prompts for each section. Enable or disable sections as needed.
+            {newSectionsCount > 0 
+              ? `${newSectionsCount} new sections will be created. Review and edit the titles and prompts below.`
+              : 'Review and edit the AI-generated prompts for each section. Enable or disable sections as needed.'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -127,31 +148,54 @@ export function DocumentPlanDialog({
           <div className="space-y-4 py-2">
             {prompts.map((sectionPrompt, index) => (
               <div
-                key={sectionPrompt.sectionId}
+                key={sectionPrompt.sectionId || `new-${index}`}
                 className={`p-3 rounded-lg border transition-colors ${
                   sectionPrompt.enabled
-                    ? 'border-primary/30 bg-primary/5'
+                    ? sectionPrompt.isNew 
+                      ? 'border-green-500/30 bg-green-500/5'
+                      : 'border-primary/30 bg-primary/5'
                     : 'border-muted bg-muted/30 opacity-60'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
-                    id={`section-${sectionPrompt.sectionId}`}
+                    id={`section-${sectionPrompt.sectionId || index}`}
                     checked={sectionPrompt.enabled}
-                    onCheckedChange={() => handleToggleEnabled(sectionPrompt.sectionId)}
+                    onCheckedChange={() => handleToggleEnabled(index)}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-2">
-                    <Label
-                      htmlFor={`section-${sectionPrompt.sectionId}`}
-                      className="font-medium text-sm cursor-pointer"
-                    >
-                      Section {index + 1}: {sectionPrompt.sectionTitle.slice(0, 50)}
-                      {sectionPrompt.sectionTitle.length > 50 && '...'}
-                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor={`section-${sectionPrompt.sectionId || index}`}
+                        className="font-medium text-sm cursor-pointer flex-1"
+                      >
+                        {sectionPrompt.isNew ? (
+                          <input
+                            type="text"
+                            value={sectionPrompt.sectionTitle}
+                            onChange={(e) => handleTitleChange(index, e.target.value)}
+                            className="bg-transparent border-none outline-none w-full font-medium text-sm focus:ring-1 focus:ring-primary/30 rounded px-1 -mx-1"
+                            placeholder="Section title..."
+                            disabled={!sectionPrompt.enabled}
+                          />
+                        ) : (
+                          <>
+                            Section {index + 1}: {sectionPrompt.sectionTitle.slice(0, 50)}
+                            {sectionPrompt.sectionTitle.length > 50 && '...'}
+                          </>
+                        )}
+                      </Label>
+                      {sectionPrompt.isNew && (
+                        <Badge variant="secondary" className="bg-green-500/20 text-green-700 dark:text-green-300 gap-1 text-[10px] h-5">
+                          <Plus className="h-3 w-3" />
+                          New
+                        </Badge>
+                      )}
+                    </div>
                     <Textarea
                       value={sectionPrompt.prompt}
-                      onChange={(e) => handlePromptChange(sectionPrompt.sectionId, e.target.value)}
+                      onChange={(e) => handlePromptChange(index, e.target.value)}
                       placeholder="Enter a prompt for this section..."
                       className="min-h-[80px] text-sm resize-none"
                       disabled={!sectionPrompt.enabled}
@@ -176,7 +220,7 @@ export function DocumentPlanDialog({
           </Button>
           <Button onClick={handleApprove} disabled={enabledCount === 0}>
             <Check className="h-4 w-4 mr-1" />
-            Queue {enabledCount} Prompt{enabledCount !== 1 ? 's' : ''}
+            {getApproveButtonText()}
           </Button>
         </div>
 
