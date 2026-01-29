@@ -92,6 +92,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [relinkNodeId, setRelinkNodeId] = useState<string | null>(null);
   // Spritz reader dialog state
   const [spritzerOpen, setSpritzerOpen] = useState(false);
+  // Section-targeted action state
+  const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -719,35 +721,75 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       <Suspense fallback={null}>
         <ImportOutlineDialog
           open={importDialogOpen}
-          onOpenChange={setImportDialogOpen}
-        onImport={handlePasteHierarchyFromContext}
-        onLink={(docId, docTitle) => {
-          const anchorId = selectedId || flatNodes[flatNodes.length - 1]?.id;
-          if (anchorId) {
-            const anchor = flatNodes.find(n => n.id === anchorId);
-            // If the anchor node is empty, replace it with the link instead of inserting after
-            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link' && !anchor.linkedDocumentId) {
-              // Preserve BODY type for hanging indent links (keeps them unnumbered)
-              const preservedType = anchor.type === 'body' ? 'body' : 'link';
-              setTree(prev => updateNode(prev, anchorId, {
-                type: preservedType,
-                label: docTitle,
-                linkedDocumentId: docId,
-                linkedDocumentTitle: docTitle,
-              }));
-              setSelectedId(anchorId);
-              setAutoFocusId(anchorId);
+          onOpenChange={(open) => {
+            setImportDialogOpen(open);
+            if (!open) setTargetSectionId(null);
+          }}
+        onImport={(items) => {
+          // Use targetSectionId if set (from section toolbar), otherwise use selectedId
+          const anchorId = targetSectionId ?? selectedId ?? flatNodes[flatNodes.length - 1]?.id;
+          if (anchorId && items.length > 0) {
+            if (targetSectionId) {
+              // Insert as children of section
+              const sectionNode = findNode(tree, targetSectionId);
+              if (sectionNode) {
+                const filteredItems = items.filter(item => item.label.trim().length > 0);
+                setTree(prev => {
+                  let next = prev;
+                  let insertIndex = sectionNode.children?.length || 0;
+                  
+                  for (const item of filteredItems) {
+                    const newNode = createNode(targetSectionId, 'default', item.label);
+                    next = insertNode(next, newNode, targetSectionId, insertIndex++);
+                  }
+                  
+                  return next;
+                });
+              }
             } else {
-              // Insert as sibling - inherit body type if anchor is body
-              const newType = anchor?.type === 'body' ? 'body' : 'link';
-              const newNode = createNode(anchor?.parentId ?? null, newType, docTitle);
-              newNode.linkedDocumentId = docId;
-              newNode.linkedDocumentTitle = docTitle;
-              setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
-              setSelectedId(newNode.id);
-              setAutoFocusId(newNode.id);
+              handlePasteHierarchy(anchorId, items);
             }
           }
+          setTargetSectionId(null);
+        }}
+        onLink={(docId, docTitle) => {
+          const anchorId = targetSectionId ?? selectedId ?? flatNodes[flatNodes.length - 1]?.id;
+          if (anchorId) {
+            if (targetSectionId) {
+              // Insert as child of section
+              const newNode = createNode(targetSectionId, 'link', docTitle);
+              newNode.linkedDocumentId = docId;
+              newNode.linkedDocumentTitle = docTitle;
+              setTree(prev => insertNode(prev, newNode, targetSectionId, 0));
+              setSelectedId(newNode.id);
+              setAutoFocusId(newNode.id);
+            } else {
+              const anchor = flatNodes.find(n => n.id === anchorId);
+              // If the anchor node is empty, replace it with the link instead of inserting after
+              if (anchor && anchor.label.trim() === '' && anchor.type !== 'link' && !anchor.linkedDocumentId) {
+                // Preserve BODY type for hanging indent links (keeps them unnumbered)
+                const preservedType = anchor.type === 'body' ? 'body' : 'link';
+                setTree(prev => updateNode(prev, anchorId, {
+                  type: preservedType,
+                  label: docTitle,
+                  linkedDocumentId: docId,
+                  linkedDocumentTitle: docTitle,
+                }));
+                setSelectedId(anchorId);
+                setAutoFocusId(anchorId);
+              } else {
+                // Insert as sibling - inherit body type if anchor is body
+                const newType = anchor?.type === 'body' ? 'body' : 'link';
+                const newNode = createNode(anchor?.parentId ?? null, newType, docTitle);
+                newNode.linkedDocumentId = docId;
+                newNode.linkedDocumentTitle = docTitle;
+                setTree(prev => insertNode(prev, newNode, anchor?.parentId ?? null, getNodeIndex(getSiblings(prev, anchorId), anchorId) + 1));
+                setSelectedId(newNode.id);
+                setAutoFocusId(newNode.id);
+              }
+            }
+          }
+          setTargetSectionId(null);
         }}
       />
       </Suspense>
@@ -756,13 +798,26 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       <Suspense fallback={null}>
         <LinkDocumentDialog
           open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
+        onOpenChange={(open) => {
+          setLinkDialogOpen(open);
+          if (!open) setTargetSectionId(null);
+        }}
         onSelect={(docId, docTitle) => {
-          const anchorId = selectedId || flatNodes[flatNodes.length - 1]?.id;
+          // Use targetSectionId if set (from section toolbar), otherwise use selectedId
+          const anchorId = targetSectionId ?? selectedId ?? flatNodes[flatNodes.length - 1]?.id;
           if (anchorId) {
             const anchor = flatNodes.find(n => n.id === anchorId);
-            // If the anchor node is empty, replace it with the link instead of inserting after
-            if (anchor && anchor.label.trim() === '' && anchor.type !== 'link' && !anchor.linkedDocumentId) {
+            // If the anchor is a section (targetSectionId), add as child
+            if (targetSectionId) {
+              const newNode = createNode(targetSectionId, 'link', docTitle);
+              newNode.linkedDocumentId = docId;
+              newNode.linkedDocumentTitle = docTitle;
+              // Insert as first child of the section
+              setTree(prev => insertNode(prev, newNode, targetSectionId, 0));
+              setSelectedId(newNode.id);
+              setAutoFocusId(newNode.id);
+            } else if (anchor && anchor.label.trim() === '' && anchor.type !== 'link' && !anchor.linkedDocumentId) {
+              // If the anchor node is empty, replace it with the link instead of inserting after
               // Preserve BODY type for hanging indent links (keeps them unnumbered)
               const preservedType = anchor.type === 'body' ? 'body' : 'link';
               setTree(prev => updateNode(prev, anchorId, {
@@ -784,6 +839,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               setAutoFocusId(newNode.id);
             }
           }
+          setTargetSectionId(null);
         }}
         currentDocId={document?.meta?.id}
       />
@@ -822,9 +878,12 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       <Suspense fallback={null}>
         <SpritzerDialog
           open={spritzerOpen}
-        onOpenChange={setSpritzerOpen}
+        onOpenChange={(open) => {
+          setSpritzerOpen(open);
+          if (!open) setTargetSectionId(null);
+        }}
         tree={tree}
-        startNodeId={selectedId ?? undefined}
+        startNodeId={targetSectionId ?? selectedId ?? undefined}
         prefixGenerator={(node: FlatNode) => {
           // Build indices array for the node
           const nodeFlat = flattenTree(tree);
@@ -1121,6 +1180,18 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onConvertToNumbered={(nodeId) => {
               // Convert a BODY/link node back to a numbered 'default' type
               setTree(prev => updateNode(prev, nodeId, { type: 'default' }));
+            }}
+            onSectionSpeedRead={(sectionId) => {
+              setTargetSectionId(sectionId);
+              setSpritzerOpen(true);
+            }}
+            onSectionLinkDocument={(sectionId) => {
+              setTargetSectionId(sectionId);
+              setLinkDialogOpen(true);
+            }}
+            onSectionImport={(sectionId) => {
+              setTargetSectionId(sectionId);
+              setImportDialogOpen(true);
             }}
           />
         </div>

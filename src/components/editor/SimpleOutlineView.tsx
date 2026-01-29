@@ -6,9 +6,10 @@ import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
 import { toast } from '@/hooks/use-toast';
 import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
 import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
-import { ExternalLink, FileText, Sparkles } from 'lucide-react';
+import { ExternalLink, FileText } from 'lucide-react';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
-import { SectionControlPanel, SectionPanelToggle } from './SectionControlPanel';
+import { SectionControlPanel } from './SectionControlPanel';
+import { SectionToolbar } from './SectionToolbar';
 
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
@@ -51,6 +52,12 @@ interface SimpleOutlineViewProps {
   onRequestRelink?: (nodeId: string) => void;
   /** Handler for converting a BODY node back to a numbered outline item */
   onConvertToNumbered?: (id: string) => void;
+  /** Handler for speed read on a section */
+  onSectionSpeedRead?: (sectionId: string) => void;
+  /** Handler for link document on a section */
+  onSectionLinkDocument?: (sectionId: string) => void;
+  /** Handler for import on a section */
+  onSectionImport?: (sectionId: string) => void;
 }
 
 export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewProps>(function SimpleOutlineView(
@@ -85,6 +92,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     onNavigateToLinkedDocument,
     onRequestRelink,
     onConvertToNumbered,
+    onSectionSpeedRead,
+    onSectionLinkDocument,
+    onSectionImport,
   },
   forwardedRef
 ) {
@@ -1697,15 +1707,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               );
             })()}
 
-            {/* Section AI Panel Toggle Button (depth-0 rows only, absolute positioned to align with toolbar) */}
+            {/* Section Toolbar (depth-0 rows only, absolute positioned to align with right edge) */}
             {isDepth0 && (
               <div className={cn(
-                "absolute top-[0.275rem] right-[calc(0.5rem+9rem-3px)] -translate-y-1/2 flex items-center transition-opacity z-10",
+                "absolute top-[0.275rem] right-2 -translate-y-1/2 flex items-center transition-opacity z-10",
                 isSectionPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}>
-                <SectionPanelToggle
-                  isOpen={isSectionPanelOpen}
-                  onToggle={() => {
+                <SectionToolbar
+                  sectionId={node.id}
+                  isAIPanelOpen={isSectionPanelOpen}
+                  onToggleAIPanel={() => {
                     setOpenSectionPanels(prev => {
                       const next = new Set(prev);
                       if (next.has(node.id)) {
@@ -1716,6 +1727,9 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                       return next;
                     });
                   }}
+                  onSpeedRead={() => onSectionSpeedRead?.(node.id)}
+                  onLinkDocument={() => onSectionLinkDocument?.(node.id)}
+                  onImport={() => onSectionImport?.(node.id)}
                 />
               </div>
             )}
