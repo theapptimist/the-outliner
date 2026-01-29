@@ -26,8 +26,8 @@ export interface SectionControlPanelProps {
   isFirstSection?: boolean;
   /** All sections in the document */
   allSections?: SectionInfo[];
-  /** Callback to create a new depth-0 section, returns the new section's ID */
-  onCreateSection?: (title: string) => string | undefined;
+  /** Callback to create a new depth-0 section after a given node, returns the new section's ID */
+  onCreateSection?: (title: string, afterId?: string | null) => string | undefined;
 }
 
 export function SectionControlPanel({
