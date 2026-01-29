@@ -496,6 +496,19 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       .map(n => ({ id: n.id, title: n.label }));
   }, [nodes]);
 
+  // Handler to open ALL section panels
+  const handleOpenAllSectionPanels = useCallback(() => {
+    const allDepth0Ids = nodes
+      .filter(n => n.depth === 0 && n.type !== 'body')
+      .map(n => n.id);
+    setOpenSectionPanels(new Set(allDepth0Ids));
+  }, [nodes]);
+
+  // Handler to close ALL section panels
+  const handleCloseAllSectionPanels = useCallback(() => {
+    setOpenSectionPanels(new Set());
+  }, []);
+
   // Callback to create a new depth-0 section for document planning
   // Accepts an optional afterId to support chaining (each section inserted after the previous)
   const handleCreateSection = useCallback((title: string, afterId?: string | null): string | undefined => {
@@ -1795,6 +1808,10 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   onToggleBlockCollapse={onToggleBlockCollapse}
                   onDeleteBlock={onDeleteBlock}
                   hasQueuedPrompt={promptQueue.hasQueuedPrompt(node.id)}
+                  totalSectionCount={allSections.length}
+                  openPanelCount={openSectionPanels.size}
+                  onOpenAllPanels={handleOpenAllSectionPanels}
+                  onCloseAllPanels={handleCloseAllSectionPanels}
                 />
               </div>
             )}
