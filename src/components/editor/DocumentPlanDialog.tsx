@@ -12,7 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Check, X, GripVertical, Plus } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Sparkles, Check, X, GripVertical, Plus, Zap, ListPlus } from 'lucide-react';
 
 export interface SectionPrompt {
   sectionId: string | null; // null for new sections
@@ -26,7 +27,7 @@ interface DocumentPlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sectionPrompts: SectionPrompt[];
-  onApprove: (prompts: SectionPrompt[]) => void;
+  onApprove: (prompts: SectionPrompt[], autoExecute: boolean) => void;
   onCancel: () => void;
 }
 
@@ -66,9 +67,9 @@ export function DocumentPlanDialog({
     );
   };
 
-  const handleApprove = () => {
+  const handleApprove = (autoExecute: boolean) => {
     const enabledPrompts = prompts.filter(p => p.enabled && p.prompt.trim());
-    onApprove(enabledPrompts);
+    onApprove(enabledPrompts, autoExecute);
     onOpenChange(false);
   };
 
@@ -218,10 +219,28 @@ export function DocumentPlanDialog({
             <X className="h-4 w-4 mr-1" />
             Cancel
           </Button>
-          <Button onClick={handleApprove} disabled={enabledCount === 0}>
-            <Check className="h-4 w-4 mr-1" />
-            {getApproveButtonText()}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" onClick={() => handleApprove(false)} disabled={enabledCount === 0}>
+                <ListPlus className="h-4 w-4 mr-1" />
+                Queue {enabledCount} Prompt{enabledCount !== 1 ? 's' : ''}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Queue prompts for manual execution later</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={() => handleApprove(true)} disabled={enabledCount === 0}>
+                <Zap className="h-4 w-4 mr-1" />
+                Auto-Write Document
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Automatically generate content for all sections</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Resize handle */}

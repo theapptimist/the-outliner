@@ -1819,6 +1819,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               allSections={allSections}
               onCreateSection={handleCreateSection}
               onUpdateSectionLabel={onUpdateLabel}
+              onInsertSectionContent={onInsertSectionContent}
             />
           )}
         </React.Fragment>

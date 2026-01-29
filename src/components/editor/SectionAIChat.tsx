@@ -9,6 +9,7 @@ import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DocumentPlanDialog, SectionPrompt } from './DocumentPlanDialog';
+import { Progress } from '@/components/ui/progress';
 
 interface ChatMessage {
   id: string;
@@ -37,6 +38,8 @@ interface SectionAIChatProps {
   onCreateSection?: (title: string, afterId?: string | null) => string | undefined;
   /** Callback to update an existing section's label */
   onUpdateSectionLabel?: (sectionId: string, newLabel: string) => void;
+  /** Callback to insert AI-generated content into a specific section */
+  onInsertSectionContent?: (sectionId: string, items: Array<{ label: string; depth: number }>) => void;
 }
 
 const QUICK_ACTIONS = [
@@ -55,6 +58,7 @@ export function SectionAIChat({
   allSections = [],
   onCreateSection,
   onUpdateSectionLabel,
+  onInsertSectionContent,
 }: SectionAIChatProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -75,6 +79,9 @@ export function SectionAIChat({
   // Prompt queue management
   const promptQueue = useSectionPromptQueue(documentId);
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
+
+  // Auto-write progress state
+  const [autoWriteProgress, setAutoWriteProgress] = useState<{ current: number; total: number; currentSection: string } | null>(null);
 
   // Check for queued prompt on mount and when sectionId changes
   useEffect(() => {
@@ -236,12 +243,12 @@ export function SectionAIChat({
     }
   }, [allSections, sectionLabel, sectionContent, documentContext, input, setMessages]);
 
-  const handleApproveplan = useCallback((prompts: SectionPrompt[]) => {
+  const handleApproveplan = useCallback(async (prompts: SectionPrompt[], autoExecute: boolean) => {
     const newSections = prompts.filter(p => p.isNew && p.enabled && p.prompt.trim());
     const existingSections = prompts.filter(p => !p.isNew && p.enabled && p.prompt.trim());
     
-    // Phase 1: Handle sections
-    const createdSectionPrompts: Array<{ sectionId: string; prompt: string }> = [];
+    // Phase 1: Handle sections - create/update them first
+    const createdSectionPrompts: Array<{ sectionId: string; sectionTitle: string; prompt: string }> = [];
     
     // Check if the first section (where Plan Doc was triggered) is empty
     const firstSection = allSections.length > 0 ? allSections[0] : null;
@@ -259,8 +266,8 @@ export function SectionAIChat({
         onUpdateSectionLabel(firstSection.id, firstNewSection.sectionTitle);
       }
       
-      // Queue the prompt for section 1
-      createdSectionPrompts.push({ sectionId: firstSection.id, prompt: firstNewSection.prompt });
+      // Track the prompt for section 1
+      createdSectionPrompts.push({ sectionId: firstSection.id, sectionTitle: firstNewSection.sectionTitle, prompt: firstNewSection.prompt });
       
       // Skip the first section since we updated section 1
       sectionsToCreate = newSections.slice(1);
@@ -271,34 +278,88 @@ export function SectionAIChat({
       if (onCreateSection) {
         const newId = onCreateSection(section.sectionTitle, insertAfterId);
         if (newId) {
-          createdSectionPrompts.push({ sectionId: newId, prompt: section.prompt });
+          createdSectionPrompts.push({ sectionId: newId, sectionTitle: section.sectionTitle, prompt: section.prompt });
           // Next section should be inserted after THIS one
           insertAfterId = newId;
         }
       }
     }
     
-    // Phase 2: Queue prompts for both new and existing sections
+    // Phase 2: Build complete list of prompts (new + existing)
     const allPromptsToQueue = [
       ...createdSectionPrompts,
-      ...existingSections.map(p => ({ sectionId: p.sectionId!, prompt: p.prompt })),
+      ...existingSections.map(p => ({ sectionId: p.sectionId!, sectionTitle: p.sectionTitle, prompt: p.prompt })),
     ];
     
-    if (allPromptsToQueue.length > 0) {
-      promptQueue.queueMultiplePrompts(allPromptsToQueue);
-    }
-    
-    const newCount = createdSectionPrompts.length;
-    const totalCount = allPromptsToQueue.length;
-    
-    if (newCount > 0) {
-      toast.success(`Created ${newCount} sections and queued ${totalCount} prompts`);
-    } else {
-      toast.success(`Queued ${totalCount} prompts for sections`);
-    }
-    
     setPlanDialogOpen(false);
-  }, [promptQueue, onCreateSection, onUpdateSectionLabel, allSections]);
+    
+    if (autoExecute && onInsertSectionContent) {
+      // Auto-execute mode: run prompts sequentially and insert content
+      setAutoWriteProgress({ current: 0, total: allPromptsToQueue.length, currentSection: '' });
+      
+      let successCount = 0;
+      
+      for (let i = 0; i < allPromptsToQueue.length; i++) {
+        const { sectionId: targetSectionId, sectionTitle, prompt } = allPromptsToQueue[i];
+        
+        setAutoWriteProgress({ 
+          current: i, 
+          total: allPromptsToQueue.length, 
+          currentSection: sectionTitle 
+        });
+        
+        try {
+          // Call the AI to generate content for this section
+          const response = await supabase.functions.invoke('section-ai-chat', {
+            body: {
+              operation: 'expand',
+              sectionLabel: sectionTitle,
+              sectionContent: '', // Empty - we're generating initial content
+              documentContext,
+              userMessage: prompt,
+            },
+          });
+          
+          if (response.error) {
+            console.error(`Error generating content for ${sectionTitle}:`, response.error);
+            continue;
+          }
+          
+          const data = response.data;
+          
+          // Insert the generated items into the section
+          if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
+            onInsertSectionContent(targetSectionId, data.items);
+            successCount++;
+          }
+        } catch (error) {
+          console.error(`Error processing section ${sectionTitle}:`, error);
+        }
+      }
+      
+      setAutoWriteProgress(null);
+      
+      if (successCount > 0) {
+        toast.success(`Generated content for ${successCount} section${successCount !== 1 ? 's' : ''}`);
+      } else {
+        toast.error('Failed to generate content. Please try again.');
+      }
+    } else {
+      // Queue-only mode: queue prompts for manual execution
+      if (allPromptsToQueue.length > 0) {
+        promptQueue.queueMultiplePrompts(allPromptsToQueue.map(p => ({ sectionId: p.sectionId, prompt: p.prompt })));
+      }
+      
+      const newCount = createdSectionPrompts.length;
+      const totalCount = allPromptsToQueue.length;
+      
+      if (newCount > 0) {
+        toast.success(`Created ${newCount} sections and queued ${totalCount} prompts`);
+      } else {
+        toast.success(`Queued ${totalCount} prompts for sections`);
+      }
+    }
+  }, [promptQueue, onCreateSection, onUpdateSectionLabel, onInsertSectionContent, allSections, documentContext]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,6 +384,27 @@ export function SectionAIChat({
 
   return (
     <div className="flex flex-col h-full min-h-[200px] max-h-[300px]">
+      {/* Auto-Write Progress Indicator */}
+      {autoWriteProgress && (
+        <div className="mb-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-2 mb-2">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <div className="flex-1">
+              <div className="text-xs font-medium text-foreground">
+                Writing document...
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Section {autoWriteProgress.current + 1} of {autoWriteProgress.total}: {autoWriteProgress.currentSection.slice(0, 40)}{autoWriteProgress.currentSection.length > 40 ? '...' : ''}
+              </div>
+            </div>
+          </div>
+          <Progress 
+            value={((autoWriteProgress.current) / autoWriteProgress.total) * 100} 
+            className="h-1.5"
+          />
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="flex gap-1 mb-2 flex-wrap">
         {QUICK_ACTIONS.map((action) => (
