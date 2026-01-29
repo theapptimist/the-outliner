@@ -5,12 +5,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+interface SectionInfo {
+  id: string;
+  title: string;
+}
+
 interface SectionAIChatRequest {
-  operation: 'expand' | 'summarize' | 'refine' | 'chat';
+  operation: 'expand' | 'summarize' | 'refine' | 'chat' | 'plan-document';
   sectionLabel: string;
   sectionContent: string;
   documentContext?: string;
   userMessage?: string;
+  // For plan-document operation
+  sectionList?: SectionInfo[];
 }
 
 serve(async (req) => {
@@ -21,15 +28,122 @@ serve(async (req) => {
 
   try {
     const body: SectionAIChatRequest = await req.json();
-    const { operation, sectionLabel, sectionContent, documentContext, userMessage } = body;
+    const { operation, sectionLabel, sectionContent, documentContext, userMessage, sectionList } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build the system prompt based on operation
-    let systemPrompt = `You are an AI assistant helping to develop an outline document. 
+    let systemPrompt: string;
+    let userPrompt: string = userMessage || '';
+
+    // Handle plan-document operation specially
+    if (operation === 'plan-document') {
+      const sections = sectionList || [];
+      const sectionListText = sections
+        .map((s, i) => `${i + 1}. "${s.title}"`)
+        .join('\n');
+
+      systemPrompt = `You are a document planning assistant. Your job is to generate specific, actionable AI prompts for each section of a document outline.
+
+The user will describe their document's theme or topic. Based on this, generate a tailored prompt for each section that will help expand and develop that section's content.
+
+The document has these sections:
+${sectionListText || '(No sections provided)'}
+
+IMPORTANT: Respond with a JSON object in this exact format:
+{
+  "message": "A brief summary of the plan you've created",
+  "sectionPrompts": [
+    {
+      "sectionId": "the section ID from the input",
+      "sectionTitle": "the section title",
+      "prompt": "A specific, actionable prompt for this section (2-4 sentences)"
+    }
+  ]
+}
+
+Guidelines for prompts:
+- Each prompt should be specific to that section's topic/title
+- Prompts should be actionable and clear
+- Include suggestions for what subtopics or details to cover
+- Keep prompts concise but informative (2-4 sentences each)
+- The prompts will be used to guide AI expansion of each section`;
+
+      userPrompt = userMessage || 'Generate prompts for each section based on their titles.';
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+        
+        if (response.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        throw new Error(`AI gateway error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+
+      // Parse the response
+      let result: { message: string; sectionPrompts: Array<{ sectionId: string; sectionTitle: string; prompt: string }> };
+      
+      try {
+        let jsonStr = content;
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1].trim();
+        }
+        
+        result = JSON.parse(jsonStr);
+      } catch {
+        // If parsing fails, create a basic response
+        result = {
+          message: "I couldn't generate structured prompts. Here's what I came up with:",
+          sectionPrompts: sections.map(s => ({
+            sectionId: s.id,
+            sectionTitle: s.title,
+            prompt: `Expand the "${s.title}" section with relevant details and subtopics.`
+          })),
+        };
+      }
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Standard section operations
+    systemPrompt = `You are an AI assistant helping to develop an outline document. 
 You are working on a specific section titled "${sectionLabel}".
 
 Current section content:
@@ -59,8 +173,6 @@ If the request doesn't require generating items (like a question), just respond 
   "message": "Your response here",
   "items": []
 }`;
-
-    let userPrompt = userMessage || '';
 
     // Customize prompt based on operation
     switch (operation) {

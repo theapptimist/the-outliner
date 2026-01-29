@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Wand2, ListPlus, FileText, RefreshCw, Plus } from 'lucide-react';
+import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useDocumentContext } from './context/DocumentContext';
+import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { DocumentPlanDialog, SectionPrompt } from './DocumentPlanDialog';
 
 interface ChatMessage {
   id: string;
@@ -17,12 +18,21 @@ interface ChatMessage {
   generatedItems?: Array<{ label: string; depth: number }>;
 }
 
+interface SectionInfo {
+  id: string;
+  title: string;
+}
+
 interface SectionAIChatProps {
   sectionId: string;
   sectionLabel: string;
   sectionContent: string;
   documentContext?: string;
   onInsertContent: (items: Array<{ label: string; depth: number }>) => void;
+  /** Whether this is the first section (enables "Plan Doc" feature) */
+  isFirstSection?: boolean;
+  /** All sections in the document (for document planning) */
+  allSections?: SectionInfo[];
 }
 
 const QUICK_ACTIONS = [
@@ -37,6 +47,8 @@ export function SectionAIChat({
   sectionContent,
   documentContext,
   onInsertContent,
+  isFirstSection = false,
+  allSections = [],
 }: SectionAIChatProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -49,6 +61,23 @@ export function SectionAIChat({
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Document plan dialog state
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [generatedPlan, setGeneratedPlan] = useState<SectionPrompt[]>([]);
+
+  // Prompt queue management
+  const promptQueue = useSectionPromptQueue(documentId);
+  const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
+
+  // Check for queued prompt on mount and when sectionId changes
+  useEffect(() => {
+    const queued = promptQueue.getQueuedPrompt(sectionId);
+    if (queued) {
+      setQueuedPrompt(queued);
+      setInput(queued);
+    }
+  }, [sectionId, promptQueue]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -71,6 +100,12 @@ export function SectionAIChat({
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
+
+    // Clear queued prompt if we're sending it
+    if (queuedPrompt && userMessage === queuedPrompt) {
+      promptQueue.clearQueuedPrompt(sectionId);
+      setQueuedPrompt(null);
+    }
 
     try {
       const response = await supabase.functions.invoke('section-ai-chat', {
@@ -107,7 +142,73 @@ export function SectionAIChat({
     } finally {
       setIsLoading(false);
     }
-  }, [sectionLabel, sectionContent, documentContext, setMessages]);
+  }, [sectionLabel, sectionContent, documentContext, setMessages, queuedPrompt, promptQueue, sectionId]);
+
+  const handlePlanDocument = useCallback(async () => {
+    if (allSections.length === 0) {
+      toast.error('No sections found in document');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const response = await supabase.functions.invoke('section-ai-chat', {
+        body: {
+          operation: 'plan-document',
+          sectionLabel,
+          sectionContent,
+          documentContext,
+          userMessage: input || 'Generate prompts for each section based on their titles.',
+          sectionList: allSections,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to generate document plan');
+      }
+
+      const data = response.data;
+      
+      if (data.sectionPrompts && Array.isArray(data.sectionPrompts)) {
+        const planPrompts: SectionPrompt[] = data.sectionPrompts.map((sp: any) => ({
+          sectionId: sp.sectionId,
+          sectionTitle: sp.sectionTitle,
+          prompt: sp.prompt,
+          enabled: true,
+        }));
+        
+        setGeneratedPlan(planPrompts);
+        setPlanDialogOpen(true);
+        
+        // Add AI message about the plan
+        const assistantMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: data.message || `Generated ${planPrompts.length} section prompts. Click "Review & Edit" to customize them.`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+      } else {
+        toast.error('Failed to parse document plan');
+      }
+    } catch (error) {
+      console.error('Document planning error:', error);
+      toast.error('Failed to generate document plan. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [allSections, sectionLabel, sectionContent, documentContext, input, setMessages]);
+
+  const handleApproveplan = useCallback((prompts: SectionPrompt[]) => {
+    const promptsToQueue = prompts
+      .filter(p => p.enabled && p.prompt.trim())
+      .map(p => ({ sectionId: p.sectionId, prompt: p.prompt }));
+    
+    promptQueue.queueMultiplePrompts(promptsToQueue);
+    toast.success(`Queued ${promptsToQueue.length} prompts for sections`);
+    setPlanDialogOpen(false);
+  }, [promptQueue]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +248,43 @@ export function SectionAIChat({
             {action.label}
           </Button>
         ))}
+        
+        {/* Plan Doc button - only for first section */}
+        {isFirstSection && allSections.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePlanDocument}
+            disabled={isLoading}
+            className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
+          >
+            <ClipboardList className="w-3 h-3" />
+            Plan Doc
+          </Button>
+        )}
       </div>
+
+      {/* Queued prompt indicator */}
+      {queuedPrompt && (
+        <div className="mb-2 px-2 py-1 rounded bg-primary/10 border border-primary/20 flex items-center gap-2">
+          <Sparkles className="w-3 h-3 text-primary" />
+          <span className="text-[10px] text-primary flex-1 truncate">
+            Queued prompt ready
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              promptQueue.clearQueuedPrompt(sectionId);
+              setQueuedPrompt(null);
+              setInput('');
+            }}
+            className="h-4 px-1 text-[10px] text-muted-foreground hover:text-foreground"
+          >
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Messages */}
       <div 
@@ -238,6 +375,15 @@ export function SectionAIChat({
           )}
         </Button>
       </form>
+
+      {/* Document Plan Dialog */}
+      <DocumentPlanDialog
+        open={planDialogOpen}
+        onOpenChange={setPlanDialogOpen}
+        sectionPrompts={generatedPlan}
+        onApprove={handleApproveplan}
+        onCancel={() => setPlanDialogOpen(false)}
+      />
     </div>
   );
 }
