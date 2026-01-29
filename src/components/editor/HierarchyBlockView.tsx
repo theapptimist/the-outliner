@@ -94,6 +94,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [spritzerOpen, setSpritzerOpen] = useState(false);
   // Section-targeted action state
   const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
+  // Global toolbar hover state (only show when hovering top area, not outline content)
+  const [isGlobalToolbarHovered, setIsGlobalToolbarHovered] = useState(false);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -928,53 +930,22 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       />
       </Suspense>
       
-      {/* Floating toolbar - appears on hover */}
-      <div className="absolute top-3 right-2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => setSpritzerOpen(true)}
-            >
-              <Play className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={4}>
-            <p>Speed Read</p>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => setLinkDialogOpen(true)}
-            >
-              <Link2 className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={4}>
-            <p>Link document</p>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => setImportDialogOpen(true)}
-            >
-              <Upload className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={4}>
-            <p>Import Outline</p>
-          </TooltipContent>
-        </Tooltip>
+      {/* Hover zone for global toolbar (top-right area above outline) */}
+      <div 
+        className="absolute top-0 right-0 h-8 w-32 z-5"
+        onMouseEnter={() => setIsGlobalToolbarHovered(true)}
+        onMouseLeave={() => setIsGlobalToolbarHovered(false)}
+      />
+      
+      {/* Floating toolbar - appears on hover of top area (block-level actions only) */}
+      <div 
+        className={cn(
+          "absolute top-3 right-2 -translate-y-1/2 flex items-center gap-1 transition-opacity z-10",
+          isGlobalToolbarHovered ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onMouseEnter={() => setIsGlobalToolbarHovered(true)}
+        onMouseLeave={() => setIsGlobalToolbarHovered(false)}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
