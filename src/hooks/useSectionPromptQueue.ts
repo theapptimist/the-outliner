@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 interface QueuedPrompt {
   prompt: string;
   queuedAt: string;
+  autoExecute?: boolean;  // NEW: triggers immediate execution when panel opens
+  executionIndex?: number; // For staggered execution ordering
 }
 
 const QUEUE_KEY_PREFIX = 'section-prompt-queue';
@@ -45,6 +47,21 @@ export function useSectionPromptQueue(documentId: string) {
     }
   }, [buildKey]);
 
+  /**
+   * Get the full queued prompt data including autoExecute flag
+   */
+  const getQueuedPromptData = useCallback((sectionId: string): QueuedPrompt | null => {
+    try {
+      const key = buildKey(sectionId);
+      const stored = sessionStorage.getItem(key);
+      if (!stored) return null;
+      
+      return JSON.parse(stored) as QueuedPrompt;
+    } catch {
+      return null;
+    }
+  }, [buildKey]);
+
   const setQueuedPrompt = useCallback((sectionId: string, prompt: string) => {
     try {
       const key = buildKey(sectionId);
@@ -64,6 +81,26 @@ export function useSectionPromptQueue(documentId: string) {
       const key = buildKey(sectionId);
       sessionStorage.removeItem(key);
       notifyListeners();
+    } catch {
+      // Ignore errors
+    }
+  }, [buildKey]);
+
+  /**
+   * Clear only the autoExecute flag, keeping the prompt for display
+   */
+  const clearAutoExecuteFlag = useCallback((sectionId: string) => {
+    try {
+      const key = buildKey(sectionId);
+      const stored = sessionStorage.getItem(key);
+      if (!stored) return;
+      
+      const parsed: QueuedPrompt = JSON.parse(stored);
+      if (parsed.autoExecute) {
+        parsed.autoExecute = false;
+        sessionStorage.setItem(key, JSON.stringify(parsed));
+        notifyListeners();
+      }
     } catch {
       // Ignore errors
     }
@@ -107,13 +144,52 @@ export function useSectionPromptQueue(documentId: string) {
     notifyListeners();
   }, [documentId, buildKey]);
 
+  /**
+   * Queue multiple prompts with autoExecute flag enabled.
+   * Used for Auto-Write mode where panels auto-execute their prompts on open.
+   */
+  const queueMultiplePromptsWithAutoExecute = useCallback((
+    prompts: Array<{ sectionId: string; prompt: string }>,
+    clearExisting: boolean = true
+  ) => {
+    if (clearExisting) {
+      // Clear all existing prompts for this document
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (key?.startsWith(`${QUEUE_KEY_PREFIX}:${documentId}:`)) {
+          sessionStorage.removeItem(key);
+        }
+      }
+    }
+
+    // Queue new prompts with autoExecute flag and execution index for staggering
+    prompts.forEach(({ sectionId, prompt }, index) => {
+      if (prompt.trim()) {
+        const key = buildKey(sectionId);
+        const data: QueuedPrompt = {
+          prompt,
+          queuedAt: new Date().toISOString(),
+          autoExecute: true,
+          executionIndex: index,
+        };
+        sessionStorage.setItem(key, JSON.stringify(data));
+      }
+    });
+    
+    // Notify all listeners at once
+    notifyListeners();
+  }, [documentId, buildKey]);
+
   // Include version in the dependency to ensure consumers re-render
   return useMemo(() => ({
     getQueuedPrompt,
+    getQueuedPromptData,
     setQueuedPrompt,
     clearQueuedPrompt,
+    clearAutoExecuteFlag,
     hasQueuedPrompt,
     queueMultiplePrompts,
+    queueMultiplePromptsWithAutoExecute,
     _version: version, // Hidden prop to ensure reactivity
-  }), [getQueuedPrompt, setQueuedPrompt, clearQueuedPrompt, hasQueuedPrompt, queueMultiplePrompts, version]);
+  }), [getQueuedPrompt, getQueuedPromptData, setQueuedPrompt, clearQueuedPrompt, clearAutoExecuteFlag, hasQueuedPrompt, queueMultiplePrompts, queueMultiplePromptsWithAutoExecute, version]);
 }

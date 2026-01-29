@@ -40,6 +40,8 @@ interface SectionAIChatProps {
   onUpdateSectionLabel?: (sectionId: string, newLabel: string) => void;
   /** Callback to insert AI-generated content into a specific section */
   onInsertSectionContent?: (sectionId: string, items: Array<{ label: string; depth: number }>) => void;
+  /** Callback to programmatically open multiple section panels (for Auto-Write cascade) */
+  onOpenSectionPanels?: (sectionIds: string[]) => void;
 }
 
 const QUICK_ACTIONS = [
@@ -59,6 +61,7 @@ export function SectionAIChat({
   onCreateSection,
   onUpdateSectionLabel,
   onInsertSectionContent,
+  onOpenSectionPanels,
 }: SectionAIChatProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -83,12 +86,15 @@ export function SectionAIChat({
   // Auto-write progress state
   const [autoWriteProgress, setAutoWriteProgress] = useState<{ current: number; total: number; currentSection: string } | null>(null);
 
+  // Track if we've already auto-executed to prevent re-triggering
+  const hasAutoExecutedRef = useRef(false);
+
   // Check for queued prompt on mount and when sectionId changes
   useEffect(() => {
-    const queued = promptQueue.getQueuedPrompt(sectionId);
-    if (queued) {
-      setQueuedPrompt(queued);
-      setInput(queued);
+    const queuedData = promptQueue.getQueuedPromptData(sectionId);
+    if (queuedData?.prompt) {
+      setQueuedPrompt(queuedData.prompt);
+      setInput(queuedData.prompt);
     }
   }, [sectionId, promptQueue]);
 
@@ -99,7 +105,7 @@ export function SectionAIChat({
     }
   }, [messages]);
 
-  const sendMessage = useCallback(async (userMessage: string, operation: string = 'chat') => {
+  const sendMessage = useCallback(async (userMessage: string, operation: string = 'chat', autoInsert: boolean = false) => {
     if (!userMessage.trim() && operation === 'chat') return;
     
     const messageId = crypto.randomUUID();
@@ -146,6 +152,12 @@ export function SectionAIChat({
       };
       
       setMessages(prev => [...prev, assistantMsg]);
+      
+      // Auto-insert generated items (for multi-window cascade)
+      if (autoInsert && data?.items && Array.isArray(data.items) && data.items.length > 0) {
+        onInsertContent(data.items);
+        toast.success(`Inserted ${data.items.length} items into "${sectionLabel.slice(0, 20)}..."`);
+      }
     } catch (error) {
       console.error('Section AI Chat error:', error);
       toast.error('Failed to get AI response. Please try again.');
@@ -155,7 +167,29 @@ export function SectionAIChat({
     } finally {
       setIsLoading(false);
     }
-  }, [sectionLabel, sectionContent, documentContext, setMessages, queuedPrompt, promptQueue, sectionId]);
+  }, [sectionLabel, sectionContent, documentContext, setMessages, queuedPrompt, promptQueue, sectionId, onInsertContent]);
+
+  // Auto-execute when panel opens with queued auto-execute prompt
+  // This creates the "True Multi-Window" cascade effect
+  useEffect(() => {
+    if (hasAutoExecutedRef.current) return;
+    
+    const queuedData = promptQueue.getQueuedPromptData(sectionId);
+    if (queuedData?.autoExecute && queuedData.prompt) {
+      hasAutoExecutedRef.current = true;
+      
+      // Clear the autoExecute flag to prevent re-triggering
+      promptQueue.clearAutoExecuteFlag(sectionId);
+      
+      // Stagger execution based on executionIndex to create a visible wave effect
+      const delay = (queuedData.executionIndex || 0) * 300;
+      
+      setTimeout(() => {
+        // Auto-send the message with 'expand' operation AND auto-insert the results
+        sendMessage(queuedData.prompt, 'expand', true);
+      }, delay);
+    }
+  }, [sectionId, promptQueue, sendMessage]);
 
   const handlePlanDocument = useCallback(async () => {
     if (allSections.length === 0 && !input.trim()) {
@@ -293,12 +327,26 @@ export function SectionAIChat({
     
     setPlanDialogOpen(false);
     
-    if (autoExecute && onInsertSectionContent) {
+    if (autoExecute && onOpenSectionPanels) {
+      // TRUE MULTI-WINDOW CASCADE: Queue prompts with autoExecute flag
+      // Then open all section panels - each will independently execute its prompt
+      
       // CRITICAL: Wait for React to commit state updates from section creation
-      // This ensures the tree has the new sections before we try to insert content
       await new Promise(resolve => setTimeout(resolve, 150));
       
-      // Auto-execute mode: run prompts sequentially and insert content
+      // Queue all prompts with autoExecute flag - each panel will auto-trigger
+      promptQueue.queueMultiplePromptsWithAutoExecute(
+        allPromptsToQueue.map(p => ({ sectionId: p.sectionId, prompt: p.prompt }))
+      );
+      
+      // Open ALL section panels at once - creates a visible cascade effect
+      onOpenSectionPanels(allPromptsToQueue.map(p => p.sectionId));
+      
+      toast.info(`Opening ${allPromptsToQueue.length} AI windows for auto-write...`);
+    } else if (autoExecute && onInsertSectionContent) {
+      // Fallback: old sequential mode if onOpenSectionPanels not available
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
       setAutoWriteProgress({ current: 0, total: allPromptsToQueue.length, currentSection: '' });
       
       let successCount = 0;
@@ -313,12 +361,11 @@ export function SectionAIChat({
         });
         
         try {
-          // Call the AI to generate content for this section
           const response = await supabase.functions.invoke('section-ai-chat', {
             body: {
               operation: 'expand',
               sectionLabel: sectionTitle,
-              sectionContent: '', // Empty - we're generating initial content
+              sectionContent: '',
               documentContext,
               userMessage: prompt,
             },
@@ -331,7 +378,6 @@ export function SectionAIChat({
           
           const data = response.data;
           
-          // Insert the generated items into the section
           if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
             onInsertSectionContent(targetSectionId, data.items);
             successCount++;
@@ -363,7 +409,7 @@ export function SectionAIChat({
         toast.success(`Queued ${totalCount} prompts for sections`);
       }
     }
-  }, [promptQueue, onCreateSection, onUpdateSectionLabel, onInsertSectionContent, allSections, documentContext]);
+  }, [promptQueue, onCreateSection, onUpdateSectionLabel, onInsertSectionContent, onOpenSectionPanels, allSections, documentContext]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

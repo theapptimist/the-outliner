@@ -32,6 +32,8 @@ export interface SectionControlPanelProps {
   onUpdateSectionLabel?: (sectionId: string, newLabel: string) => void;
   /** Callback to insert AI-generated content into a specific section */
   onInsertSectionContent?: (sectionId: string, items: Array<{ label: string; depth: number }>) => void;
+  /** Callback to programmatically open multiple section panels (for Auto-Write cascade) */
+  onOpenSectionPanels?: (sectionIds: string[]) => void;
 }
 
 export function SectionControlPanel({
@@ -47,6 +49,7 @@ export function SectionControlPanel({
   onCreateSection,
   onUpdateSectionLabel,
   onInsertSectionContent,
+  onOpenSectionPanels,
 }: SectionControlPanelProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -121,6 +124,7 @@ export function SectionControlPanel({
                 onCreateSection={onCreateSection}
                 onUpdateSectionLabel={onUpdateSectionLabel}
                 onInsertSectionContent={onInsertSectionContent}
+                onOpenSectionPanels={onOpenSectionPanels}
               />
             </TabsContent>
 
