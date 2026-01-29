@@ -150,6 +150,15 @@ export function SectionAIChat({
       return;
     }
 
+    // Check if we have enough context to generate useful prompts
+    const sectionsWithTitles = allSections.filter(s => s.title.trim().length > 0);
+    const hasUserInput = input.trim().length > 0;
+    
+    if (sectionsWithTitles.length === 0 && !hasUserInput) {
+      toast.error('Please describe your document topic in the input field, or add titles to your sections first.');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
