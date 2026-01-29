@@ -1,142 +1,181 @@
 
-# Fix: Auto-Write Cascade Stale State Issue
+# Feature: True Multi-Window AI Cascade
 
-## Problem Analysis
+## The Vision
 
-Your architectural idea is sound - using independent AI calls for each section avoids context window deterioration. The current implementation has a **stale closure bug** that causes sections 2-6 to silently fail.
+Your idea is excellent for avoiding context window deterioration. Currently, the "Auto-Write" runs invisibly from a single orchestrator - it calls the AI API sequentially but never opens the actual AI panels for each section. The user experience should be:
 
-### Root Cause
+1. User clicks "Auto-Write Document"
+2. All section panels **visually open** (expanded)
+3. Each section's AI chat shows its queued prompt in the input field
+4. Each section independently shows "loading" state while its AI call runs
+5. Each section displays the AI response and generated items
+6. Content is inserted into each section's outline
 
-The `onInsertSectionContent` callback captures the tree state at render time. When the auto-write loop runs:
+This makes the "independent AI windows" tangible and visible.
 
-1. Sections 2-6 are created via `onCreateSection` (synchronous)
-2. These trigger `setTree()` calls in `HierarchyBlockView`
-3. React batches these state updates
-4. The async AI calls complete and invoke `onInsertSectionContent`
-5. But `onInsertSectionContent` still has the OLD tree reference (before sections were created)
-6. `findNode(tree, sectionId)` returns null for sections 2-6
-7. The callback silently returns without inserting content
+## Current vs. Proposed Architecture
 
-### Evidence
+```text
+CURRENT (Hidden Orchestrator):
++----------------------------------+
+|  Section 1 AI Panel (orchestrator)|
+|   → Calls API for section 1      |
+|   → Calls API for section 2      |
+|   → Calls API for section 3      |
+|   → ...all invisible to user     |
++----------------------------------+
+   Sections 2-6 panels stay closed
 
-Looking at `HierarchyBlockView.tsx:1029`:
-```typescript
-const sectionNode = findNode(tree, sectionId);
-if (!sectionNode) return;  // Silently fails!
+PROPOSED (True Multi-Window):
++----------------------------------+
+|  Section 1 AI Panel              | ← Opens, shows loading, receives response
++----------------------------------+
+|  Section 2 AI Panel              | ← Opens, shows loading, receives response  
++----------------------------------+
+|  Section 3 AI Panel              | ← Opens, shows loading, receives response
++----------------------------------+
+   Each window is independent
 ```
 
-## Solution: Deferred Execution with State Synchronization
+## Technical Approach
 
-The fix requires ensuring the tree state is synchronized before attempting to insert content.
+### Phase 1: Open All Section Panels on Auto-Write
 
-### Approach 1: Wait for React State to Settle
+When auto-write is triggered, programmatically open all target section panels:
 
-Add a small delay after each section creation to allow React to commit the state updates before the AI call runs.
+- Add a new callback `onOpenSectionPanels?: (sectionIds: string[]) => void`
+- Wire this from `SimpleOutlineView` which manages `openSectionPanels` state
+- Call it immediately when auto-write starts
 
-### Approach 2: Use Refs for Latest Tree Access
+### Phase 2: Add "Auto-Execute on Open" Mode to Each Section's AI Chat
 
-Pass a ref-based getter that always returns the current tree state instead of a stale closure.
+Each `SectionAIChat` component already:
+- Detects queued prompts on mount
+- Populates the input field with the queued prompt
 
-### Approach 3: Batch Section Creation First, Then Execute AI Calls
+We add a new trigger mode:
+- New prop `autoExecuteOnMount?: boolean` or a flag in the queued prompt data
+- When the panel opens and has a queued prompt marked for auto-execute, it immediately sends the message
+- The chat shows the loading state, receives the response, and can auto-insert
 
-Separate the two phases completely:
-1. Create all sections first and wait for state to settle
-2. Then execute all AI calls with fresh references
+### Phase 3: Stagger the Auto-Execution
 
-I recommend **Approach 3** as the most robust solution.
+To avoid overwhelming the API and to create a visible cascade effect:
+- Each section starts its AI call with a small delay (200-300ms stagger)
+- This creates a visual "wave" of AI panels activating
+- Each panel independently handles its own loading state and response
 
-## Technical Changes
+### Phase 4: Visual Coordination
 
-### 1. Update `SectionAIChat.tsx` - Two-Phase Execution
-
-Separate section creation from AI execution with an explicit sync point:
-
-```typescript
-const handleApproveplan = useCallback(async (prompts: SectionPrompt[], autoExecute: boolean) => {
-  // Phase 1: Create all sections FIRST
-  const sectionMappings: Array<{ sectionId: string; sectionTitle: string; prompt: string }> = [];
-  
-  // ... section creation logic (unchanged) ...
-  
-  // Close the dialog to allow React to re-render with new sections
-  setPlanDialogOpen(false);
-  
-  // CRITICAL: Wait for React to commit state updates
-  // This ensures the tree has the new sections before we try to insert content
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
-  if (autoExecute && onInsertSectionContent) {
-    // Phase 2: Now execute AI calls sequentially
-    for (const mapping of sectionMappings) {
-      // AI call and insert...
-    }
-  }
-});
-```
-
-### 2. Update `HierarchyBlockView.tsx` - Better Error Handling
-
-Add logging to help debug and use a ref-based approach for the latest tree:
-
-```typescript
-onInsertSectionContent={(sectionId, items) => {
-  if (items.length === 0) return;
-  
-  // Use a callback form to get the LATEST tree state
-  setTree(currentTree => {
-    const sectionNode = findNode(currentTree, sectionId);
-    if (!sectionNode) {
-      console.warn(`Section ${sectionId} not found in tree for content insertion`);
-      return currentTree;
-    }
-    
-    // ... rest of insertion logic using currentTree ...
-  });
-}}
-```
-
-This uses React's functional update pattern to always access the latest tree state.
-
-### 3. Optional: Add Visual Feedback During Cascade
-
-Show which section is currently being written:
-
-```typescript
-// Already implemented with autoWriteProgress state
-setAutoWriteProgress({ 
-  current: i, 
-  total: total, 
-  currentSection: sectionTitle 
-});
-```
+- Optional: Show section titles in the progress indicator matching which panels are actively loading
+- Each panel's loading indicator runs independently
+- When all panels complete, show a summary toast
 
 ## Files to Modify
 
-1. **`src/components/editor/SectionAIChat.tsx`**
-   - Add delay after section creation before AI execution
-   - Add debug logging for troubleshooting
+1. **`src/hooks/useSectionPromptQueue.ts`**
+   - Add `autoExecute` flag to queued prompt data structure
+   - New method: `queueMultiplePromptsWithAutoExecute()`
 
-2. **`src/components/editor/HierarchyBlockView.tsx`**
-   - Change `onInsertSectionContent` to use functional update pattern
-   - Add warning log when section not found
+2. **`src/components/editor/SectionAIChat.tsx`**
+   - Add `useEffect` to auto-execute when panel opens with queued auto-execute prompt
+   - Remove the current inline orchestration loop (it moves to individual panels)
+   - Keep progress coordination via a shared state or callback
 
-## Expected Outcome
+3. **`src/components/editor/SectionControlPanel.tsx`**
+   - Pass through auto-execute state
 
-After implementation:
-- All 6 sections will be created first
-- React state settles (100ms delay)
-- AI calls execute sequentially for sections 1-6
-- Each section's generated content is inserted correctly
-- Progress indicator shows "Writing section X of 6..."
-- Final toast: "Generated content for 6 sections"
+4. **`src/components/editor/SimpleOutlineView.tsx`**
+   - Add `onOpenSectionPanels` callback that updates `openSectionPanels` state
+   - Wire this to `SectionAIChat` for triggering the cascade
 
-## Alternative: Queue-Based Architecture (Future Enhancement)
+5. **`src/components/editor/DocumentPlanDialog.tsx`**
+   - No changes needed (already supports `autoExecute` boolean)
 
-For even more robust handling, a future enhancement could use a proper queue:
+## Implementation Details
 
-1. Store pending AI tasks in a Zustand/Redux store
-2. A background processor picks up tasks
-3. Each task runs independently with its own fresh state access
-4. This completely decouples section creation from AI execution
+### Queued Prompt with Auto-Execute Flag
 
-This would be more complex but would eliminate all timing issues.
+```typescript
+interface QueuedPrompt {
+  prompt: string;
+  queuedAt: string;
+  autoExecute?: boolean;  // NEW: triggers immediate execution when panel opens
+}
+```
+
+### Auto-Execute on Panel Open
+
+```typescript
+// In SectionAIChat.tsx
+useEffect(() => {
+  const queued = promptQueue.getQueuedPromptData(sectionId);
+  if (queued?.autoExecute && queued.prompt) {
+    // Clear the flag to prevent re-triggering
+    promptQueue.clearAutoExecuteFlag(sectionId);
+    // Auto-send the message
+    sendMessage(queued.prompt, 'expand');
+  }
+}, [sectionId, promptQueue]);
+```
+
+### Opening All Panels
+
+```typescript
+// In SimpleOutlineView.tsx
+const handleOpenSectionPanels = useCallback((sectionIds: string[]) => {
+  setOpenSectionPanels(prev => {
+    const next = new Set(prev);
+    for (const id of sectionIds) {
+      next.add(id);
+    }
+    return next;
+  });
+}, []);
+
+// Passed to SectionAIChat via SectionControlPanel
+onOpenSectionPanels={handleOpenSectionPanels}
+```
+
+### Cascade with Stagger
+
+```typescript
+// In SectionAIChat.tsx handleApprovePlan
+if (autoExecute) {
+  // Queue all prompts with autoExecute flag
+  promptQueue.queueMultiplePromptsWithAutoExecute(allPrompts);
+  
+  // Open all section panels at once
+  onOpenSectionPanels?.(allPrompts.map(p => p.sectionId));
+  
+  // Each panel will auto-execute independently when it detects the flag
+}
+```
+
+## User Experience After Implementation
+
+```text
+1. User clicks "Auto-Write Document"
+2. All 6 section panels expand open (visible wave effect)
+3. Section 1 panel shows: [Loading...] prompt in chat
+4. 200ms later, Section 2 panel shows: [Loading...] 
+5. 200ms later, Section 3 panel shows: [Loading...] 
+   ...
+6. Section 1 receives response, shows generated items, auto-inserts
+7. Section 2 receives response, shows generated items, auto-inserts
+   ...
+8. All sections now have content populated
+9. Toast: "Generated content for 6 sections"
+```
+
+The user can literally **watch** each independent AI window process its prompt, making the architecture transparent and debugging easier.
+
+## Benefits of This Approach
+
+1. **True independence**: Each section's AI chat is genuinely independent
+2. **No context window bleeding**: Each API call is isolated
+3. **Visible progress**: User sees exactly what's happening
+4. **Easier debugging**: If one section fails, it's visually apparent
+5. **User control**: User could potentially interact with or cancel individual sections
+6. **Scalable**: Adding more sections doesn't require changing the orchestration logic
