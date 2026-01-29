@@ -33,6 +33,8 @@ interface SectionAIChatProps {
   isFirstSection?: boolean;
   /** All sections in the document (for document planning) */
   allSections?: SectionInfo[];
+  /** Callback to create a new depth-0 section, returns the new section's ID */
+  onCreateSection?: (title: string) => string | undefined;
 }
 
 const QUICK_ACTIONS = [
@@ -49,6 +51,7 @@ export function SectionAIChat({
   onInsertContent,
   isFirstSection = false,
   allSections = [],
+  onCreateSection,
 }: SectionAIChatProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -145,17 +148,8 @@ export function SectionAIChat({
   }, [sectionLabel, sectionContent, documentContext, setMessages, queuedPrompt, promptQueue, sectionId]);
 
   const handlePlanDocument = useCallback(async () => {
-    if (allSections.length === 0) {
-      toast.error('No sections found in document');
-      return;
-    }
-
-    // Check if we have enough context to generate useful prompts
-    const sectionsWithTitles = allSections.filter(s => s.title.trim().length > 0);
-    const hasUserInput = input.trim().length > 0;
-    
-    if (sectionsWithTitles.length === 0 && !hasUserInput) {
-      toast.error('Please describe your document topic in the input field, or add titles to your sections first.');
+    if (allSections.length === 0 && !input.trim()) {
+      toast.error('Please describe your document topic in the input field first.');
       return;
     }
 
@@ -168,7 +162,7 @@ export function SectionAIChat({
           sectionLabel,
           sectionContent,
           documentContext,
-          userMessage: input || 'Generate prompts for each section based on their titles.',
+          userMessage: input || 'Generate a document structure for this topic.',
           sectionList: allSections,
         },
       });
@@ -179,12 +173,36 @@ export function SectionAIChat({
 
       const data = response.data;
       
-      if (data.sectionPrompts && Array.isArray(data.sectionPrompts)) {
-        const planPrompts: SectionPrompt[] = data.sectionPrompts.map((sp: any) => ({
+      // Handle "new sections" response (AI is creating new sections)
+      if (data.newSections && Array.isArray(data.newSections)) {
+        const planPrompts: SectionPrompt[] = data.newSections.map((ns: { title: string; prompt: string; isNew: boolean }) => ({
+          sectionId: null, // Will be assigned when section is created
+          sectionTitle: ns.title,
+          prompt: ns.prompt,
+          enabled: true,
+          isNew: true,
+        }));
+        
+        setGeneratedPlan(planPrompts);
+        setPlanDialogOpen(true);
+        
+        // Add AI message about the plan
+        const assistantMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: data.message || `Generated ${planPrompts.length} new sections. Review them and click approve to create them.`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+      }
+      // Handle "existing sections" response (AI is generating prompts for existing sections)
+      else if (data.sectionPrompts && Array.isArray(data.sectionPrompts)) {
+        const planPrompts: SectionPrompt[] = data.sectionPrompts.map((sp: { sectionId: string; sectionTitle: string; prompt: string; isNew?: boolean }) => ({
           sectionId: sp.sectionId,
           sectionTitle: sp.sectionTitle,
           prompt: sp.prompt,
           enabled: true,
+          isNew: false,
         }));
         
         setGeneratedPlan(planPrompts);
@@ -210,14 +228,42 @@ export function SectionAIChat({
   }, [allSections, sectionLabel, sectionContent, documentContext, input, setMessages]);
 
   const handleApproveplan = useCallback((prompts: SectionPrompt[]) => {
-    const promptsToQueue = prompts
-      .filter(p => p.enabled && p.prompt.trim())
-      .map(p => ({ sectionId: p.sectionId, prompt: p.prompt }));
+    const newSections = prompts.filter(p => p.isNew && p.enabled && p.prompt.trim());
+    const existingSections = prompts.filter(p => !p.isNew && p.enabled && p.prompt.trim());
     
-    promptQueue.queueMultiplePrompts(promptsToQueue);
-    toast.success(`Queued ${promptsToQueue.length} prompts for sections`);
+    // Phase 1: Create new sections and collect their IDs
+    const createdSectionPrompts: Array<{ sectionId: string; prompt: string }> = [];
+    
+    for (const section of newSections) {
+      if (onCreateSection) {
+        const newId = onCreateSection(section.sectionTitle);
+        if (newId) {
+          createdSectionPrompts.push({ sectionId: newId, prompt: section.prompt });
+        }
+      }
+    }
+    
+    // Phase 2: Queue prompts for both new and existing sections
+    const allPromptsToQueue = [
+      ...createdSectionPrompts,
+      ...existingSections.map(p => ({ sectionId: p.sectionId!, prompt: p.prompt })),
+    ];
+    
+    if (allPromptsToQueue.length > 0) {
+      promptQueue.queueMultiplePrompts(allPromptsToQueue);
+    }
+    
+    const newCount = createdSectionPrompts.length;
+    const totalCount = allPromptsToQueue.length;
+    
+    if (newCount > 0) {
+      toast.success(`Created ${newCount} sections and queued ${totalCount} prompts`);
+    } else {
+      toast.success(`Queued ${totalCount} prompts for sections`);
+    }
+    
     setPlanDialogOpen(false);
-  }, [promptQueue]);
+  }, [promptQueue, onCreateSection]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

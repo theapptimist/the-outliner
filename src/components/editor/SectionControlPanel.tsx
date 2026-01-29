@@ -26,6 +26,8 @@ export interface SectionControlPanelProps {
   isFirstSection?: boolean;
   /** All sections in the document */
   allSections?: SectionInfo[];
+  /** Callback to create a new depth-0 section, returns the new section's ID */
+  onCreateSection?: (title: string) => string | undefined;
 }
 
 export function SectionControlPanel({
@@ -38,6 +40,7 @@ export function SectionControlPanel({
   onInsertContent,
   isFirstSection = false,
   allSections = [],
+  onCreateSection,
 }: SectionControlPanelProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -109,6 +112,7 @@ export function SectionControlPanel({
                 onInsertContent={onInsertContent}
                 isFirstSection={isFirstSection}
                 allSections={allSections}
+                onCreateSection={onCreateSection}
               />
             </TabsContent>
 

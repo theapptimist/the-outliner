@@ -496,6 +496,23 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       .map(n => ({ id: n.id, title: n.label }));
   }, [nodes]);
 
+  // Callback to create a new depth-0 section for document planning
+  const handleCreateSection = useCallback((title: string): string | undefined => {
+    // Find the last depth-0 node to add after
+    const lastSection = nodes.filter(n => n.depth === 0).pop();
+    const afterId = lastSection?.id || null;
+    
+    // Create a new node after the last section
+    const newId = onAddNode(afterId, 'default');
+    
+    if (newId) {
+      // Update the label with the title
+      onUpdateLabel(newId, title);
+    }
+    
+    return newId;
+  }, [nodes, onAddNode, onUpdateLabel]);
+
   const handleStartEdit = useCallback(
     (
       id: string,
@@ -1796,6 +1813,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               }}
               isFirstSection={isFirstSection}
               allSections={allSections}
+              onCreateSection={handleCreateSection}
             />
           )}
         </React.Fragment>
