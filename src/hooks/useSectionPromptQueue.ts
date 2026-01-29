@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface QueuedPrompt {
   prompt: string;
@@ -22,11 +22,11 @@ export function useSectionPromptQueue(documentId: string) {
   const [version, setVersion] = useState(0);
   
   // Subscribe to changes from other components
-  useState(() => {
+  useEffect(() => {
     const listener = () => setVersion(v => v + 1);
     listeners.add(listener);
     return () => { listeners.delete(listener); };
-  });
+  }, []);
 
   const buildKey = useCallback((sectionId: string) => {
     return `${QUEUE_KEY_PREFIX}:${documentId}:${sectionId}`;
