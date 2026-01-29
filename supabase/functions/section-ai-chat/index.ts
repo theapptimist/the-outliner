@@ -41,8 +41,9 @@ serve(async (req) => {
     // Handle plan-document operation specially
     if (operation === 'plan-document') {
       const sections = sectionList || [];
+      // Include both index and ID so AI can reference them, but we use index for reliable mapping
       const sectionListText = sections
-        .map((s, i) => `${i + 1}. "${s.title}"`)
+        .map((s, i) => `Section ${i + 1}: "${s.title || '(untitled)'}"`)
         .join('\n');
 
       systemPrompt = `You are a document planning assistant. Your job is to generate specific, actionable AI prompts for each section of a document outline.
@@ -52,20 +53,25 @@ The user will describe their document's theme or topic. Based on this, generate 
 The document has these sections:
 ${sectionListText || '(No sections provided)'}
 
-IMPORTANT: Respond with a JSON object in this exact format:
+IMPORTANT: Respond with a JSON object in this exact format. Use the EXACT section numbers (1, 2, 3, etc.) as the sectionIndex:
 {
   "message": "A brief summary of the plan you've created",
   "sectionPrompts": [
     {
-      "sectionId": "the section ID from the input",
-      "sectionTitle": "the section title",
+      "sectionIndex": 1,
       "prompt": "A specific, actionable prompt for this section (2-4 sentences)"
+    },
+    {
+      "sectionIndex": 2,
+      "prompt": "A specific, actionable prompt for the second section"
     }
   ]
 }
 
 Guidelines for prompts:
+- Generate a prompt for EACH section listed above
 - Each prompt should be specific to that section's topic/title
+- If a section has no title, infer its purpose from the document theme and its position
 - Prompts should be actionable and clear
 - Include suggestions for what subtopics or details to cover
 - Keep prompts concise but informative (2-4 sentences each)
@@ -114,7 +120,7 @@ Guidelines for prompts:
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
 
-      // Parse the response
+      // Parse the response and map sectionIndex back to actual section IDs
       let result: { message: string; sectionPrompts: Array<{ sectionId: string; sectionTitle: string; prompt: string }> };
       
       try {
@@ -124,15 +130,34 @@ Guidelines for prompts:
           jsonStr = jsonMatch[1].trim();
         }
         
-        result = JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+        
+        // Map sectionIndex (1-based) back to actual section IDs
+        const mappedPrompts = (parsed.sectionPrompts || [])
+          .map((sp: { sectionIndex?: number; prompt?: string }) => {
+            const idx = (sp.sectionIndex || 1) - 1; // Convert to 0-based
+            const section = sections[idx];
+            if (!section) return null;
+            return {
+              sectionId: section.id,
+              sectionTitle: section.title || '(untitled)',
+              prompt: sp.prompt || '',
+            };
+          })
+          .filter(Boolean);
+        
+        result = {
+          message: parsed.message || 'Generated prompts for your sections.',
+          sectionPrompts: mappedPrompts,
+        };
       } catch {
-        // If parsing fails, create a basic response
+        // If parsing fails, create a basic response for all sections
         result = {
           message: "I couldn't generate structured prompts. Here's what I came up with:",
           sectionPrompts: sections.map(s => ({
             sectionId: s.id,
-            sectionTitle: s.title,
-            prompt: `Expand the "${s.title}" section with relevant details and subtopics.`
+            sectionTitle: s.title || '(untitled)',
+            prompt: `Expand the "${s.title || 'this'}" section with relevant details and subtopics.`
           })),
         };
       }
