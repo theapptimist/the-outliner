@@ -28,6 +28,8 @@ export interface SectionControlPanelProps {
   allSections?: SectionInfo[];
   /** Callback to create a new depth-0 section after a given node, returns the new section's ID */
   onCreateSection?: (title: string, afterId?: string | null) => string | undefined;
+  /** Callback to update an existing section's label */
+  onUpdateSectionLabel?: (sectionId: string, newLabel: string) => void;
 }
 
 export function SectionControlPanel({
@@ -41,6 +43,7 @@ export function SectionControlPanel({
   isFirstSection = false,
   allSections = [],
   onCreateSection,
+  onUpdateSectionLabel,
 }: SectionControlPanelProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -113,6 +116,7 @@ export function SectionControlPanel({
                 isFirstSection={isFirstSection}
                 allSections={allSections}
                 onCreateSection={onCreateSection}
+                onUpdateSectionLabel={onUpdateSectionLabel}
               />
             </TabsContent>
 

@@ -1818,6 +1818,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
               isFirstSection={isFirstSection}
               allSections={allSections}
               onCreateSection={handleCreateSection}
+              onUpdateSectionLabel={onUpdateLabel}
             />
           )}
         </React.Fragment>
