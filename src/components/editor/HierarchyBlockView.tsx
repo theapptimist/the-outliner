@@ -94,8 +94,6 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   const [spritzerOpen, setSpritzerOpen] = useState(false);
   // Section-targeted action state
   const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
-  // Global toolbar hover state (only show when hovering top area, not outline content)
-  const [isGlobalToolbarHovered, setIsGlobalToolbarHovered] = useState(false);
 
   useEffect(() => {
     treeRef.current = tree;
@@ -930,22 +928,8 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       />
       </Suspense>
       
-      {/* Hover zone for global toolbar (top-right area above outline) */}
-      <div 
-        className="absolute top-0 right-0 h-8 w-32 z-5"
-        onMouseEnter={() => setIsGlobalToolbarHovered(true)}
-        onMouseLeave={() => setIsGlobalToolbarHovered(false)}
-      />
-      
-      {/* Floating toolbar - appears on hover of top area (block-level actions only) */}
-      <div 
-        className={cn(
-          "absolute top-3 right-2 -translate-y-1/2 flex items-center gap-1 transition-opacity z-10",
-          isGlobalToolbarHovered ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
-        onMouseEnter={() => setIsGlobalToolbarHovered(true)}
-        onMouseLeave={() => setIsGlobalToolbarHovered(false)}
-      >
+      {/* Floating toolbar - always visible (block-level actions only) */}
+      <div className="absolute top-3 right-2 -translate-y-1/2 flex items-center gap-1 z-10">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
