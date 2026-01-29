@@ -104,6 +104,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   // Track which section panels are open
   const [openSectionPanels, setOpenSectionPanels] = useState<Set<string>>(new Set());
+  // Track which row is currently hovered (for showing section toolbar)
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const inputRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   // Avoid layout thrash by coalescing textarea auto-resize to 1x RAF per node.
   const resizeRafByIdRef = useRef<Map<string, number>>(new Map());
@@ -1277,6 +1279,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                 paddingLeft: `${visualDepth * 24 + 8}px`,
                 gridTemplateColumns: '3.5rem 1fr'
               }}
+              onMouseEnter={() => isDepth0 && setHoveredRowId(node.id)}
+              onMouseLeave={() => isDepth0 && hoveredRowId === node.id && setHoveredRowId(null)}
             onMouseDown={(e) => {
               // Capture mouse down position to detect drag vs click
               mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
@@ -1711,7 +1715,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
             {isDepth0 && (
               <div className={cn(
                 "absolute top-[0.275rem] right-2 -translate-y-1/2 flex items-center transition-opacity z-10",
-                isSectionPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                (isSectionPanelOpen || hoveredRowId === node.id) ? "opacity-100" : "opacity-0"
               )}>
                 <SectionToolbar
                   sectionId={node.id}
