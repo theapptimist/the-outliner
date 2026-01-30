@@ -1,125 +1,210 @@
 
-# Feature: Open/Close All AI Windows Control
+# Feature: Dedicated AI Toolbar
 
-## Overview
+## The Problem
 
-Add a toggle button that allows users to open or close all section AI windows simultaneously. This complements the True Multi-Window AI Cascade by giving users manual control over the visibility of all AI panels at once.
+AI controls are currently scattered across multiple locations:
+- **SectionToolbar**: Per-section Sparkles button, Open/Close All panels toggle
+- **EditorSidebar**: AI Generate tab with simple prompt interface
+- **SectionAIChat**: Document planning, auto-write cascade, per-section chat
 
-## Design Decision
+As the AI capabilities grow (multi-window cascade, document planning, prose generation modes), having a central command center for AI operations becomes essential.
 
-**Location**: Add the control to the **first section's toolbar** (alongside existing block-level actions like Collapse/Delete). This follows the established pattern where block-level actions appear only on the first depth-0 section.
+## The Solution
 
-**Button Behavior**:
-- When **some or no panels are open**: clicking opens ALL panels
-- When **all panels are open**: clicking closes ALL panels
-- Icon changes to reflect current state (similar to Collapse/Expand pattern)
+Create a dedicated **AI Toolbar** component that provides centralized control over all AI-related features. This toolbar will be positioned prominently and offer quick access to global AI operations.
 
-## User Experience
+## Design Options
+
+### Option A: Horizontal Toolbar Above Document
+
+A horizontal bar above the outline area with AI controls:
 
 ```
-Before clicking (some panels closed):
-┌─ Section 1 ─ [AI] [Speed] [Link] [Import] [OpenAll] [Collapse] [Delete]
-│   AI panel visible
-├─ Section 2 ─ [AI] [Speed] [Link] [Import]
-│   (panel closed)
-├─ Section 3 ─ [AI] [Speed] [Link] [Import]
-│   (panel closed)
+┌─────────────────────────────────────────────────────────────┐
+│ ✨ AI  │ [Plan Doc] [Open All ↓] [Close All ↑] │ Status... │
+└─────────────────────────────────────────────────────────────┘
+│                                                             │
+│                    Document Content                         │
+│                                                             │
+```
 
-After clicking "Open All":
-┌─ Section 1 ─ [AI] [Speed] [Link] [Import] [CloseAll] [Collapse] [Delete]
-│   AI panel visible
-├─ Section 2 ─ [AI] [Speed] [Link] [Import]
-│   AI panel visible
-├─ Section 3 ─ [AI] [Speed] [Link] [Import]
-│   AI panel visible
+### Option B: Floating AI Command Bar
+
+A floating command bar (similar to Notion's slash command) that appears when needed:
+
+```
+                    ┌─────────────────────────────┐
+                    │ ✨ Plan Doc  ↓ Open All     │
+                    │    Auto-Write  ↑ Close All  │
+                    └─────────────────────────────┘
+```
+
+### Option C: Sidebar AI Pane Enhancement (Recommended)
+
+Enhance the existing "AI" tab in the sidebar to become a true AI command center:
+
+```
+┌──────────────────────────────┐
+│ ✨ AI Command Center         │
+├──────────────────────────────┤
+│ [Plan Document]              │
+│ [Auto-Write All Sections]    │
+├──────────────────────────────┤
+│ Panel Controls               │
+│ [↓ Open All] [↑ Close All]   │
+│ Active: 3/6 panels           │
+├──────────────────────────────┤
+│ Quick Generate               │
+│ [Generate outline from...]   │
+│                              │
+│ [____________________]       │
+│ [Generate]                   │
+└──────────────────────────────┘
+```
+
+## Recommended Implementation: Option C
+
+This approach:
+1. **Consolidates** all AI controls in one logical location
+2. **Reuses** existing sidebar infrastructure
+3. **Provides visibility** into the cascade status (X/Y panels active)
+4. **Separates concerns**: Document-level AI actions vs. per-section AI chats
+
+## Component Structure
+
+```
+src/components/editor/
+├── AIToolbar.tsx              (NEW - the main AI command center)
+├── AIGeneratePane.tsx         (existing - will be integrated)
+└── EditorSidebar.tsx          (updated to use AIToolbar)
 ```
 
 ## Technical Changes
 
-### 1. Update `SectionToolbar.tsx`
+### 1. Create `AIToolbar.tsx`
 
-Add new props and button for the toggle-all functionality:
+A new component that combines:
+- **Document Planning**: "Plan Document" button (opens DocumentPlanDialog)
+- **Cascade Controls**: Open All / Close All panels with status indicator
+- **Auto-Write**: Trigger the multi-window cascade
+- **Quick Generate**: The existing prompt-based generation
 
 ```typescript
-export interface SectionToolbarProps {
-  // ... existing props ...
-  
-  /** All section IDs (for open/close all) - only used on first section */
-  allSectionIds?: string[];
-  /** Number of currently open section panels */
-  openPanelCount?: number;
-  /** Callback to open all section panels */
-  onOpenAllPanels?: () => void;
-  /** Callback to close all section panels */
-  onCloseAllPanels?: () => void;
+interface AIToolbarProps {
+  collapsed: boolean;
+  // Document planning
+  onPlanDocument: () => void;
+  isPlanningLoading: boolean;
+  // Panel cascade controls
+  openPanelCount: number;
+  totalSectionCount: number;
+  onOpenAllPanels: () => void;
+  onCloseAllPanels: () => void;
+  // Quick generate
+  onInsertHierarchy: (items: Array<{ label: string; depth: number }>) => void;
 }
 ```
 
-Add the toggle button in the first-section block:
-- Icon: `PanelTopOpen` when not all open, `PanelTopClose` when all open
-- Or use `Sparkles` with `Plus`/`Minus` to indicate expanding/collapsing AI windows
-- Simpler approach: use `ChevronsUp`/`ChevronsDown` icons (expand/collapse all)
+### 2. State Management
 
-### 2. Update `SimpleOutlineView.tsx`
+The AIToolbar needs access to:
+- **Panel state** from `SimpleOutlineView` (openSectionPanels, allSections)
+- **Document planning** functions from `SectionAIChat` (moved up or shared)
 
-Add handlers to open/close all section panels:
+This requires lifting some state or using a shared context. Two approaches:
 
-```typescript
-// Handler to open ALL section panels
-const handleOpenAllSectionPanels = useCallback(() => {
-  const allDepth0Ids = nodes
-    .filter(n => n.depth === 0 && n.type !== 'body')
-    .map(n => n.id);
-  setOpenSectionPanels(new Set(allDepth0Ids));
-}, [nodes]);
+**Approach A: Pass through EditorSidebar**
+- `SimpleOutlineView` passes panel state up via callbacks
+- `Editor.tsx` forwards to `EditorSidebar`
+- More props but simpler
 
-// Handler to close ALL section panels
-const handleCloseAllSectionPanels = useCallback(() => {
-  setOpenSectionPanels(new Set());
-}, []);
+**Approach B: Create AIContext**
+- New context to share AI-related state globally
+- Cleaner prop drilling but more infrastructure
 
-// Compute open panel count
-const openPanelCount = openSectionPanels.size;
-const allSectionIds = allSections.map(s => s.id);
+Recommend **Approach A** for initial implementation.
+
+### 3. Visual Design
+
+The AI Toolbar will follow the existing sidebar styling:
+- Color-coded sections (primary for AI, success for active states)
+- Compact button layout when collapsed
+- Status indicators showing active panels
+
+```
+┌──────────────────────────────┐
+│ ✨ AI                        │
+├──────────────────────────────┤
+│ Document                     │
+│ [Plan Doc]                   │
+│ [Auto-Write] (requires plan) │
+├──────────────────────────────┤
+│ Section Panels    [3/6]      │
+│ [↓ Open All] [↑ Close All]   │
+├──────────────────────────────┤
+│ Quick Generate               │
+│ [textarea...]                │
+│ [Generate]                   │
+└──────────────────────────────┘
 ```
 
-Pass these to `SectionToolbar`:
+### 4. Wire Through the Component Tree
 
-```typescript
-<SectionToolbar
-  // ... existing props ...
-  allSectionIds={allSectionIds}
-  openPanelCount={openSectionPanels.size}
-  onOpenAllPanels={handleOpenAllSectionPanels}
-  onCloseAllPanels={handleCloseAllSectionPanels}
-/>
+```
+Editor.tsx
+  └─ EditorSidebar
+       └─ AIToolbar (NEW - replaces AIGeneratePane when activeTab === 'ai')
+            ├─ Document Planning section
+            ├─ Panel Controls section
+            └─ Quick Generate section (existing AIGeneratePane logic)
+  └─ SimpleOutlineView
+       ├─ provides: openPanelCount, totalSectionCount
+       ├─ provides: onOpenAllPanels, onCloseAllPanels
+       └─ SectionToolbar (remove redundant Open/Close All from first section)
 ```
 
-### 3. Icon Selection
+### 5. Remove Redundancy
 
-Use `Layers` or combine `Sparkles` with arrows:
-- **Option A**: `ChevronsUp` (close all) / `ChevronsDown` (open all) - matches expand/collapse metaphor
-- **Option B**: Custom icon pair like `PanelTopOpen` / `PanelTop` 
-- **Option C**: Single `Sparkles` icon with overlay (`Plus` when closed, `Minus` when all open)
+Once AIToolbar exists, remove the Open/Close All button from `SectionToolbar` since it will be accessible from the dedicated AI toolbar in the sidebar.
 
-Recommend **Option A** (`ChevronsDown`/`ChevronsUp`) for clarity - it clearly indicates "expand all" vs "collapse all" similar to code folding conventions.
+## Files to Create/Modify
 
-## Files to Modify
+1. **`src/components/editor/AIToolbar.tsx`** (NEW)
+   - Main AI command center component
+   - Integrates AIGeneratePane logic
+   - Document planning controls
+   - Panel cascade controls with status
 
-1. **`src/components/editor/SectionToolbar.tsx`**
-   - Add new props: `allSectionIds`, `openPanelCount`, `onOpenAllPanels`, `onCloseAllPanels`
-   - Add toggle button in the `isFirstSection` block
-   - Import `ChevronsDown`, `ChevronsUp` from lucide-react
+2. **`src/components/editor/EditorSidebar.tsx`**
+   - Replace `AIGeneratePane` with `AIToolbar` for 'ai' tab
+   - Add new props for panel state and callbacks
 
-2. **`src/components/editor/SimpleOutlineView.tsx`**
-   - Add `handleOpenAllSectionPanels` callback
-   - Add `handleCloseAllSectionPanels` callback
-   - Pass new props to `SectionToolbar` for first section only
+3. **`src/components/editor/SimpleOutlineView.tsx`**
+   - Expose panel state via new callbacks to parent
+   - Keep existing functionality
 
-## Visual Design
+4. **`src/pages/Editor.tsx`**
+   - Wire panel state from content area to sidebar
 
-The button will follow the existing toolbar styling:
-- `h-6 w-6 p-0` size
-- `bg-background/80 backdrop-blur-sm` background
-- Tooltip: "Open all AI panels" / "Close all AI panels"
-- Position: between the Import button and Collapse button (logical grouping with AI functionality)
+5. **`src/components/editor/SectionToolbar.tsx`** (Optional cleanup)
+   - Consider removing Open/Close All from first section toolbar
+   - OR keep it as a convenience shortcut
+
+## User Experience After Implementation
+
+1. User clicks "AI" tab in sidebar
+2. Sees dedicated AI Command Center with:
+   - "Plan Document" button
+   - Panel status indicator (e.g., "3/6 panels open")
+   - Open All / Close All buttons
+   - Quick generate textarea
+3. Can manage all AI windows from one place
+4. Per-section toolbars still have individual AI toggle for quick access
+
+## Future Enhancements
+
+- **AI Mode Selector**: Choose between "Outline" and "Prose" generation modes
+- **Cascade Progress**: Show which sections are currently generating
+- **Cancel Button**: Abort an in-progress cascade
+- **Generation History**: Quick access to recent AI operations
