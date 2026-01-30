@@ -5,10 +5,8 @@ import { Separator } from '@/components/ui/separator';
 import { 
   Sparkles, 
   Loader2, 
-  FileText, 
   ChevronsDown, 
   ChevronsUp, 
-  Zap,
   LayoutList,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,12 +26,6 @@ interface AIToolbarProps {
   totalSectionCount: number;
   onOpenAllPanels: () => void;
   onCloseAllPanels: () => void;
-  /** Document planning controls */
-  onPlanDocument?: () => void;
-  isPlanningAvailable?: boolean;
-  /** Auto-write controls */
-  onAutoWrite?: () => void;
-  isAutoWriteAvailable?: boolean;
 }
 
 type GenerateStatus = 'idle' | 'clicked' | 'requesting' | 'success' | 'error';
@@ -46,10 +38,6 @@ export function AIToolbar({
   totalSectionCount,
   onOpenAllPanels,
   onCloseAllPanels,
-  onPlanDocument,
-  isPlanningAvailable = false,
-  onAutoWrite,
-  isAutoWriteAvailable = false,
 }: AIToolbarProps) {
   const { addExtractedTerms } = useEditorContext();
   const [prompt, setPrompt] = useState('');
@@ -167,38 +155,6 @@ export function AIToolbar({
         <Sparkles className="h-4 w-4 text-primary" />
         <span>AI Command Center</span>
       </div>
-
-      {/* Document Actions Section */}
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Document
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 justify-start gap-2"
-            onClick={onPlanDocument}
-            disabled={!isPlanningAvailable}
-          >
-            <FileText className="h-3.5 w-3.5" />
-            <span>Plan</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 justify-start gap-2"
-            onClick={onAutoWrite}
-            disabled={!isAutoWriteAvailable || !hasSections}
-            title={!hasSections ? 'Create sections first' : undefined}
-          >
-            <Zap className="h-3.5 w-3.5" />
-            <span>Auto-Write</span>
-          </Button>
-        </div>
-      </div>
-
-      <Separator className="opacity-50" />
 
       {/* Section Panels Section */}
       <div className="space-y-2">
