@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles } from 'lucide-react';
+import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles, History, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useDocumentContext } from './context/DocumentContext';
@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DocumentPlanDialog, SectionPrompt } from './DocumentPlanDialog';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ChatMessage {
   id: string;
@@ -77,6 +78,9 @@ export function SectionAIChat({
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Tab state for Prompt/Chat views
+  const [activeTab, setActiveTab] = useState<'prompt' | 'chat'>('chat');
 
   // Document plan dialog state
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
@@ -447,6 +451,24 @@ export function SectionAIChat({
     }
   };
 
+  // Extract prompt history from user messages
+  const promptHistory = useMemo(() => {
+    return messages
+      .filter(m => m.role === 'user')
+      .reverse() // Most recent first
+      .map(m => ({
+        id: m.id,
+        content: m.content,
+        timestamp: m.timestamp,
+      }));
+  }, [messages]);
+
+  const handleUsePrompt = (prompt: string) => {
+    setInput(prompt);
+    setActiveTab('chat');
+    textareaRef.current?.focus();
+  };
+
   return (
     <div className={cn(
       "flex flex-col h-full",
@@ -473,125 +495,226 @@ export function SectionAIChat({
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="flex gap-1 mb-2 flex-wrap">
-        {QUICK_ACTIONS.map((action) => (
-          <Button
-            key={action.id}
-            variant="ghost"
-            size="sm"
-            onClick={() => handleQuickAction(action)}
-            disabled={isLoading}
-            className="h-6 px-2 text-xs gap-1 bg-foreground/5 hover:bg-foreground/10"
-          >
-            <action.icon className="w-3 h-3" />
-            {action.label}
-          </Button>
-        ))}
-        
-        {/* Plan Doc button - only for first section */}
-        {isFirstSection && allSections.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handlePlanDocument}
-            disabled={isLoading}
-            className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
-          >
-            <ClipboardList className="w-3 h-3" />
-            Plan Doc
-          </Button>
-        )}
+      {/* Tab Header */}
+      <div className="flex items-center gap-1 mb-2 border-b border-foreground/10 pb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab('prompt')}
+          className={cn(
+            "h-6 px-2 text-xs gap-1.5",
+            activeTab === 'prompt' 
+              ? "bg-primary/10 text-primary" 
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Sparkles className="w-3 h-3" />
+          Prompt
+          {queuedPrompt && (
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab('chat')}
+          className={cn(
+            "h-6 px-2 text-xs gap-1.5",
+            activeTab === 'chat' 
+              ? "bg-primary/10 text-primary" 
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <MessageSquare className="w-3 h-3" />
+          Chat
+          {messages.length > 0 && (
+            <span className="text-[10px] text-muted-foreground">({messages.length})</span>
+          )}
+        </Button>
       </div>
 
-      {/* Queued prompt indicator */}
-      {queuedPrompt && (
-        <div className="mb-2 px-2 py-1 rounded bg-primary/10 border border-primary/20 flex items-center gap-2">
-          <Sparkles className="w-3 h-3 text-primary" />
-          <span className="text-[10px] text-primary flex-1 truncate">
-            Queued prompt ready
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              promptQueue.clearQueuedPrompt(sectionId);
-              setQueuedPrompt(null);
-              setInput('');
-            }}
-            className="h-4 px-1 text-[10px] text-muted-foreground hover:text-foreground"
-          >
-            Clear
-          </Button>
+      {/* Tab Content */}
+      {activeTab === 'prompt' ? (
+        /* Prompt Tab */
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          {/* Current Queued Prompt */}
+          {queuedPrompt && (
+            <div className="mb-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-medium text-primary uppercase tracking-wide">
+                  Current Prompt
+                </span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleUsePrompt(queuedPrompt)}
+                    className="h-5 px-2 text-[10px] text-primary hover:bg-primary/20"
+                  >
+                    Use
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      promptQueue.clearQueuedPrompt(sectionId);
+                      setQueuedPrompt(null);
+                      setInput('');
+                    }}
+                    className="h-5 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+              <div className="text-xs text-foreground whitespace-pre-wrap max-h-20 overflow-y-auto">
+                {queuedPrompt}
+              </div>
+            </div>
+          )}
+
+          {/* Prompt History */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex items-center gap-1.5 mb-2">
+              <History className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                History
+              </span>
+            </div>
+            
+            {promptHistory.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-4 italic">
+                No prompts sent yet
+              </div>
+            ) : (
+              <ScrollArea className="flex-1">
+                <div className="space-y-1.5 pr-2">
+                  {promptHistory.map((prompt) => (
+                    <button
+                      key={prompt.id}
+                      onClick={() => handleUsePrompt(prompt.content)}
+                      className="w-full text-left p-2 rounded bg-foreground/5 hover:bg-foreground/10 transition-colors group"
+                    >
+                      <div className="text-xs text-foreground line-clamp-2">
+                        {prompt.content}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-1 flex items-center justify-between">
+                        <span>
+                          {new Date(prompt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="opacity-0 group-hover:opacity-100 text-primary transition-opacity">
+                          Click to use
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
         </div>
+      ) : (
+        /* Chat Tab */
+        <>
+          {/* Quick Actions */}
+          <div className="flex gap-1 mb-2 flex-wrap">
+            {QUICK_ACTIONS.map((action) => (
+              <Button
+                key={action.id}
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickAction(action)}
+                disabled={isLoading}
+                className="h-6 px-2 text-xs gap-1 bg-foreground/5 hover:bg-foreground/10"
+              >
+                <action.icon className="w-3 h-3" />
+                {action.label}
+              </Button>
+            ))}
+            
+            {/* Plan Doc button - only for first section */}
+            {isFirstSection && allSections.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePlanDocument}
+                disabled={isLoading}
+                className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
+              >
+                <ClipboardList className="w-3 h-3" />
+                Plan Doc
+              </Button>
+            )}
+          </div>
+
+          {/* Messages */}
+          <div 
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto mb-2 space-y-2 pr-1 min-h-0"
+          >
+            {messages.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-2 italic">
+                Ask AI about "{sectionLabel.slice(0, 30)}{sectionLabel.length > 30 ? '...' : ''}"
+              </div>
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "text-xs p-2 rounded",
+                    msg.role === 'user' 
+                      ? "bg-primary/10 text-primary ml-4" 
+                      : "bg-foreground/5 text-foreground mr-4"
+                  )}
+                >
+                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  
+                  {/* Generated items with insert button */}
+                  {msg.generatedItems && msg.generatedItems.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-foreground/10">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-muted-foreground">
+                          {msg.generatedItems.length} items generated
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleInsertItems(msg.generatedItems!)}
+                          className="h-5 px-2 text-[10px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Insert
+                        </Button>
+                      </div>
+                      <div className="bg-background/50 rounded p-1.5 max-h-24 overflow-y-auto">
+                        {msg.generatedItems.map((item, idx) => (
+                          <div 
+                            key={idx} 
+                            className="text-[10px] font-mono text-muted-foreground"
+                            style={{ paddingLeft: `${item.depth * 12}px` }}
+                          >
+                            • {item.label.slice(0, 60)}{item.label.length > 60 ? '...' : ''}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+            
+            {isLoading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Thinking...
+              </div>
+            )}
+          </div>
+        </>
       )}
 
-      {/* Messages */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto mb-2 space-y-2 pr-1 min-h-0"
-      >
-        {messages.length === 0 ? (
-          <div className="text-xs text-muted-foreground text-center py-2 italic">
-            Ask AI about "{sectionLabel.slice(0, 30)}{sectionLabel.length > 30 ? '...' : ''}"
-          </div>
-        ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "text-xs p-2 rounded",
-                msg.role === 'user' 
-                  ? "bg-primary/10 text-primary ml-4" 
-                  : "bg-foreground/5 text-foreground mr-4"
-              )}
-            >
-              <div className="whitespace-pre-wrap">{msg.content}</div>
-              
-              {/* Generated items with insert button */}
-              {msg.generatedItems && msg.generatedItems.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-foreground/10">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-muted-foreground">
-                      {msg.generatedItems.length} items generated
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleInsertItems(msg.generatedItems!)}
-                      className="h-5 px-2 text-[10px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Insert
-                    </Button>
-                  </div>
-                  <div className="bg-background/50 rounded p-1.5 max-h-24 overflow-y-auto">
-                    {msg.generatedItems.map((item, idx) => (
-                      <div 
-                        key={idx} 
-                        className="text-[10px] font-mono text-muted-foreground"
-                        style={{ paddingLeft: `${item.depth * 12}px` }}
-                      >
-                        • {item.label.slice(0, 60)}{item.label.length > 60 ? '...' : ''}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
-        )}
-        
-        {isLoading && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            Thinking...
-          </div>
-        )}
-      </div>
-
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="flex gap-1 items-end">
+      {/* Input - Always visible */}
+      <form onSubmit={handleSubmit} className="flex gap-1 items-end mt-auto">
         <Textarea
           ref={textareaRef}
           value={input}
