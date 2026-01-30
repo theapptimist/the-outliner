@@ -153,8 +153,7 @@ export function EditorSidebar({
       className={cn(
         "flex flex-col border-r border-border/30 transition-all duration-300 relative overflow-hidden",
         collapsed ? "w-12" : 
-        activeTab === 'library' && libraryFullPage ? "w-[600px]" :
-        activeTab === 'library' ? "w-64" : "w-56"
+        activeTab === 'library' && libraryFullPage ? "w-[600px]" : "w-64"
       )}
     >
       {/* Subtle gradient background */}
