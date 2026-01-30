@@ -298,7 +298,7 @@ export function FileMenu({
           data-allow-pointer
           side="left"
           overlayClassName="bg-transparent"
-          className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[96px] h-[calc(100%-96px)]"
+          className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[120px] h-[calc(100%-120px)]"
           hideCloseButton
         >
           <SheetHeader 
