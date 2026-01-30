@@ -89,12 +89,24 @@ export function SectionAIChat({
   // Track if we've already auto-executed to prevent re-triggering
   const hasAutoExecutedRef = useRef(false);
 
-  // Check for queued prompt on mount and when sectionId changes
+  // Load queued prompt on component mount (handles panel reopen)
   useEffect(() => {
     const queuedData = promptQueue.getQueuedPromptData(sectionId);
     if (queuedData?.prompt) {
       setQueuedPrompt(queuedData.prompt);
       setInput(queuedData.prompt);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run on mount only - ensures prompt reloads when panel reopens
+
+  // Also reload when sectionId changes (handles switching sections)
+  useEffect(() => {
+    const queuedData = promptQueue.getQueuedPromptData(sectionId);
+    if (queuedData?.prompt) {
+      setQueuedPrompt(queuedData.prompt);
+      setInput(queuedData.prompt);
+    } else {
+      setQueuedPrompt(null);
     }
   }, [sectionId, promptQueue]);
 
