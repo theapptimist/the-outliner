@@ -26,6 +26,14 @@ export type ScrollToNodeFn = (nodeId: string) => void;
 // Callback type for navigating to a linked document
 export type NavigateToDocumentFn = (documentId: string, documentTitle: string) => void;
 
+// Panel state for AI toolbar
+export interface PanelState {
+  openPanelCount: number;
+  totalSectionCount: number;
+  onOpenAllPanels: () => void;
+  onCloseAllPanels: () => void;
+}
+
 interface DocumentContextValue {
   // Style settings
   outlineStyle: OutlineStyle;
@@ -83,6 +91,10 @@ interface DocumentContextValue {
     canUndo: boolean,
     canRedo: boolean
   ) => void;
+
+  // Panel state for AI toolbar
+  panelState: PanelState;
+  setPanelState: (state: PanelState) => void;
 }
 
 const DocumentContext = createContext<DocumentContextValue>({
@@ -126,6 +138,9 @@ const DocumentContext = createContext<DocumentContextValue>({
   unregisterFindReplaceProvider: () => {},
 
   registerUndoRedo: () => {},
+
+  panelState: { openPanelCount: 0, totalSectionCount: 0, onOpenAllPanels: () => {}, onCloseAllPanels: () => {} },
+  setPanelState: () => {},
 });
 
 interface DocumentProviderProps {
@@ -171,6 +186,12 @@ export function DocumentProvider({
   const [findReplaceHandler, setFindReplaceHandlerState] = useState<(withReplace: boolean) => void>(() => () => {});
   const [findReplaceProviders, setFindReplaceProviders] = useState<FindReplaceProvider[]>([]);
   const [hierarchyBlocks, setHierarchyBlocks] = useState<Record<string, HierarchyNode[]>>({});
+  const [panelState, setPanelState] = useState<PanelState>({
+    openPanelCount: 0,
+    totalSectionCount: 0,
+    onOpenAllPanels: () => {},
+    onCloseAllPanels: () => {},
+  });
 
   const updateHierarchyBlock = useCallback((blockId: string, tree: HierarchyNode[]) => {
     setHierarchyBlocks(prev => {
@@ -277,6 +298,8 @@ export function DocumentProvider({
         registerFindReplaceProvider,
         unregisterFindReplaceProvider,
         registerUndoRedo,
+        panelState,
+        setPanelState,
       }}
     >
       {children}

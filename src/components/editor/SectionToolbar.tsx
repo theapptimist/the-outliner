@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Play, Link2, Upload, Minimize2, Maximize2, Trash2, ChevronsDown, ChevronsUp } from 'lucide-react';
+import { Sparkles, Play, Link2, Upload, Minimize2, Maximize2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -18,14 +18,6 @@ export interface SectionToolbarProps {
   onDeleteBlock?: () => void;
   /** Whether this section has a queued AI prompt */
   hasQueuedPrompt?: boolean;
-  /** Total number of sections (for open/close all) - only used on first section */
-  totalSectionCount?: number;
-  /** Number of currently open section panels */
-  openPanelCount?: number;
-  /** Callback to open all section panels */
-  onOpenAllPanels?: () => void;
-  /** Callback to close all section panels */
-  onCloseAllPanels?: () => void;
 }
 
 export function SectionToolbar({
@@ -40,13 +32,7 @@ export function SectionToolbar({
   onToggleBlockCollapse,
   onDeleteBlock,
   hasQueuedPrompt = false,
-  totalSectionCount = 0,
-  openPanelCount = 0,
-  onOpenAllPanels,
-  onCloseAllPanels,
 }: SectionToolbarProps) {
-  // Determine if all panels are open
-  const allPanelsOpen = totalSectionCount > 0 && openPanelCount >= totalSectionCount;
   return (
     <div className="flex items-center gap-0.5">
       {/* AI Panel Toggle */}
@@ -147,34 +133,6 @@ export function SectionToolbar({
       {/* Block-level actions (only on first section) */}
       {isFirstSection && (
         <>
-          {/* Open/Close All AI Panels */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 bg-background/80 backdrop-blur-sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (allPanelsOpen) {
-                    onCloseAllPanels?.();
-                  } else {
-                    onOpenAllPanels?.();
-                  }
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                {allPanelsOpen ? (
-                  <ChevronsUp className="h-3 w-3" />
-                ) : (
-                  <ChevronsDown className="h-3 w-3" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={4}>
-              <p>{allPanelsOpen ? 'Close all AI panels' : 'Open all AI panels'}</p>
-            </TooltipContent>
-          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>

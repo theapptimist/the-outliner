@@ -146,8 +146,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     highlightedPlace,
   } = useEditorContext();
 
-  // Get document context for prompt queue
-  const { document: docState } = useDocumentContext();
+  // Get document context for prompt queue and panel state
+  const { document: docState, setPanelState } = useDocumentContext();
   const documentId = docState?.meta?.id || 'unknown';
   const promptQueue = useSectionPromptQueue(documentId);
 
@@ -508,6 +508,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
   const handleCloseAllSectionPanels = useCallback(() => {
     setOpenSectionPanels(new Set());
   }, []);
+
+  // Report panel state changes to context
+  useEffect(() => {
+    setPanelState({
+      openPanelCount: openSectionPanels.size,
+      totalSectionCount: allSections.length,
+      onOpenAllPanels: handleOpenAllSectionPanels,
+      onCloseAllPanels: handleCloseAllSectionPanels,
+    });
+  }, [openSectionPanels.size, allSections.length, setPanelState, handleOpenAllSectionPanels, handleCloseAllSectionPanels]);
 
   // Callback to create a new depth-0 section for document planning
   // Accepts an optional afterId to support chaining (each section inserted after the previous)
@@ -1808,10 +1818,6 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
                   onToggleBlockCollapse={onToggleBlockCollapse}
                   onDeleteBlock={onDeleteBlock}
                   hasQueuedPrompt={promptQueue.hasQueuedPrompt(node.id)}
-                  totalSectionCount={allSections.length}
-                  openPanelCount={openSectionPanels.size}
-                  onOpenAllPanels={handleOpenAllSectionPanels}
-                  onCloseAllPanels={handleCloseAllSectionPanels}
                 />
               </div>
             )}
