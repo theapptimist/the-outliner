@@ -1,90 +1,121 @@
 
 
-# Fix: AI Panel Height Too Small
+# Fix: Prompt Disappearing on Panel Close/Reopen
 
-## The Problem
+## Investigation Summary
 
-The Section AI Chat panel has restrictive height constraints that make it difficult to read queued prompts without scrolling:
+The prompt queue system uses **sessionStorage** which persists within the browser tab. The current flow is:
 
-- **Container max height**: `max-h-[300px]` caps the entire panel
-- **Input textarea**: Only `h-8` (32px) - single line that truncates long prompts
-- When a 2-3 sentence prompt is queued, users must scroll within a tiny textarea to read it
+1. Plan Document → AI generates prompts → Stored in sessionStorage
+2. Open panel → Loads prompt from sessionStorage → Shows in textarea
+3. Close panel → Component unmounts, loses local state
+4. Reopen panel → Should reload from sessionStorage
 
-## The Solution
+## The Issue
 
-Increase the default heights to give users a better view of their prompts:
+There's a subtle bug: The `useEffect` that loads the queued prompt only runs when `sectionId` or `promptQueue` changes - but **not** when the panel is reopened because React may be reusing the same component instance in some cases.
 
-### Changes to `SectionAIChat.tsx`
+Additionally, the textarea `input` state is **not synchronized** with sessionStorage - only loaded once.
 
-1. **Increase container max-height** from `300px` to `400px`
-   - Gives 33% more vertical space for the entire panel
-   - Still fits within typical viewport without being overwhelming
+## Root Cause
 
-2. **Increase textarea min-height** from `32px` to `60px`
-   - Shows ~3 lines of text instead of 1
-   - Users can see the full queued prompt without scrolling
-   - Change `rows={1}` to `rows={2}` for better default
-
-3. **Allow textarea to grow** with content
-   - Use `max-h-[120px]` to allow expansion up to ~6 lines
-   - Keeps the panel from growing unbounded
-
-### Technical Details
-
-**Before:**
-```tsx
-// Line 436 - Container
-<div className="flex flex-col h-full min-h-[200px] max-h-[300px]">
-
-// Line 584 - Input textarea
-<Textarea
-  className="... min-h-[32px] h-8 ..."
-  rows={1}
-/>
+```typescript
+// Only loads on mount or sectionId change - NOT on every panel open
+useEffect(() => {
+  const queuedData = promptQueue.getQueuedPromptData(sectionId);
+  if (queuedData?.prompt) {
+    setQueuedPrompt(queuedData.prompt);
+    setInput(queuedData.prompt);
+  }
+}, [sectionId, promptQueue]);
 ```
 
-**After:**
-```tsx
-// Line 436 - Container with more height
-<div className="flex flex-col h-full min-h-[250px] max-h-[400px]">
+The problem: `promptQueue` is a memoized object that may not change between close/reopen cycles, so the effect doesn't re-run.
 
-// Line 584 - Taller textarea
-<Textarea
-  className="... min-h-[60px] max-h-[120px] ..."
-  rows={2}
-/>
+## Solution
+
+**Option A: Force reload on every mount** - Add a mount counter or empty dependency array trigger
+
+**Option B: Sync input state with sessionStorage** - Use the `_version` from promptQueue to trigger reloads
+
+### Recommended Fix (Option B)
+
+```typescript
+// Listen to queue version changes to sync input with sessionStorage
+useEffect(() => {
+  const queuedData = promptQueue.getQueuedPromptData(sectionId);
+  if (queuedData?.prompt) {
+    setQueuedPrompt(queuedData.prompt);
+    // Only update input if it's empty (don't overwrite user edits)
+    if (!input.trim()) {
+      setInput(queuedData.prompt);
+    }
+  } else {
+    setQueuedPrompt(null);
+  }
+}, [sectionId, promptQueue._version]); // Use _version to detect queue changes
 ```
 
-## Files to Modify
+But this alone won't fix the close/reopen issue. The real fix needs to ensure the effect runs on every mount:
 
-- **`src/components/editor/SectionAIChat.tsx`** - Adjust height constraints on container and textarea
+```typescript
+// Force re-load queued prompt on every mount
+useEffect(() => {
+  const queuedData = promptQueue.getQueuedPromptData(sectionId);
+  if (queuedData?.prompt) {
+    setQueuedPrompt(queuedData.prompt);
+    setInput(queuedData.prompt);
+  }
+  // Empty dependency array = run on every mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
-## Visual Comparison
-
-**Current:**
-```
-┌─ AI Panel ─────────────── (300px max)
-│ [Expand] [Summarize] [Refine]
-│ ─────────────────────────────
-│ Message history area
-│ (cramped)
-│ ─────────────────────────────
-│ [Single line input___] [Send]
-└──────────────────────────────
+// Also keep the sectionId change handler
+useEffect(() => {
+  const queuedData = promptQueue.getQueuedPromptData(sectionId);
+  if (queuedData?.prompt) {
+    setQueuedPrompt(queuedData.prompt);
+    setInput(queuedData.prompt);
+  }
+}, [sectionId, promptQueue]);
 ```
 
-**After:**
+## Technical Changes
+
+### File: `src/components/editor/SectionAIChat.tsx`
+
+1. **Split the effect** into mount-time and change-time handlers
+2. **Preserve input if user has edited** - only auto-populate if input is empty
+
+```typescript
+// Load queued prompt on component mount (handles panel reopen)
+useEffect(() => {
+  const queuedData = promptQueue.getQueuedPromptData(sectionId);
+  if (queuedData?.prompt) {
+    setQueuedPrompt(queuedData.prompt);
+    setInput(queuedData.prompt);
+  }
+}, []); // Run on mount only
+
+// Also reload when sectionId changes (handles switching sections)
+useEffect(() => {
+  const queuedData = promptQueue.getQueuedPromptData(sectionId);
+  if (queuedData?.prompt) {
+    setQueuedPrompt(queuedData.prompt);
+    setInput(queuedData.prompt);
+  } else {
+    setQueuedPrompt(null);
+  }
+}, [sectionId]);
 ```
-┌─ AI Panel ─────────────── (400px max)
-│ [Expand] [Summarize] [Refine]
-│ ─────────────────────────────
-│ Message history area
-│ (more spacious)
-│
-│ ─────────────────────────────
-│ [Multi-line input area   ]
-│ [with room to read the   ]
-│ [full queued prompt______] [Send]
-└──────────────────────────────
-```
+
+## Verification Steps
+
+After implementing:
+1. Plan Document → Queue prompts (don't auto-execute)
+2. Open section 6 AI panel → Confirm prompt appears
+3. Close panel (don't send)
+4. Reopen panel → Prompt should still be there
+5. Send the prompt → Prompt clears (expected)
+6. Close and reopen → Prompt should be gone (expected)
 
