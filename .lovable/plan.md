@@ -3,84 +3,57 @@
 
 ## Problems Identified
 
-Looking at the screenshot, there are three distinct visual issues:
+From the screenshot and code analysis:
 
-1. **Background color mismatch**: The File menu sheet has a plain `bg-background` color while the sidebar uses a gradient (`bg-gradient-to-b from-muted/30 via-background to-muted/20`)
-2. **Border discontinuity**: The sheet has a `border-r` from the default sheetVariants, creating a visible right edge that doesn't match the sidebar's border styling
-3. **Top position misalignment**: The sheet overlaps with the navigation icons because the `top-[120px]` offset doesn't match the actual header height
+1. **Background color mismatch**: The Sheet uses `bg-background` (from `sheetVariants` line 32), while the sidebar uses `bg-gradient-to-b from-muted/30 via-background to-muted/20`
+
+2. **Border discontinuity**: The Sheet's `side="left"` variant includes `border-r` (line 38 in sheet.tsx), creating a visible right edge that clashes with the sidebar
+
+3. **Missing gradient overlay**: The sidebar has an `absolute inset-0` gradient overlay (line 160), which the Sheet doesn't have
 
 ## Root Cause
 
-The Sheet component renders in a **portal** (outside the sidebar DOM), so it:
-- Doesn't inherit the sidebar's gradient background
-- Uses its own `bg-background` and `border-r` from the base variant
-- Needs an exact pixel offset that may not match the dynamic header
+The Sheet renders in a **portal** outside the sidebar DOM tree, so it:
+- Uses the default `bg-background` from `sheetVariants`
+- Has its own `border-r` from the left-side variant
+- Doesn't inherit the sidebar's gradient styling
 
 ## Solution
 
-### 1. Match the background gradient
+Apply matching styles to the `SheetContent` className to override the defaults:
 
-Add the same gradient background to the SheetContent that the sidebar uses:
-
-```tsx
-className="... bg-gradient-to-b from-muted/30 via-background to-muted/20"
-```
-
-### 2. Override the border
-
-Add `border-r-0` or `border-r-border/30` to match the sidebar's subtle border styling.
-
-### 3. Adjust the top offset
-
-Looking at the EditorSidebar header structure:
-- Title row: `py-2.5 pt-3` = ~36px
-- Nav icons row: `pb-2` + buttons (h-7 = 28px) = ~40px
-- Accent lines: `h-[3px]` x2 = 6px
-- **Total: ~82-90px**
-
-But the sidebar header also has margin from the "THE OUTLINER" section. Let me calculate the exact offset by looking at the layout:
-- Title section padding + collapse button
-- Divider line (`mb-1`)
-- Nav icons section (`pb-2`)
-- Bottom accent lines (`h-[3px]`)
-
-The current `top-[120px]` is too far down, causing the gap. We need to match the exact pixel position where the sidebar content area starts.
-
-**Alternative approach**: Instead of using a fixed pixel offset, we can make the sheet start from `top-0` but add internal padding/structure that visually aligns with the header. However, this is more complex.
-
-**Simpler fix**: Adjust the offset to match the actual header height and apply matching styles.
-
----
+1. **Add the gradient background** - Match the sidebar's gradient
+2. **Override the border** - Use `border-r-0` or a subtle border that matches
+3. **Add the decorative accent line** - Match the sidebar's left edge accent
 
 ## Technical Changes
 
 ### File: `src/components/editor/FileMenu.tsx`
 
-Lines 297-302: Update SheetContent className to:
-1. Add matching gradient background
-2. Match border styling
-3. Adjust top offset to align with sidebar content area
+Update the `SheetContent` className (lines 297-302) to:
 
 ```tsx
 <SheetContent
   data-allow-pointer
   side="left"
   overlayClassName="bg-transparent"
-  className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[120px] h-[calc(100%-120px)] bg-gradient-to-b from-muted/30 via-background to-muted/20 border-r-border/30"
+  className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[120px] h-[calc(100%-120px)] bg-gradient-to-b from-muted/30 via-background to-muted/20 border-r-0"
   hideCloseButton
 >
+  {/* Add decorative accent line matching sidebar */}
+  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary via-accent to-primary/50 opacity-50" />
+  ...
 ```
 
-### Alternative: Override base styles in sheet.tsx
-
-If the className override doesn't work due to specificity, we may need to modify the sheet's base variant to allow background overrides.
-
----
+The key changes:
+- `bg-gradient-to-b from-muted/30 via-background to-muted/20` - Matches sidebar gradient
+- `border-r-0` - Removes the default right border from left-side variant
+- Add the decorative accent line div inside the SheetContent
 
 ## Verification
 
 After implementation:
-1. Open File menu - should have matching gradient background
-2. Check border alignment - right edge should match sidebar's border
-3. Verify no overlap with navigation icons
+1. Open File menu - background should match sidebar gradient
+2. Check right edge - no visible border line between menu and content
+3. Check left edge - decorative accent line should be visible
 4. Test in both light and dark mode
