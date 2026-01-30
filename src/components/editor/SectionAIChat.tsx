@@ -445,7 +445,7 @@ export function SectionAIChat({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-[200px] max-h-[300px]">
+    <div className="flex flex-col h-full min-h-[200px] max-h-[350px]">
       {/* Auto-Write Progress Indicator */}
       {autoWriteProgress && (
         <div className="mb-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
@@ -523,10 +523,10 @@ export function SectionAIChat({
       {/* Messages */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto mb-2 space-y-2 pr-1"
+        className="flex-1 overflow-y-auto mb-2 space-y-2 pr-1 min-h-0"
       >
         {messages.length === 0 ? (
-          <div className="text-xs text-muted-foreground text-center py-4 italic">
+          <div className="text-xs text-muted-foreground text-center py-2 italic">
             Ask AI about "{sectionLabel.slice(0, 30)}{sectionLabel.length > 30 ? '...' : ''}"
           </div>
         ) : (
@@ -585,7 +585,7 @@ export function SectionAIChat({
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="flex gap-1">
+      <form onSubmit={handleSubmit} className="flex gap-1 items-end">
         <Textarea
           ref={textareaRef}
           value={input}
@@ -593,8 +593,8 @@ export function SectionAIChat({
           onKeyDown={handleKeyDown}
           placeholder={`Ask about "${sectionLabel.slice(0, 20)}..."`}
           disabled={isLoading}
-          className="flex-1 min-h-[32px] h-8 py-1.5 px-2 text-xs resize-none bg-foreground/5 border-foreground/10 focus:border-primary/30"
-          rows={1}
+          className="flex-1 min-h-[80px] max-h-[160px] py-2 px-3 text-sm resize-y bg-foreground/5 border-foreground/10 focus:border-primary/30"
+          rows={4}
         />
         <Button
           type="submit"
