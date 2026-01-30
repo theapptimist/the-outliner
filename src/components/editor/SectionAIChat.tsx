@@ -42,6 +42,8 @@ interface SectionAIChatProps {
   onInsertSectionContent?: (sectionId: string, items: Array<{ label: string; depth: number }>) => void;
   /** Callback to programmatically open multiple section panels (for Auto-Write cascade) */
   onOpenSectionPanels?: (sectionIds: string[]) => void;
+  /** Whether the panel is in fullscreen mode */
+  isFullscreen?: boolean;
 }
 
 const QUICK_ACTIONS = [
@@ -62,6 +64,7 @@ export function SectionAIChat({
   onUpdateSectionLabel,
   onInsertSectionContent,
   onOpenSectionPanels,
+  isFullscreen = false,
 }: SectionAIChatProps) {
   const { document } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
@@ -445,7 +448,10 @@ export function SectionAIChat({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-[200px] max-h-[350px]">
+    <div className={cn(
+      "flex flex-col h-full",
+      isFullscreen ? "min-h-0 max-h-full" : "min-h-[200px] max-h-[350px]"
+    )}>
       {/* Auto-Write Progress Indicator */}
       {autoWriteProgress && (
         <div className="mb-3 p-3 rounded-lg border border-primary/30 bg-primary/5">

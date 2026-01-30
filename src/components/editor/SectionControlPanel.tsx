@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HierarchyNode } from '@/types/node';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronDown, ChevronUp, Sparkles, Settings, Info } from 'lucide-react';
+import { ChevronUp, Sparkles, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SectionAIChat } from './SectionAIChat';
 import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
@@ -55,6 +54,7 @@ export function SectionControlPanel({
   const documentId = document?.meta?.id || 'unknown';
   const promptQueue = useSectionPromptQueue(documentId);
   const hasQueuedPrompt = promptQueue.hasQueuedPrompt(sectionId);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Flatten children to text for context
   const flattenChildren = (nodes: HierarchyNode[], depth = 0): string => {
@@ -74,7 +74,20 @@ export function SectionControlPanel({
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleContent>
-        <div className="relative mx-2 mb-2 rounded-md border border-foreground/10 bg-background/50 backdrop-blur-sm overflow-hidden">
+        <div 
+          className={cn(
+            "relative mx-2 mb-2 rounded-md border border-foreground/10 bg-background/50 backdrop-blur-sm overflow-hidden transition-all duration-200",
+            isFullscreen && "fixed inset-4 z-50 mx-0 mb-0 shadow-2xl"
+          )}
+        >
+          {/* Fullscreen backdrop */}
+          {isFullscreen && (
+            <div 
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm -z-10" 
+              onClick={() => setIsFullscreen(false)}
+            />
+          )}
+          
           {/* Top accent line */}
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           
@@ -84,35 +97,53 @@ export function SectionControlPanel({
           <div className="absolute bottom-0 left-0 w-3 h-3 border-l border-b border-foreground/20" />
           <div className="absolute bottom-0 right-0 w-3 h-3 border-r border-b border-foreground/20" />
 
-          <Tabs defaultValue="ai" className="w-full">
-            <div className="flex items-center justify-between px-3 pt-2 pb-1">
-              <TabsList className="h-7 bg-foreground/5">
-                <TabsTrigger 
-                  value="ai" 
-                  className="h-6 px-2 text-xs gap-1 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  AI
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="info" 
-                  className="h-6 px-2 text-xs gap-1 data-[state=active]:bg-foreground/10"
-                >
-                  <Info className="w-3 h-3" />
-                  Info
-                </TabsTrigger>
-              </TabsList>
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 pt-2 pb-1 border-b border-foreground/5">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI Assistant</span>
+                {isFullscreen && (
+                  <span className="text-muted-foreground font-normal ml-1">
+                    — {sectionLabel.slice(0, 40)}{sectionLabel.length > 40 ? '...' : ''}
+                  </span>
+                )}
+              </div>
               
-              <button
-                onClick={onToggle}
-                className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
-                title="Close panel"
-              >
-                <ChevronUp className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setIsFullscreen(!isFullscreen)}
+                      className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isFullscreen ? (
+                        <Minimize2 className="w-3.5 h-3.5" />
+                      ) : (
+                        <Maximize2 className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={4}>
+                    <p>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</p>
+                  </TooltipContent>
+                </Tooltip>
+                
+                <button
+                  onClick={onToggle}
+                  className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+                  title="Close panel"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <TabsContent value="ai" className="mt-0 p-2 pt-1">
+            {/* AI Chat Content */}
+            <div className={cn(
+              "p-2 pt-1",
+              isFullscreen && "flex-1 overflow-hidden"
+            )}>
               <SectionAIChat
                 sectionId={sectionId}
                 sectionLabel={sectionLabel}
@@ -125,30 +156,10 @@ export function SectionControlPanel({
                 onUpdateSectionLabel={onUpdateSectionLabel}
                 onInsertSectionContent={onInsertSectionContent}
                 onOpenSectionPanels={onOpenSectionPanels}
+                isFullscreen={isFullscreen}
               />
-            </TabsContent>
-
-            <TabsContent value="info" className="mt-0 p-3 pt-2">
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <div>
-                  <span className="text-foreground/70">Section:</span>{' '}
-                  <span className="text-foreground">{sectionLabel}</span>
-                </div>
-                <div>
-                  <span className="text-foreground/70">Children:</span>{' '}
-                  <span className="text-foreground">{sectionChildren.length} items</span>
-                </div>
-                {sectionContent && (
-                  <div className="mt-2 p-2 rounded bg-foreground/5 max-h-32 overflow-y-auto">
-                    <pre className="text-[10px] font-mono whitespace-pre-wrap text-muted-foreground">
-                      {sectionContent.slice(0, 500)}
-                      {sectionContent.length > 500 && '...'}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>
