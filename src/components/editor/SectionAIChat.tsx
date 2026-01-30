@@ -47,9 +47,14 @@ interface SectionAIChatProps {
   isFullscreen?: boolean;
 }
 
-const QUICK_ACTIONS = [
+// Actions for Prompt tab (outline generation focused)
+const PROMPT_ACTIONS = [
   { id: 'expand', label: 'Expand', icon: ListPlus, prompt: 'Expand this section with more detailed sub-items' },
   { id: 'summarize', label: 'Summarize', icon: FileText, prompt: 'Summarize the key points of this section' },
+];
+
+// Actions for Chat tab (refinement focused)
+const CHAT_ACTIONS = [
   { id: 'refine', label: 'Refine', icon: RefreshCw, prompt: 'Refine and improve the language of this section' },
 ];
 
@@ -435,7 +440,7 @@ export function SectionAIChat({
     sendMessage(input, 'chat');
   };
 
-  const handleQuickAction = (action: typeof QUICK_ACTIONS[0]) => {
+  const handleQuickAction = (action: { id: string; label: string; prompt: string }) => {
     sendMessage(action.prompt, action.id);
   };
 
@@ -537,6 +542,37 @@ export function SectionAIChat({
       {activeTab === 'prompt' ? (
         /* Prompt Tab */
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          {/* Quick Actions for Prompt Tab */}
+          <div className="flex gap-1 mb-2 flex-wrap">
+            {PROMPT_ACTIONS.map((action) => (
+              <Button
+                key={action.id}
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickAction(action)}
+                disabled={isLoading}
+                className="h-6 px-2 text-xs gap-1 bg-foreground/5 hover:bg-foreground/10"
+              >
+                <action.icon className="w-3 h-3" />
+                {action.label}
+              </Button>
+            ))}
+            
+            {/* Plan Doc button - only for first section */}
+            {isFirstSection && allSections.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePlanDocument}
+                disabled={isLoading}
+                className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
+              >
+                <ClipboardList className="w-3 h-3" />
+                Plan Doc
+              </Button>
+            )}
+          </div>
+
           {/* Current Queued Prompt */}
           {queuedPrompt && (
             <div className="mb-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
@@ -616,9 +652,9 @@ export function SectionAIChat({
       ) : (
         /* Chat Tab */
         <>
-          {/* Quick Actions */}
+          {/* Quick Actions for Chat Tab */}
           <div className="flex gap-1 mb-2 flex-wrap">
-            {QUICK_ACTIONS.map((action) => (
+            {CHAT_ACTIONS.map((action) => (
               <Button
                 key={action.id}
                 variant="ghost"
@@ -631,20 +667,6 @@ export function SectionAIChat({
                 {action.label}
               </Button>
             ))}
-            
-            {/* Plan Doc button - only for first section */}
-            {isFirstSection && allSections.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePlanDocument}
-                disabled={isLoading}
-                className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
-              >
-                <ClipboardList className="w-3 h-3" />
-                Plan Doc
-              </Button>
-            )}
           </div>
 
           {/* Messages */}
