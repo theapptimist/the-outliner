@@ -298,7 +298,7 @@ export function FileMenu({
           data-allow-pointer
           side="left"
           overlayClassName="bg-transparent"
-          className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[120px] h-[calc(100%-120px)] bg-gradient-to-b from-muted/30 via-background to-muted/20 border-r-0"
+          className="w-64 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[120px] h-[calc(100%-120px)] bg-gradient-to-b from-muted/30 via-background to-muted/20 border-r-0"
           hideCloseButton
         >
           {/* Decorative accent line matching sidebar */}
