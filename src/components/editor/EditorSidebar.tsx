@@ -22,8 +22,8 @@ import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
-// Lazy load the AI pane since it's rarely used immediately
-const LazyAIGeneratePane = lazy(() => import('./AIGeneratePane'));
+// Lazy load the AI toolbar since it's rarely used immediately
+const LazyAIToolbar = lazy(() => import('./AIToolbar'));
 
 import type { SidebarTab } from '@/contexts/NavigationContext';
 
@@ -74,7 +74,7 @@ export function EditorSidebar({
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
-  const { editor, onInsertHierarchy, onFindReplace, selectedText, onPasteHierarchy } = useEditorContext();
+  const { editor, onInsertHierarchy, onFindReplace, selectedText, onPasteHierarchy, panelState } = useEditorContext();
   const { isInMasterMode, activeEntityTab, activeSidebarTab, setActiveSidebarTab } = useNavigation();
 
   // Use the shared activeTab from NavigationContext
@@ -326,14 +326,19 @@ export function EditorSidebar({
       )}
       
       {activeTab === 'ai' && (
-        <div className="relative flex-1 overflow-y-auto p-2 scrollbar-thin">
+        <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           <Suspense fallback={
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           }>
-            <LazyAIGeneratePane 
+            <LazyAIToolbar 
+              collapsed={collapsed}
               onInsertHierarchy={handleAIInsertHierarchy}
+              openPanelCount={panelState.openPanelCount}
+              totalSectionCount={panelState.totalSectionCount}
+              onOpenAllPanels={panelState.onOpenAllPanels}
+              onCloseAllPanels={panelState.onCloseAllPanels}
             />
           </Suspense>
         </div>
