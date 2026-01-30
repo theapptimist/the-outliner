@@ -571,6 +571,20 @@ export function SectionAIChat({
                 Plan Doc
               </Button>
             )}
+            
+            {/* Plan Section button - for non-first sections */}
+            {!isFirstSection && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => sendMessage('Plan the structure and sub-sections for this section. Suggest key points to cover and how to organize them.', 'plan-section')}
+                disabled={isLoading}
+                className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
+              >
+                <ClipboardList className="w-3 h-3" />
+                Plan Section
+              </Button>
+            )}
           </div>
 
           {/* Current Queued Prompt */}
