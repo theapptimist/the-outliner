@@ -1,38 +1,94 @@
 
-# Fix: File Menu Width Mismatch with Sidebar
+# Plan: Add "Prompts" Tab to Section AI Panel
 
-## Problem Identified
+## Overview
+Add a tab-based interface to the section AI panel where "Prompts" is the leftmost tab, allowing users to view and manage their prompts (current + history). This replaces the current small "Queued prompt ready" indicator with a proper browsable interface.
 
-When the File menu opens, the panel is **narrower than the sidebar**, causing a visible strip of misaligned styling on the right edge. This is because:
+## User Experience
 
-- **Sidebar width**: `w-64` (256px) when expanded
-- **File menu width**: `w-56` (224px)
+### Tab Layout (Header Strip)
+The panel header will have tabs on the left side:
+- **Prompt** (leftmost) — Shows the current/queued prompt and prompt history
+- **Chat** — The existing AI conversation view
 
-This 32px difference creates a visual seam where the sidebar background shows through next to the File menu panel.
+### Prompt Tab Contents
+1. **Current Prompt** section at top
+   - Shows the queued prompt in a read-only display (if exists)
+   - "Use" button to load it into the input
+   - "Clear" button to discard
 
-## Solution
+2. **History** section below
+   - List of previously sent prompts from the chat session
+   - Extracted from the existing `messages` array (user role messages)
+   - Click any to re-use it
+   - Sorted most recent first
 
-Change the FileMenu `SheetContent` width from `w-56` to `w-64` so it matches the expanded sidebar width exactly.
+3. **Input area** at bottom (shared across tabs)
+   - The textarea remains visible in both tabs for quick prompt entry
 
-## Technical Changes
+## Technical Approach
 
-### File: `src/components/editor/FileMenu.tsx`
+### File: `src/components/editor/SectionAIChat.tsx`
 
-**Line 301**: Update the `SheetContent` className:
+1. **Add tab state**
+   ```tsx
+   const [activeTab, setActiveTab] = useState<'prompt' | 'chat'>('chat');
+   ```
 
-```tsx
-// Before
-className="w-56 p-0 font-sans ..."
+2. **Create tab header UI**
+   - Two tabs styled like small pill buttons
+   - Prompt tab shows badge if there's a queued prompt
 
-// After  
-className="w-64 p-0 font-sans ..."
+3. **Prompt tab content**
+   - Extract user messages from `messages` array for history
+   - Show queued prompt prominently at top
+   - Clickable history items that populate the input
+
+4. **Conditional rendering**
+   - When `activeTab === 'prompt'`: Show prompt management view
+   - When `activeTab === 'chat'`: Show existing messages + quick actions
+
+### File: `src/components/editor/SectionControlPanel.tsx`
+- No changes needed — panel structure remains the same
+
+## Visual Design
+
+```text
+┌─────────────────────────────────────────────────┐
+│ [Prompt] [Chat]              [⛶] [✕]           │
+├─────────────────────────────────────────────────┤
+│ ┌─ CURRENT PROMPT ────────────────────────────┐ │
+│ │ "Analyze the four primary long-term..."     │ │
+│ │                              [Use] [Clear]  │ │
+│ └─────────────────────────────────────────────┘ │
+│                                                 │
+│ HISTORY                                         │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ • Expand this section with more detailed... │ │
+│ │ • Refine and improve the language of...     │ │
+│ └─────────────────────────────────────────────┘ │
+│                                                 │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ Type a prompt...                            │ │
+│ │                                        [→]  │ │
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
 ```
 
-This single change ensures the File menu panel aligns perfectly with the sidebar, eliminating the width mismatch that causes the visual seam.
+## Implementation Steps
 
-## Verification
+1. Add `activeTab` state to `SectionAIChat`
+2. Create tab header with "Prompt" and "Chat" buttons
+3. Build the Prompt tab view:
+   - Current queued prompt display
+   - History list (derived from messages)
+   - Click-to-reuse functionality
+4. Move quick actions to only show in Chat tab
+5. Keep input textarea visible in both tabs
+6. Add badge indicator on Prompt tab when queue has prompt
 
-After implementation:
-1. Open the File menu with the sidebar expanded
-2. The panel should now be the same width as the sidebar (256px)
-3. No visible strip or color mismatch should appear on the right edge
+## Benefits
+- **Prompt visibility**: Full prompt text always accessible
+- **Reusability**: Easy to re-run previous prompts
+- **Clean separation**: Chat history vs prompt management
+- **Discoverability**: Users see what prompts are available
