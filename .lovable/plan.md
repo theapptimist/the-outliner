@@ -1,210 +1,90 @@
 
-# Feature: Dedicated AI Toolbar
+
+# Fix: AI Panel Height Too Small
 
 ## The Problem
 
-AI controls are currently scattered across multiple locations:
-- **SectionToolbar**: Per-section Sparkles button, Open/Close All panels toggle
-- **EditorSidebar**: AI Generate tab with simple prompt interface
-- **SectionAIChat**: Document planning, auto-write cascade, per-section chat
+The Section AI Chat panel has restrictive height constraints that make it difficult to read queued prompts without scrolling:
 
-As the AI capabilities grow (multi-window cascade, document planning, prose generation modes), having a central command center for AI operations becomes essential.
+- **Container max height**: `max-h-[300px]` caps the entire panel
+- **Input textarea**: Only `h-8` (32px) - single line that truncates long prompts
+- When a 2-3 sentence prompt is queued, users must scroll within a tiny textarea to read it
 
 ## The Solution
 
-Create a dedicated **AI Toolbar** component that provides centralized control over all AI-related features. This toolbar will be positioned prominently and offer quick access to global AI operations.
+Increase the default heights to give users a better view of their prompts:
 
-## Design Options
+### Changes to `SectionAIChat.tsx`
 
-### Option A: Horizontal Toolbar Above Document
+1. **Increase container max-height** from `300px` to `400px`
+   - Gives 33% more vertical space for the entire panel
+   - Still fits within typical viewport without being overwhelming
 
-A horizontal bar above the outline area with AI controls:
+2. **Increase textarea min-height** from `32px` to `60px`
+   - Shows ~3 lines of text instead of 1
+   - Users can see the full queued prompt without scrolling
+   - Change `rows={1}` to `rows={2}` for better default
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ ✨ AI  │ [Plan Doc] [Open All ↓] [Close All ↑] │ Status... │
-└─────────────────────────────────────────────────────────────┘
-│                                                             │
-│                    Document Content                         │
-│                                                             │
-```
+3. **Allow textarea to grow** with content
+   - Use `max-h-[120px]` to allow expansion up to ~6 lines
+   - Keeps the panel from growing unbounded
 
-### Option B: Floating AI Command Bar
+### Technical Details
 
-A floating command bar (similar to Notion's slash command) that appears when needed:
+**Before:**
+```tsx
+// Line 436 - Container
+<div className="flex flex-col h-full min-h-[200px] max-h-[300px]">
 
-```
-                    ┌─────────────────────────────┐
-                    │ ✨ Plan Doc  ↓ Open All     │
-                    │    Auto-Write  ↑ Close All  │
-                    └─────────────────────────────┘
-```
-
-### Option C: Sidebar AI Pane Enhancement (Recommended)
-
-Enhance the existing "AI" tab in the sidebar to become a true AI command center:
-
-```
-┌──────────────────────────────┐
-│ ✨ AI Command Center         │
-├──────────────────────────────┤
-│ [Plan Document]              │
-│ [Auto-Write All Sections]    │
-├──────────────────────────────┤
-│ Panel Controls               │
-│ [↓ Open All] [↑ Close All]   │
-│ Active: 3/6 panels           │
-├──────────────────────────────┤
-│ Quick Generate               │
-│ [Generate outline from...]   │
-│                              │
-│ [____________________]       │
-│ [Generate]                   │
-└──────────────────────────────┘
+// Line 584 - Input textarea
+<Textarea
+  className="... min-h-[32px] h-8 ..."
+  rows={1}
+/>
 ```
 
-## Recommended Implementation: Option C
+**After:**
+```tsx
+// Line 436 - Container with more height
+<div className="flex flex-col h-full min-h-[250px] max-h-[400px]">
 
-This approach:
-1. **Consolidates** all AI controls in one logical location
-2. **Reuses** existing sidebar infrastructure
-3. **Provides visibility** into the cascade status (X/Y panels active)
-4. **Separates concerns**: Document-level AI actions vs. per-section AI chats
-
-## Component Structure
-
-```
-src/components/editor/
-├── AIToolbar.tsx              (NEW - the main AI command center)
-├── AIGeneratePane.tsx         (existing - will be integrated)
-└── EditorSidebar.tsx          (updated to use AIToolbar)
+// Line 584 - Taller textarea
+<Textarea
+  className="... min-h-[60px] max-h-[120px] ..."
+  rows={2}
+/>
 ```
 
-## Technical Changes
+## Files to Modify
 
-### 1. Create `AIToolbar.tsx`
+- **`src/components/editor/SectionAIChat.tsx`** - Adjust height constraints on container and textarea
 
-A new component that combines:
-- **Document Planning**: "Plan Document" button (opens DocumentPlanDialog)
-- **Cascade Controls**: Open All / Close All panels with status indicator
-- **Auto-Write**: Trigger the multi-window cascade
-- **Quick Generate**: The existing prompt-based generation
+## Visual Comparison
 
-```typescript
-interface AIToolbarProps {
-  collapsed: boolean;
-  // Document planning
-  onPlanDocument: () => void;
-  isPlanningLoading: boolean;
-  // Panel cascade controls
-  openPanelCount: number;
-  totalSectionCount: number;
-  onOpenAllPanels: () => void;
-  onCloseAllPanels: () => void;
-  // Quick generate
-  onInsertHierarchy: (items: Array<{ label: string; depth: number }>) => void;
-}
+**Current:**
+```
+┌─ AI Panel ─────────────── (300px max)
+│ [Expand] [Summarize] [Refine]
+│ ─────────────────────────────
+│ Message history area
+│ (cramped)
+│ ─────────────────────────────
+│ [Single line input___] [Send]
+└──────────────────────────────
 ```
 
-### 2. State Management
-
-The AIToolbar needs access to:
-- **Panel state** from `SimpleOutlineView` (openSectionPanels, allSections)
-- **Document planning** functions from `SectionAIChat` (moved up or shared)
-
-This requires lifting some state or using a shared context. Two approaches:
-
-**Approach A: Pass through EditorSidebar**
-- `SimpleOutlineView` passes panel state up via callbacks
-- `Editor.tsx` forwards to `EditorSidebar`
-- More props but simpler
-
-**Approach B: Create AIContext**
-- New context to share AI-related state globally
-- Cleaner prop drilling but more infrastructure
-
-Recommend **Approach A** for initial implementation.
-
-### 3. Visual Design
-
-The AI Toolbar will follow the existing sidebar styling:
-- Color-coded sections (primary for AI, success for active states)
-- Compact button layout when collapsed
-- Status indicators showing active panels
-
+**After:**
 ```
-┌──────────────────────────────┐
-│ ✨ AI                        │
-├──────────────────────────────┤
-│ Document                     │
-│ [Plan Doc]                   │
-│ [Auto-Write] (requires plan) │
-├──────────────────────────────┤
-│ Section Panels    [3/6]      │
-│ [↓ Open All] [↑ Close All]   │
-├──────────────────────────────┤
-│ Quick Generate               │
-│ [textarea...]                │
-│ [Generate]                   │
-└──────────────────────────────┘
+┌─ AI Panel ─────────────── (400px max)
+│ [Expand] [Summarize] [Refine]
+│ ─────────────────────────────
+│ Message history area
+│ (more spacious)
+│
+│ ─────────────────────────────
+│ [Multi-line input area   ]
+│ [with room to read the   ]
+│ [full queued prompt______] [Send]
+└──────────────────────────────
 ```
 
-### 4. Wire Through the Component Tree
-
-```
-Editor.tsx
-  └─ EditorSidebar
-       └─ AIToolbar (NEW - replaces AIGeneratePane when activeTab === 'ai')
-            ├─ Document Planning section
-            ├─ Panel Controls section
-            └─ Quick Generate section (existing AIGeneratePane logic)
-  └─ SimpleOutlineView
-       ├─ provides: openPanelCount, totalSectionCount
-       ├─ provides: onOpenAllPanels, onCloseAllPanels
-       └─ SectionToolbar (remove redundant Open/Close All from first section)
-```
-
-### 5. Remove Redundancy
-
-Once AIToolbar exists, remove the Open/Close All button from `SectionToolbar` since it will be accessible from the dedicated AI toolbar in the sidebar.
-
-## Files to Create/Modify
-
-1. **`src/components/editor/AIToolbar.tsx`** (NEW)
-   - Main AI command center component
-   - Integrates AIGeneratePane logic
-   - Document planning controls
-   - Panel cascade controls with status
-
-2. **`src/components/editor/EditorSidebar.tsx`**
-   - Replace `AIGeneratePane` with `AIToolbar` for 'ai' tab
-   - Add new props for panel state and callbacks
-
-3. **`src/components/editor/SimpleOutlineView.tsx`**
-   - Expose panel state via new callbacks to parent
-   - Keep existing functionality
-
-4. **`src/pages/Editor.tsx`**
-   - Wire panel state from content area to sidebar
-
-5. **`src/components/editor/SectionToolbar.tsx`** (Optional cleanup)
-   - Consider removing Open/Close All from first section toolbar
-   - OR keep it as a convenience shortcut
-
-## User Experience After Implementation
-
-1. User clicks "AI" tab in sidebar
-2. Sees dedicated AI Command Center with:
-   - "Plan Document" button
-   - Panel status indicator (e.g., "3/6 panels open")
-   - Open All / Close All buttons
-   - Quick generate textarea
-3. Can manage all AI windows from one place
-4. Per-section toolbars still have individual AI toggle for quick access
-
-## Future Enhancements
-
-- **AI Mode Selector**: Choose between "Outline" and "Prose" generation modes
-- **Cascade Progress**: Show which sections are currently generating
-- **Cancel Button**: Abort an in-progress cascade
-- **Generation History**: Quick access to recent AI operations
