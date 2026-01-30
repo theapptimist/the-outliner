@@ -298,9 +298,11 @@ export function FileMenu({
           data-allow-pointer
           side="left"
           overlayClassName="bg-transparent"
-          className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[120px] h-[calc(100%-120px)]"
+          className="w-56 p-0 font-sans duration-0 data-[state=open]:animate-none data-[state=closed]:animate-none top-[120px] h-[calc(100%-120px)] bg-gradient-to-b from-muted/30 via-background to-muted/20 border-r-0"
           hideCloseButton
         >
+          {/* Decorative accent line matching sidebar */}
+          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary via-accent to-primary/50 opacity-50" />
           <SheetHeader 
             className="px-3 py-4 border-b border-border"
             onPointerDownCapture={(e) => {
