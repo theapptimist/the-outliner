@@ -131,17 +131,17 @@ export function DocumentPlanDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="relative flex flex-col overflow-hidden transition-all duration-200 !top-1/2 !-translate-y-1/2"
+        className="relative flex flex-col overflow-hidden transition-all duration-200"
         style={isFullscreen ? {
           width: 'calc(100vw - 32px)',
           height: 'calc(100vh - 32px)',
           maxWidth: 'calc(100vw - 32px)',
           maxHeight: 'calc(100vh - 32px)',
         } : { 
-          width: size.width, 
-          height: size.height, 
-          maxWidth: '95vw', 
-          maxHeight: '95vh' 
+          width: Math.min(size.width, window.innerWidth - 48), 
+          height: Math.min(size.height, window.innerHeight - 48), 
+          maxWidth: 'calc(100vw - 48px)', 
+          maxHeight: 'calc(100vh - 48px)' 
         }}
       >
         {/* Fullscreen toggle (positioned to align with the dialog close button) */}
