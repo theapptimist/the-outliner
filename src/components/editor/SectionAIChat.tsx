@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles, History, MessageSquare, Square } from 'lucide-react';
+import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles, History, MessageSquare, Square, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useDocumentContext } from './context/DocumentContext';
@@ -744,15 +744,30 @@ export function SectionAIChat({
                         <span className="text-[10px] text-muted-foreground">
                           {msg.generatedItems.length} items generated
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleInsertItems(msg.generatedItems!)}
-                          className="h-5 px-2 text-[10px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Insert
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setMessages(prev => prev.map(m => 
+                                m.id === msg.id ? { ...m, generatedItems: undefined } : m
+                              ));
+                            }}
+                            className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="Discard generated items"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleInsertItems(msg.generatedItems!)}
+                            className="h-5 px-2 text-[10px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Insert
+                          </Button>
+                        </div>
                       </div>
                       <div className="bg-background/50 rounded p-1.5 max-h-24 overflow-y-auto">
                         {msg.generatedItems.map((item, idx) => (
