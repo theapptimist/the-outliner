@@ -139,7 +139,7 @@ export function DocumentPlanDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between pr-6">
+          <DialogTitle className="flex items-center justify-between pr-8">
             <span className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Review Document Plan
@@ -148,7 +148,7 @@ export function DocumentPlanDialog({
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+                  className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors -mt-0.5"
                 >
                   {isFullscreen ? (
                     <Minimize2 className="w-4 h-4" />
