@@ -708,6 +708,7 @@ export function SectionAIChat({
                 onClick={handlePlanDocument}
                 disabled={isLoading}
                 className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
+                data-allow-pointer
               >
                 <ClipboardList className="w-3 h-3" />
                 Plan Doc
