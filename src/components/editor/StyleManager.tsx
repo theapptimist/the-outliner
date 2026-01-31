@@ -220,13 +220,31 @@ export function StyleManager({
                         }).join(' → ')}
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleApplyStyle(preset.config)}
-                    >
-                      Apply
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          // Edit preset by creating a customizable copy
+                          setIsCreating(true);
+                          setEditingStyle(null);
+                          setStyleName(`${preset.name} (Custom)`);
+                          setStyleDescription(preset.description);
+                          setEditConfig({ ...preset.config } as ExtendedMixedStyleConfig);
+                        }}
+                        title="Edit as custom copy"
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleApplyStyle(preset.config)}
+                      >
+                        Apply
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
