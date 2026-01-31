@@ -44,15 +44,9 @@ export function DocumentPlanDialog({
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   // Reset when dialog opens with new prompts
-  // Reset prompts and clamp size when dialog opens
   useEffect(() => {
     if (open) {
       setPrompts(initialPrompts);
-      // Clamp size to prevent off-screen overflow
-      setSize(prev => ({
-        width: Math.min(prev.width, window.innerWidth - 48),
-        height: Math.min(prev.height, window.innerHeight - 48),
-      }));
     }
   }, [open, initialPrompts]);
 
@@ -138,10 +132,10 @@ export function DocumentPlanDialog({
           maxWidth: 'calc(100vw - 32px)',
           maxHeight: 'calc(100vh - 32px)',
         } : { 
-          width: Math.min(size.width, window.innerWidth - 48), 
-          height: Math.min(size.height, window.innerHeight - 48), 
-          maxWidth: 'calc(100vw - 48px)', 
-          maxHeight: 'calc(100vh - 48px)' 
+          width: size.width, 
+          height: size.height, 
+          maxWidth: '95vw', 
+          maxHeight: '95vh' 
         }}
       >
         {/* Fullscreen toggle (positioned to align with the dialog close button) */}
@@ -149,13 +143,13 @@ export function DocumentPlanDialog({
           <TooltipTrigger asChild>
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none text-muted-foreground"
+              className="absolute right-12 top-4 p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
               aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
               {isFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
+                <Minimize2 className="w-4 h-4" />
               ) : (
-                <Maximize2 className="h-4 w-4" />
+                <Maximize2 className="w-4 h-4" />
               )}
             </button>
           </TooltipTrigger>
