@@ -132,6 +132,7 @@ export function DocumentPlanDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContentTop 
         className="relative flex flex-col overflow-hidden min-h-0"
+        data-allow-pointer
         style={isFullscreen ? {
           width: 'calc(100vw - 48px)',
           height: 'calc(100vh - 80px)',
