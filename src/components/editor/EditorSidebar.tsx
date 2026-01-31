@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Wrench,
+  Pen,
   BookOpen,
   Sparkles,
   Network,
@@ -216,7 +216,7 @@ export function EditorSidebar({
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
-                <Wrench className="h-4 w-4" />
+                <Pen className="h-4 w-4" />
               </button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>Tools</TooltipContent>
