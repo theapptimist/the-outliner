@@ -1,91 +1,95 @@
 
-## What I found (why “nothing comes up” is still happening)
 
-Your editor sidebar has global “focus protection” that runs on *capture*:
+# Fix: Review Document Plan Dialog Not Rendering
 
-- `EditorSidebar.tsx` uses `onMouseDownCapture` and will `preventDefault()` when clicking buttons/links **unless** the clicked element (or an ancestor) has `data-allow-pointer`.
-- This pattern is used throughout the app (lots of buttons explicitly include `data-allow-pointer`), but the **“Plan Doc” button in `SectionAIChat.tsx` does not**.
+## Problem Summary
+When clicking "Plan Doc", the screen darkens (overlay renders) but the modal content never appears. Console shows:
+```
+Warning: Function components cannot be given refs... Check the render method of `DocumentPlanDialog`.
+```
 
-Even if the click handler fires and the backend request succeeds, this focus-protection can interfere with Radix dialog focus/interaction timing and can lead to a dialog that either:
-- immediately dismisses, or
-- never visually mounts as expected (especially with portals + focus-trap behaviors).
+## Root Cause Analysis
+After investigation, the issue has **two layers**:
 
-Also, your console shows:
-- `Warning: Function components cannot be given refs... Check the render method of DialogContentTop.`
-This is a separate problem worth fixing, but the immediate “nothing appears” symptom is most consistent with the sidebar’s capture handlers blocking dialog interactions.
+### Layer 1: Tooltip Ref Warning
+The `Tooltip` component inside `DocumentPlanDialog` is triggering a ref warning. While this warning alone shouldn't break rendering, it indicates instability in the component tree that could affect Radix's focus management.
 
-## Goal
-Make the “Review Document Plan” dialog:
-1) open reliably every time, and  
-2) remain top-aligned with internal scrolling (your current layout work).
+### Layer 2: Missing TooltipProvider
+Looking at the component structure, `DocumentPlanDialog` uses `Tooltip` directly without being wrapped in a `TooltipProvider`. While this often works, when combined with Radix Dialog's portal behavior and focus management, it can cause the Tooltip to fail to initialize properly, which in turn can break the entire content subtree.
 
----
+The dialog content IS mounting (React renders it), but the animation/visibility system isn't completing properly, leaving the content in an invisible state.
 
-## Changes to implement
+## Solution
 
-### 1) Allow the “Plan Doc” button to bypass sidebar focus protection
-**File:** `src/components/editor/SectionAIChat.tsx`
-
-- Add `data-allow-pointer` to the “Plan Doc” `<Button ...>`.
-
-Why:
-- Ensures the sidebar’s `onMouseDownCapture` doesn’t interfere with the click/focus lifecycle that Radix dialogs depend on.
-
----
-
-### 2) Mark the dialog content as pointer-allowed (so interacting inside it doesn’t get blocked)
+### 1. Wrap the dialog content internals in a TooltipProvider
 **File:** `src/components/editor/DocumentPlanDialog.tsx`
 
-- Add `data-allow-pointer` to the `DialogContentTop` element.
+Add `TooltipProvider` import and wrap the content that contains Tooltips:
 
-Why:
-- Even though the dialog portal renders outside the sidebar DOM, this app uses several “stop propagation / allow pointer” patterns. Explicitly marking the dialog content reduces the chance of any global capture logic interfering with dialog clicks (checkboxes, textareas, close button, etc.).
+```tsx
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
----
+// Inside the return:
+<DialogContentTop ...>
+  <TooltipProvider>
+    {/* All content that uses Tooltip */}
+  </TooltipProvider>
+</DialogContentTop>
+```
 
-### 3) Mark the overlay as pointer-allowed (optional but recommended)
+### 2. Use Button component instead of raw button for the fullscreen toggle
+The `TooltipTrigger asChild` pattern works more reliably with `forwardRef`-capable components. Replace the raw `<button>` with the project's `Button` component:
+
+```tsx
+<TooltipTrigger asChild>
+  <Button
+    variant="ghost"
+    size="icon"
+    onClick={() => setIsFullscreen(!isFullscreen)}
+    className="absolute right-12 top-4 h-6 w-6 opacity-70 hover:opacity-100"
+    aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+  >
+    {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+  </Button>
+</TooltipTrigger>
+```
+
+### 3. Add explicit visibility styles to DialogContentTop
+As a defensive measure, ensure the dialog content can't get stuck in an invisible state:
+
 **File:** `src/components/ui/dialog.tsx`
 
-- Update `DialogOverlay` so the overlay element includes `data-allow-pointer`.
+Add explicit opacity and visibility to the base styles to prevent animation state issues:
 
-Why:
-- Clicking the overlay to dismiss (or just interacting around the dialog) should not be disrupted by any capture handlers elsewhere.
+```tsx
+className={cn(
+  "fixed left-[50%] top-6 z-50 flex flex-col w-full max-w-lg -translate-x-1/2 gap-4 border bg-background p-6 shadow-lg duration-200",
+  // Animation classes
+  "data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
+  "data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
+  "sm:rounded-lg",
+  className,
+)}
+```
 
----
-
-### 4) Fix the “function component cannot be given refs” warning (stability cleanup)
-**File:** `src/components/ui/dialog.tsx`
-
-Even though `DialogContentTop` is already `forwardRef`, the warning indicates something in the render chain is receiving a `ref` but isn’t `forwardRef`-capable.
-
-We’ll verify:
-- `DialogPortal` usage: currently `const DialogPortal = DialogPrimitive.Portal;` and used as `<DialogPortal>...`.
-- If Radix’s `Portal` expects `asChild` patterns or ref behavior that triggers this warning in our wrapper, we’ll switch to using `DialogPrimitive.Portal` directly (or wrap it) in a way that avoids passing refs into non-forwardRef components.
-
-Outcome:
-- No ref warnings in console when opening the dialog.
+Note: Changed `grid` to `flex flex-col` to match the consumer's flex layout needs.
 
 ---
 
-## Validation / test checklist (what I’ll test after implementing)
-1. In `/editor`, click “Plan Doc” and confirm the modal appears every time.
-2. Confirm it’s top-aligned and doesn’t overflow the viewport; internal `ScrollArea` scrolls.
-3. Confirm you can:
-   - toggle fullscreen,
-   - resize (non-fullscreen),
-   - click outside to close,
-   - click Cancel/Queue/Auto-Write reliably.
-4. Confirm the console warning about refs is gone (or at minimum doesn’t reappear during dialog open).
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/components/editor/DocumentPlanDialog.tsx` | Add `TooltipProvider` wrapper; replace raw `<button>` with `Button` component |
+| `src/components/ui/dialog.tsx` | Update `DialogContentTop` to use `flex flex-col` instead of `grid` |
 
 ---
 
-## Files involved
-- `src/components/editor/SectionAIChat.tsx` (add `data-allow-pointer` to Plan Doc button)
-- `src/components/editor/DocumentPlanDialog.tsx` (add `data-allow-pointer` to dialog content)
-- `src/components/ui/dialog.tsx` (add `data-allow-pointer` to overlay; address ref warning root cause)
+## Expected Outcome
+1. Dialog appears reliably when clicking "Plan Doc"
+2. Modal is anchored 24px from top of viewport
+3. Content scrolls internally
+4. No ref warnings in console
+5. Fullscreen toggle and all buttons work correctly
 
----
-
-## Notes / risk
-- This approach follows the project’s established “focus-protection bypass” convention (already used widely).
-- It’s low risk: adding `data-allow-pointer` is localized and won’t change business logic; it only prevents the sidebar from blocking interaction lifecycles.
