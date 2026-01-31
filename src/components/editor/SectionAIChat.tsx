@@ -422,6 +422,12 @@ export function SectionAIChat({
       // Queue-only mode: queue prompts for manual execution
       if (allPromptsToQueue.length > 0) {
         promptQueue.queueMultiplePrompts(allPromptsToQueue.map(p => ({ sectionId: p.sectionId, prompt: p.prompt })));
+        
+        // Open all section panels that have queued prompts
+        const sectionIdsToOpen = allPromptsToQueue.map(p => p.sectionId);
+        if (onOpenSectionPanels && sectionIdsToOpen.length > 0) {
+          onOpenSectionPanels(sectionIdsToOpen);
+        }
       }
       
       const newCount = createdSectionPrompts.length;
@@ -558,20 +564,6 @@ export function SectionAIChat({
               </Button>
             ))}
             
-            {/* Plan Doc button - only for first section */}
-            {isFirstSection && allSections.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePlanDocument}
-                disabled={isLoading}
-                className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
-              >
-                <ClipboardList className="w-3 h-3" />
-                Plan Doc
-              </Button>
-            )}
-            
             {/* Plan Section button - for non-first sections */}
             {!isFirstSection && (
               <Button
@@ -681,6 +673,20 @@ export function SectionAIChat({
                 {action.label}
               </Button>
             ))}
+            
+            {/* Plan Doc button - only for first section */}
+            {isFirstSection && allSections.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePlanDocument}
+                disabled={isLoading}
+                className="h-6 px-2 text-xs gap-1 bg-primary/10 hover:bg-primary/20 text-primary"
+              >
+                <ClipboardList className="w-3 h-3" />
+                Plan Doc
+              </Button>
+            )}
           </div>
 
           {/* Messages */}
