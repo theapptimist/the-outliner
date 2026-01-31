@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
-  DialogContent,
+  DialogContentTop,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -130,18 +130,14 @@ export function DocumentPlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="relative flex flex-col overflow-hidden transition-all duration-200"
+      <DialogContentTop 
+        className="relative flex flex-col overflow-hidden min-h-0"
         style={isFullscreen ? {
-          top: '24px',
-          transform: 'translateX(-50%)',
           width: 'calc(100vw - 48px)',
           height: 'calc(100vh - 80px)',
           maxWidth: 'calc(100vw - 48px)',
           maxHeight: 'calc(100vh - 80px)',
         } : { 
-          top: '24px',
-          transform: 'translateX(-50%)',
           width: Math.min(size.width, window.innerWidth - 48), 
           height: Math.min(size.height, window.innerHeight - 80), 
           maxWidth: 'calc(100vw - 48px)', 
@@ -291,7 +287,7 @@ export function DocumentPlanDialog({
             <GripVertical className="h-3 w-3 rotate-[-45deg]" />
           </div>
         )}
-      </DialogContent>
+      </DialogContentTop>
     </Dialog>
   );
 }
