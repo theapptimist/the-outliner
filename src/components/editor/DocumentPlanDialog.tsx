@@ -125,7 +125,7 @@ export function DocumentPlanDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="flex flex-col overflow-hidden transition-all duration-200"
+        className="relative flex flex-col overflow-hidden transition-all duration-200"
         style={isFullscreen ? {
           width: 'calc(100vw - 32px)',
           height: 'calc(100vh - 32px)',
@@ -138,29 +138,32 @@ export function DocumentPlanDialog({
           maxHeight: '95vh' 
         }}
       >
+        {/* Fullscreen toggle (positioned to align with the dialog close button) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="absolute right-12 top-4 p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4" />
+              ) : (
+                <Maximize2 className="w-4 h-4" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</p>
+          </TooltipContent>
+        </Tooltip>
+
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between pr-8">
+          <DialogTitle className="flex items-center pr-16">
             <span className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Review Document Plan
             </span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors -mt-0.5"
-                >
-                  {isFullscreen ? (
-                    <Minimize2 className="w-4 h-4" />
-                  ) : (
-                    <Maximize2 className="w-4 h-4" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</p>
-              </TooltipContent>
-            </Tooltip>
           </DialogTitle>
           <DialogDescription>
             {newSectionsCount > 0 
