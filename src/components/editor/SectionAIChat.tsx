@@ -796,22 +796,20 @@ export function SectionAIChat({
         {isLoading ? (
           <Button
             type="button"
-            size="icon"
             variant="destructive"
             onClick={handleStop}
-            className="h-6 w-6 p-0 shrink-0"
+            className="!h-6 !w-6 p-0 shrink-0 [&_svg]:!size-3"
             title="Stop generation"
           >
-            <Square className="w-2.5 h-2.5 fill-current" />
+            <Square className="fill-current" />
           </Button>
         ) : (
           <Button
             type="submit"
-            size="icon"
             disabled={!input.trim()}
-            className="h-6 w-6 p-0 shrink-0"
+            className="!h-6 !w-6 p-0 shrink-0 [&_svg]:!size-3"
           >
-            <Send className="w-3 h-3" />
+            <Send />
           </Button>
         )}
       </form>
