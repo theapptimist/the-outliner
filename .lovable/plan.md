@@ -1,79 +1,89 @@
 
 
-# Fix: Review Document Plan Dialog Not Rendering
+# Fix: Stop Button Size and Fullscreen Icon Alignment
 
 ## Problem Summary
-When clicking "Plan Doc", the screen darkens (overlay renders) but the modal content never appears. Console shows:
-```
-Warning: Function components cannot be given refs... Check the render method of `DocumentPlanDialog`.
-```
+The user reports no visible change after the last implementation. The issues to fix are:
+1. **Fullscreen icon** in "Review Document Plan" dialog is ~3px too low
+2. **Stop button** in Section AI Chat is too large
 
 ## Root Cause Analysis
-After investigation, the issue has **two layers**:
 
-### Layer 1: Tooltip Ref Warning
-The `Tooltip` component inside `DocumentPlanDialog` is triggering a ref warning. While this warning alone shouldn't break rendering, it indicates instability in the component tree that could affect Radix's focus management.
-
-### Layer 2: Missing TooltipProvider
-Looking at the component structure, `DocumentPlanDialog` uses `Tooltip` directly without being wrapped in a `TooltipProvider`. While this often works, when combined with Radix Dialog's portal behavior and focus management, it can cause the Tooltip to fail to initialize properly, which in turn can break the entire content subtree.
-
-The dialog content IS mounting (React renders it), but the animation/visibility system isn't completing properly, leaving the content in an invisible state.
-
-## Solution
-
-### 1. Wrap the dialog content internals in a TooltipProvider
-**File:** `src/components/editor/DocumentPlanDialog.tsx`
-
-Add `TooltipProvider` import and wrap the content that contains Tooltips:
-
+### Issue 1: Fullscreen Icon Positioning
+Looking at the dialog component (`src/components/ui/dialog.tsx`), the built-in close button uses:
 ```tsx
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+className="absolute right-4 top-4 rounded-sm opacity-70..."
+```
+- `top-4` = 16px from top
+- The close button has **no explicit height/width** - it's just a small 16x16 icon
 
-// Inside the return:
-<DialogContentTop ...>
-  <TooltipProvider>
-    {/* All content that uses Tooltip */}
-  </TooltipProvider>
-</DialogContentTop>
+Our fullscreen button currently has:
+```tsx
+className="absolute right-12 top-[13px] h-8 w-8 flex items-center justify-center..."
+```
+- `h-8 w-8` = 32px box, which means the **icon is centered inside a larger container**
+- Even if `top-[13px]` aligns the container, the icon inside is pushed down by the flex centering
+
+**Solution**: Match the close button's approach - remove the large container sizing and let the icon size naturally determine the clickable area with padding.
+
+### Issue 2: Stop Button Size
+The `size="icon"` variant on Button uses `h-10 w-10` (40px) by default. Even with `!h-6 !w-6` overrides, the variant's other styles may still apply. The `!important` utilities should work, but we need to verify they're being applied correctly.
+
+**Solution**: Verify the button is properly constrained and also add explicit `p-0` to remove any variant padding.
+
+---
+
+## Implementation Plan
+
+### A. Fix Fullscreen Icon Alignment (DocumentPlanDialog.tsx)
+
+Change the fullscreen toggle button from a large clickable box to a compact icon-sized button:
+
+**Current** (line 150-160):
+```tsx
+<button
+  onClick={() => setIsFullscreen(!isFullscreen)}
+  className="absolute right-12 top-[13px] h-8 w-8 flex items-center justify-center rounded hover:bg-foreground/10..."
+>
 ```
 
-### 2. Use Button component instead of raw button for the fullscreen toggle
-The `TooltipTrigger asChild` pattern works more reliably with `forwardRef`-capable components. Replace the raw `<button>` with the project's `Button` component:
-
+**New**:
 ```tsx
-<TooltipTrigger asChild>
-  <Button
-    variant="ghost"
-    size="icon"
-    onClick={() => setIsFullscreen(!isFullscreen)}
-    className="absolute right-12 top-4 h-6 w-6 opacity-70 hover:opacity-100"
-    aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-  >
-    {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-  </Button>
-</TooltipTrigger>
+<button
+  onClick={() => setIsFullscreen(!isFullscreen)}
+  className="absolute right-12 top-4 rounded-sm opacity-70 hover:opacity-100 text-muted-foreground transition-opacity"
+>
+```
+- Use `top-4` to match the close button exactly
+- Remove `h-8 w-8` sizing - let the icon (16x16) determine the size
+- Match the close button's opacity styling for visual consistency
+
+### B. Verify Stop/Send Button Sizing (SectionAIChat.tsx)
+
+Add explicit `p-0` to ensure no padding is applied:
+
+**Current** (lines 797-815):
+```tsx
+<Button
+  type="button"
+  variant="destructive"
+  size="icon"
+  onClick={handleStop}
+  className="!h-6 !w-6 shrink-0 [&_svg]:!size-3"
+>
 ```
 
-### 3. Add explicit visibility styles to DialogContentTop
-As a defensive measure, ensure the dialog content can't get stuck in an invisible state:
-
-**File:** `src/components/ui/dialog.tsx`
-
-Add explicit opacity and visibility to the base styles to prevent animation state issues:
-
+**New**:
 ```tsx
-className={cn(
-  "fixed left-[50%] top-6 z-50 flex flex-col w-full max-w-lg -translate-x-1/2 gap-4 border bg-background p-6 shadow-lg duration-200",
-  // Animation classes
-  "data-[state=open]:animate-in data-[state=closed]:animate-out",
-  "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
-  "data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
-  "sm:rounded-lg",
-  className,
-)}
+<Button
+  type="button"
+  variant="destructive"
+  size="icon"
+  onClick={handleStop}
+  className="!h-6 !w-6 !p-0 shrink-0 [&_svg]:!size-3"
+>
 ```
-
-Note: Changed `grid` to `flex flex-col` to match the consumer's flex layout needs.
+Same change for the Send button.
 
 ---
 
@@ -81,15 +91,13 @@ Note: Changed `grid` to `flex flex-col` to match the consumer's flex layout need
 
 | File | Change |
 |------|--------|
-| `src/components/editor/DocumentPlanDialog.tsx` | Add `TooltipProvider` wrapper; replace raw `<button>` with `Button` component |
-| `src/components/ui/dialog.tsx` | Update `DialogContentTop` to use `flex flex-col` instead of `grid` |
+| `src/components/editor/DocumentPlanDialog.tsx` | Fix fullscreen button positioning to match close button style |
+| `src/components/editor/SectionAIChat.tsx` | Add `!p-0` to Stop and Send buttons |
 
 ---
 
-## Expected Outcome
-1. Dialog appears reliably when clicking "Plan Doc"
-2. Modal is anchored 24px from top of viewport
-3. Content scrolls internally
-4. No ref warnings in console
-5. Fullscreen toggle and all buttons work correctly
+## Expected Results
+
+1. **Fullscreen icon**: Will align perfectly with the close button (both at `top-4`)
+2. **Stop button**: Will be a compact 24x24px square with a 12px icon inside
 
