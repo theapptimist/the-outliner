@@ -44,9 +44,15 @@ export function DocumentPlanDialog({
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   // Reset when dialog opens with new prompts
+  // Reset prompts and clamp size when dialog opens
   useEffect(() => {
     if (open) {
       setPrompts(initialPrompts);
+      // Clamp size to prevent off-screen overflow
+      setSize(prev => ({
+        width: Math.min(prev.width, window.innerWidth - 48),
+        height: Math.min(prev.height, window.innerHeight - 48),
+      }));
     }
   }, [open, initialPrompts]);
 
@@ -125,7 +131,7 @@ export function DocumentPlanDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="relative flex flex-col overflow-hidden transition-all duration-200"
+        className="relative flex flex-col overflow-hidden transition-all duration-200 !top-1/2 !-translate-y-1/2"
         style={isFullscreen ? {
           width: 'calc(100vw - 32px)',
           height: 'calc(100vh - 32px)',
@@ -143,7 +149,7 @@ export function DocumentPlanDialog({
           <TooltipTrigger asChild>
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="absolute right-12 top-4 p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-12 top-[13px] h-8 w-8 flex items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
               aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
               {isFullscreen ? (
