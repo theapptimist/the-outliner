@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles, History, MessageSquare, Square, Trash2 } from 'lucide-react';
+import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles, History, MessageSquare, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useDocumentContext } from './context/DocumentContext';
@@ -81,7 +81,6 @@ export function SectionAIChat({
   );
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingMode, setLoadingMode] = useState<'thinking' | 'planning'>('thinking');
   const abortControllerRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -145,7 +144,6 @@ export function SectionAIChat({
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
-    setLoadingMode('thinking');
 
     // Create abort controller for this request
     abortControllerRef.current = new AbortController();
@@ -250,7 +248,6 @@ export function SectionAIChat({
     }
 
     setIsLoading(true);
-    setLoadingMode('planning');
     
     try {
       const response = await supabase.functions.invoke('section-ai-chat', {
@@ -747,30 +744,15 @@ export function SectionAIChat({
                         <span className="text-[10px] text-muted-foreground">
                           {msg.generatedItems.length} items generated
                         </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setMessages(prev => prev.map(m => 
-                                m.id === msg.id ? { ...m, generatedItems: undefined } : m
-                              ));
-                            }}
-                            className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            title="Discard generated items"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleInsertItems(msg.generatedItems!)}
-                            className="h-5 px-2 text-[10px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Insert
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleInsertItems(msg.generatedItems!)}
+                          className="h-5 px-2 text-[10px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Insert
+                        </Button>
                       </div>
                       <div className="bg-background/50 rounded p-1.5 max-h-24 overflow-y-auto">
                         {msg.generatedItems.map((item, idx) => (
@@ -792,7 +774,7 @@ export function SectionAIChat({
             {isLoading && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                {loadingMode === 'planning' ? 'Planning Doc...' : 'Thinking...'}
+                Thinking...
               </div>
             )}
           </div>
@@ -814,20 +796,22 @@ export function SectionAIChat({
         {isLoading ? (
           <Button
             type="button"
+            size="sm"
             variant="destructive"
             onClick={handleStop}
-            className="!h-6 !w-6 p-0 shrink-0 [&_svg]:!size-3"
+            className="h-8 w-8 p-0"
             title="Stop generation"
           >
-            <Square className="fill-current" />
+            <Square className="w-3 h-3 fill-current" />
           </Button>
         ) : (
           <Button
             type="submit"
+            size="sm"
             disabled={!input.trim()}
-            className="!h-6 !w-6 p-0 shrink-0 [&_svg]:!size-3"
+            className="h-8 w-8 p-0"
           >
-            <Send />
+            <Send className="w-3.5 h-3.5" />
           </Button>
         )}
       </form>
