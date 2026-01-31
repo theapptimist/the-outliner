@@ -139,16 +139,16 @@ export function DocumentPlanDialog({
         }}
       >
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center justify-between pr-6">
+            <span className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Review Document Plan
-            </DialogTitle>
+            </span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="p-1.5 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+                  className="p-1 rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {isFullscreen ? (
                     <Minimize2 className="w-4 h-4" />
@@ -161,7 +161,7 @@ export function DocumentPlanDialog({
                 <p>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</p>
               </TooltipContent>
             </Tooltip>
-          </div>
+          </DialogTitle>
           <DialogDescription>
             {newSectionsCount > 0 
               ? `${newSectionsCount} new sections will be created. Review and edit the titles and prompts below.`
