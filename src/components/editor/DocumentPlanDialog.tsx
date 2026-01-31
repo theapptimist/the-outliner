@@ -149,13 +149,13 @@ export function DocumentPlanDialog({
           <TooltipTrigger asChild>
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="absolute right-12 top-[13px] h-8 w-8 flex items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none text-muted-foreground"
               aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
               {isFullscreen ? (
-                <Minimize2 className="w-4 h-4" />
+                <Minimize2 className="h-4 w-4" />
               ) : (
-                <Maximize2 className="w-4 h-4" />
+                <Maximize2 className="h-4 w-4" />
               )}
             </button>
           </TooltipTrigger>
