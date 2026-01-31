@@ -81,6 +81,7 @@ export function SectionAIChat({
   );
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMode, setLoadingMode] = useState<'thinking' | 'planning'>('thinking');
   const abortControllerRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -144,6 +145,7 @@ export function SectionAIChat({
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
+    setLoadingMode('thinking');
 
     // Create abort controller for this request
     abortControllerRef.current = new AbortController();
@@ -248,6 +250,7 @@ export function SectionAIChat({
     }
 
     setIsLoading(true);
+    setLoadingMode('planning');
     
     try {
       const response = await supabase.functions.invoke('section-ai-chat', {
@@ -789,7 +792,7 @@ export function SectionAIChat({
             {isLoading && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                Thinking...
+                {loadingMode === 'planning' ? 'Planning Doc...' : 'Thinking...'}
               </div>
             )}
           </div>
