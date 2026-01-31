@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Sparkles, Check, X, GripVertical, Plus, Zap, ListPlus, Maximize2, Minimize2 } from 'lucide-react';
 
 export interface SectionPrompt {
@@ -145,27 +145,26 @@ export function DocumentPlanDialog({
           maxHeight: 'calc(100vh - 80px)' 
         }}
       >
-        {/* Fullscreen toggle (positioned to align with the dialog close button) */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="absolute right-12 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none text-muted-foreground"
-              aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</p>
-          </TooltipContent>
-        </Tooltip>
+        <TooltipProvider>
+          {/* Fullscreen toggle (positioned to align with the dialog close button) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="absolute right-12 top-4 h-6 w-6 opacity-70 hover:opacity-100"
+                aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</p>
+            </TooltipContent>
+          </Tooltip>
 
-        <DialogHeader>
+          <DialogHeader>
           <DialogTitle className="flex items-center pr-16">
             <span className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -249,34 +248,35 @@ export function DocumentPlanDialog({
           </div>
         </ScrollArea>
 
-        <div className="flex items-center justify-end gap-2 pt-4 border-t">
-          <Button variant="ghost" onClick={handleCancel}>
-            <X className="h-4 w-4 mr-1" />
-            Cancel
-          </Button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" onClick={() => handleApprove(false)} disabled={enabledCount === 0}>
-                <ListPlus className="h-4 w-4 mr-1" />
-                Queue {enabledCount} Prompt{enabledCount !== 1 ? 's' : ''}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p>Queue prompts for manual execution later</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button onClick={() => handleApprove(true)} disabled={enabledCount === 0}>
-                <Zap className="h-4 w-4 mr-1" />
-                Auto-Write Document
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p>Automatically generate content for all sections</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+          <div className="flex items-center justify-end gap-2 pt-4 border-t">
+            <Button variant="ghost" onClick={handleCancel}>
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" onClick={() => handleApprove(false)} disabled={enabledCount === 0}>
+                  <ListPlus className="h-4 w-4 mr-1" />
+                  Queue {enabledCount} Prompt{enabledCount !== 1 ? 's' : ''}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Queue prompts for manual execution later</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={() => handleApprove(true)} disabled={enabledCount === 0}>
+                  <Zap className="h-4 w-4 mr-1" />
+                  Auto-Write Document
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Automatically generate content for all sections</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
 
         {/* Resize handle - hidden in fullscreen */}
         {!isFullscreen && (
