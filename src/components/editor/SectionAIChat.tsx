@@ -81,6 +81,7 @@ export function SectionAIChat({
   );
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentOperation, setCurrentOperation] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -248,6 +249,7 @@ export function SectionAIChat({
     }
 
     setIsLoading(true);
+    setCurrentOperation('plan-document');
     
     try {
       const response = await supabase.functions.invoke('section-ai-chat', {
@@ -324,6 +326,7 @@ export function SectionAIChat({
       toast.error('Failed to generate document plan. Please try again.');
     } finally {
       setIsLoading(false);
+      setCurrentOperation(null);
     }
   }, [allSections, sectionLabel, sectionContent, documentContext, input, setMessages]);
 
@@ -774,7 +777,7 @@ export function SectionAIChat({
             {isLoading && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                Thinking...
+                {currentOperation === 'plan-document' ? 'Planning Doc...' : 'Thinking...'}
               </div>
             )}
           </div>
