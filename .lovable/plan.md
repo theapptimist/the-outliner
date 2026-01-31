@@ -1,103 +1,70 @@
 
-
-# Fix: Stop Button Size and Fullscreen Icon Alignment
+# Fix: Review Document Plan Dialog Positioned Too Low
 
 ## Problem Summary
-The user reports no visible change after the last implementation. The issues to fix are:
-1. **Fullscreen icon** in "Review Document Plan" dialog is ~3px too low
-2. **Stop button** in Section AI Chat is too large
+The "Review Document Plan" modal appears **positioned too low** on the screen (not just too tall), causing it to run off the bottom of the viewport even on desktop.
 
-## Root Cause Analysis
+## Root Cause
+The dialog uses Radix UI's default vertical centering (`top-[50%] translate-y-[-50%]`), but when combined with a **stored or large explicit height** in the inline `style` attribute, the dialog can extend past the viewport bottom. The centering doesn't prevent overflow—it just centers the bounding box.
 
-### Issue 1: Fullscreen Icon Positioning
-Looking at the dialog component (`src/components/ui/dialog.tsx`), the built-in close button uses:
-```tsx
-className="absolute right-4 top-4 rounded-sm opacity-70..."
-```
-- `top-4` = 16px from top
-- The close button has **no explicit height/width** - it's just a small 16x16 icon
-
-Our fullscreen button currently has:
-```tsx
-className="absolute right-12 top-[13px] h-8 w-8 flex items-center justify-center..."
-```
-- `h-8 w-8` = 32px box, which means the **icon is centered inside a larger container**
-- Even if `top-[13px]` aligns the container, the icon inside is pushed down by the flex centering
-
-**Solution**: Match the close button's approach - remove the large container sizing and let the icon size naturally determine the clickable area with padding.
-
-### Issue 2: Stop Button Size
-The `size="icon"` variant on Button uses `h-10 w-10` (40px) by default. Even with `!h-6 !w-6` overrides, the variant's other styles may still apply. The `!important` utilities should work, but we need to verify they're being applied correctly.
-
-**Solution**: Verify the button is properly constrained and also add explicit `p-0` to remove any variant padding.
+## User's Preferred Behavior
+**Top-aligned + internal scroll** — anchor the dialog near the top of the screen with a margin, rather than centering it vertically.
 
 ---
 
 ## Implementation Plan
 
-### A. Fix Fullscreen Icon Alignment (DocumentPlanDialog.tsx)
+### File: `src/components/editor/DocumentPlanDialog.tsx`
 
-Change the fullscreen toggle button from a large clickable box to a compact icon-sized button:
+### A. Switch to top-aligned positioning
+Override the default vertical centering with top-aligned positioning:
 
-**Current** (line 150-160):
+**Add to `DialogContent` className:**
 ```tsx
-<button
-  onClick={() => setIsFullscreen(!isFullscreen)}
-  className="absolute right-12 top-[13px] h-8 w-8 flex items-center justify-center rounded hover:bg-foreground/10..."
->
+className="relative flex flex-col overflow-hidden transition-all duration-200 !top-6 !translate-y-0"
+```
+- `!top-6` = 24px from the top of the viewport
+- `!translate-y-0` = override the default `-translate-y-1/2` centering
+
+### B. Ensure height never exceeds viewport
+Update the inline `style` to cap height more strictly:
+
+**For non-fullscreen mode:**
+```tsx
+style={{
+  width: Math.min(size.width, window.innerWidth - 48),
+  height: Math.min(size.height, window.innerHeight - 80), // Leave 24px top margin + 56px bottom margin
+  maxWidth: 'calc(100vw - 48px)',
+  maxHeight: 'calc(100vh - 80px)',
+}}
 ```
 
-**New**:
+### C. Simplify fullscreen mode
+Keep fullscreen using `inset-4` equivalent but with consistent margins:
 ```tsx
-<button
-  onClick={() => setIsFullscreen(!isFullscreen)}
-  className="absolute right-12 top-4 rounded-sm opacity-70 hover:opacity-100 text-muted-foreground transition-opacity"
->
+style={isFullscreen ? {
+  width: 'calc(100vw - 48px)',
+  height: 'calc(100vh - 80px)',
+  maxWidth: 'calc(100vw - 48px)',
+  maxHeight: 'calc(100vh - 80px)',
+} : { ... }}
 ```
-- Use `top-4` to match the close button exactly
-- Remove `h-8 w-8` sizing - let the icon (16x16) determine the size
-- Match the close button's opacity styling for visual consistency
-
-### B. Verify Stop/Send Button Sizing (SectionAIChat.tsx)
-
-Add explicit `p-0` to ensure no padding is applied:
-
-**Current** (lines 797-815):
-```tsx
-<Button
-  type="button"
-  variant="destructive"
-  size="icon"
-  onClick={handleStop}
-  className="!h-6 !w-6 shrink-0 [&_svg]:!size-3"
->
-```
-
-**New**:
-```tsx
-<Button
-  type="button"
-  variant="destructive"
-  size="icon"
-  onClick={handleStop}
-  className="!h-6 !w-6 !p-0 shrink-0 [&_svg]:!size-3"
->
-```
-Same change for the Send button.
 
 ---
 
-## Files to Modify
+## Technical Summary
 
-| File | Change |
-|------|--------|
-| `src/components/editor/DocumentPlanDialog.tsx` | Fix fullscreen button positioning to match close button style |
-| `src/components/editor/SectionAIChat.tsx` | Add `!p-0` to Stop and Send buttons |
+| Change | Purpose |
+|--------|---------|
+| `!top-6 !translate-y-0` | Anchor dialog 24px from top instead of centering |
+| `height: Math.min(size.height, window.innerHeight - 80)` | Prevent overflow past viewport bottom |
+| `maxHeight: calc(100vh - 80px)` | Enforce CSS-level height cap |
 
 ---
 
 ## Expected Results
-
-1. **Fullscreen icon**: Will align perfectly with the close button (both at `top-4`)
-2. **Stop button**: Will be a compact 24x24px square with a 12px icon inside
-
+1. The dialog always appears near the top of the screen (24px margin)
+2. It never runs off the bottom of the viewport
+3. Content scrolls internally via the existing `ScrollArea`
+4. Resize handle still works within viewport bounds
+5. Fullscreen mode still fills most of the screen with consistent margins
