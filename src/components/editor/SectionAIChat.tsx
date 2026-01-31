@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles, History, MessageSquare } from 'lucide-react';
+import { Loader2, Send, ListPlus, FileText, RefreshCw, Plus, ClipboardList, Sparkles, History, MessageSquare, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useDocumentContext } from './context/DocumentContext';
@@ -81,6 +81,7 @@ export function SectionAIChat({
   );
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -144,6 +145,9 @@ export function SectionAIChat({
     setInput('');
     setIsLoading(true);
 
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController();
+
     // Clear queued prompt if we're sending it
     if (queuedPrompt && userMessage === queuedPrompt) {
       promptQueue.clearQueuedPrompt(sectionId);
@@ -151,21 +155,30 @@ export function SectionAIChat({
     }
 
     try {
-      const response = await supabase.functions.invoke('section-ai-chat', {
-        body: {
-          operation,
-          sectionLabel,
-          sectionContent,
-          documentContext,
-          userMessage,
-        },
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/section-ai-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            operation,
+            sectionLabel,
+            sectionContent,
+            documentContext,
+            userMessage,
+          }),
+          signal: abortControllerRef.current.signal,
+        }
+      );
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to get AI response');
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
       }
 
-      const data = response.data;
+      const data = await response.json();
       
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -183,6 +196,12 @@ export function SectionAIChat({
         toast.success(`Inserted ${data.items.length} items into "${sectionLabel.slice(0, 20)}..."`);
       }
     } catch (error) {
+      // Don't show error toast if request was aborted
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.info('AI generation stopped');
+        return;
+      }
+      
       console.error('Section AI Chat error:', error);
       toast.error('Failed to get AI response. Please try again.');
       
@@ -190,8 +209,15 @@ export function SectionAIChat({
       setMessages(prev => prev.filter(m => m.id !== messageId));
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   }, [sectionLabel, sectionContent, documentContext, setMessages, queuedPrompt, promptQueue, sectionId, onInsertContent]);
+
+  const handleStop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
 
   // Auto-execute when panel opens with queued auto-execute prompt
   // This creates the "True Multi-Window" cascade effect
@@ -767,18 +793,27 @@ export function SectionAIChat({
           className="flex-1 min-h-[80px] max-h-[160px] py-2 px-3 text-sm resize-y bg-foreground/5 border-foreground/10 focus:border-primary/30"
           rows={4}
         />
-        <Button
-          type="submit"
-          size="sm"
-          disabled={isLoading || !input.trim()}
-          className="h-8 w-8 p-0"
-        >
-          {isLoading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
+        {isLoading ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            onClick={handleStop}
+            className="h-8 w-8 p-0"
+            title="Stop generation"
+          >
+            <Square className="w-3 h-3 fill-current" />
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!input.trim()}
+            className="h-8 w-8 p-0"
+          >
             <Send className="w-3.5 h-3.5" />
-          )}
-        </Button>
+          </Button>
+        )}
       </form>
 
       {/* Document Plan Dialog */}
