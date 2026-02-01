@@ -1,84 +1,156 @@
 
-# Plan: Context-Aware Loading Message + Verify Queue Opens Panels
+# Document Plan Dialog Enhancement
 
 ## Overview
-Change the loading indicator to show "Planning Doc..." when the Plan Doc feature is active, and verify that clicking "Queue" properly opens all section AI panels.
 
-## Changes Required
+This plan enhances the Document Plan dialog with two improvements:
+1. **Taller default height** for better visibility without scrolling
+2. **AI Generation Options** - collapsible controls that let users configure how the AI generates content
 
-### 1. Track Current Operation in SectionAIChat.tsx
+---
 
-Add state to track which operation is currently running:
+## Current State Analysis
 
-```tsx
-const [currentOperation, setCurrentOperation] = useState<string | null>(null);
+The `DocumentPlanDialog.tsx` currently:
+- Uses a default height of 600px (line 42)
+- Has a resize handle but no quick way to maximize
+- Contains only section prompts with enable/disable checkboxes
+- No options to control AI behavior
+
+---
+
+## Proposed Changes
+
+### 1. Increase Default Height
+
+**Simple change**: Increase the default height from 600px to 720px (or 80vh, whichever is smaller) to show more sections without scrolling.
+
+**Location**: `DocumentPlanDialog.tsx`, line 42
+```typescript
+// Before
+const [size, setSize] = useState({ width: 672, height: 600 });
+
+// After  
+const [size, setSize] = useState({ 
+  width: 672, 
+  height: Math.min(720, window.innerHeight * 0.8) 
+});
 ```
 
-### 2. Update handlePlanDocument
+---
 
-Set the operation type before making the API call:
+### 2. Add AI Options Panel
 
-```tsx
-const handlePlanDocument = useCallback(async () => {
-  // ... validation ...
-  setIsLoading(true);
-  setCurrentOperation('plan-document');  // ADD THIS
-  
-  try {
-    // ... existing API call logic ...
-  } finally {
-    setIsLoading(false);
-    setCurrentOperation(null);  // ADD THIS
-  }
-}, [...]);
+Add a collapsible "Generation Options" section between the header and the section list. This keeps the dialog clean by default but allows power users to configure AI behavior.
+
+**New Options (with Switch toggles):**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| Include Citations | Off | AI will reference sources and suggest footnotes |
+| Historical Detail | Off | Name specific actors, dates, and primary sources |
+| Output Format | Outline (default) | Choose between "Outline" or "Prose" |
+
+**UI Design:**
+```text
+┌─────────────────────────────────────────────────────┐
+│ ✨ Review Document Plan                        [×]  │
+│ 3 new sections will be created...                   │
+├─────────────────────────────────────────────────────┤
+│ ▶ Generation Options                    [collapsed] │
+├─────────────────────────────────────────────────────┤
+│  When expanded:                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │ Include Citations         ○────────────       │  │
+│  │ Historical Detail         ───────────○       │  │
+│  │ Output: ○ Outline  ○ Prose                   │  │
+│  └───────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────┤
+│ [ScrollArea with section cards...]                  │
+└─────────────────────────────────────────────────────┘
 ```
 
-### 3. Update Loading Indicator (lines 774-779)
+---
 
-Change the loading message to be context-aware:
+### 3. Pass Options to AI
 
-**Current:**
-```tsx
-{isLoading && (
-  <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
-    <Loader2 className="w-3 h-3 animate-spin" />
-    Thinking...
-  </div>
-)}
-```
+When the user approves the plan, pass these options to the edge function, which will include them in the AI prompt.
 
-**New:**
-```tsx
-{isLoading && (
-  <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
-    <Loader2 className="w-3 h-3 animate-spin" />
-    {currentOperation === 'plan-document' ? 'Planning Doc...' : 'Thinking...'}
-  </div>
-)}
-```
+**Data Flow:**
+1. Dialog stores options in local state
+2. `onApprove` callback receives options alongside prompts
+3. Options are passed to `section-ai-chat` edge function
+4. Edge function modifies the system prompt based on options
 
-### 4. Verify Queue Flow Opens Panels
+---
 
-The current code at lines 453-456 already includes:
-```tsx
-const sectionIdsToOpen = allPromptsToQueue.map(p => p.sectionId);
-if (onOpenSectionPanels && sectionIdsToOpen.length > 0) {
-  onOpenSectionPanels(sectionIdsToOpen);
+## Implementation Details
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/editor/DocumentPlanDialog.tsx` | Add options state, collapsible UI, pass to onApprove |
+| `src/components/editor/SectionAIChat.tsx` | Update `handleApprovePlan` to include options |
+| `supabase/functions/section-ai-chat/index.ts` | Accept options, modify prompts accordingly |
+
+---
+
+### New Interface Definition
+
+```typescript
+export interface GenerationOptions {
+  includeCitations: boolean;
+  historicalDetail: boolean;
+  outputFormat: 'outline' | 'prose';
 }
 ```
 
-This should work, but we should verify the callback is properly wired up from the parent component.
+---
 
-## Implementation Summary
+### Edge Function Prompt Modifications
 
-| File | Change |
-|------|--------|
-| `SectionAIChat.tsx` | Add `currentOperation` state |
-| `SectionAIChat.tsx` | Set operation in `handlePlanDocument` |
-| `SectionAIChat.tsx` | Update loading indicator text |
+When options are enabled, the system prompt will include:
 
-## Technical Details
+**For `includeCitations: true`:**
+```text
+When writing content, include inline citations and suggest sources where appropriate. 
+Format citations as [Author, Year] or [Source Name].
+```
 
-- **New State**: `currentOperation: string | null` - tracks active operation type
-- **Loading Text Logic**: Ternary check for `'plan-document'` operation
-- **Queue Behavior**: Already implemented - verify parent provides `onOpenSectionPanels`
+**For `historicalDetail: true`:**
+```text
+Be specific about historical actors, dates, and primary sources. 
+Name specific people, institutions, and document references rather than speaking generally.
+```
+
+**For `outputFormat: 'prose'`:**
+```text
+Write in flowing prose paragraphs rather than bullet points or outline format.
+```
+
+---
+
+## Risk Assessment
+
+| Risk | Mitigation |
+|------|------------|
+| Dialog positioning issues (previous failure) | We are NOT changing positioning or fullscreen logic |
+| Resize logic conflicts | We are only changing the initial height value |
+| State complexity | Options are simple boolean/enum values with no side effects |
+
+**What we are NOT doing:**
+- No fullscreen toggle (that caused the previous rollback)
+- No changes to resize drag behavior
+- No changes to dialog positioning CSS
+
+---
+
+## Testing Checklist
+
+1. Open Document Plan dialog → verify taller height
+2. Click "Generation Options" → verify it expands/collapses
+3. Toggle options → verify visual feedback
+4. Approve plan with options enabled → verify AI prompts reflect options
+5. Verify resize handle still works correctly
+6. Test on different viewport heights
