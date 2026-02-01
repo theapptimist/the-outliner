@@ -190,7 +190,7 @@ export function DocumentPlanDialog({
                       {sectionPrompt.isNew && (
                         <Badge variant="secondary" className="bg-green-500/20 text-green-700 dark:text-green-300 gap-1 text-[10px] h-5">
                           <Plus className="h-3 w-3" />
-                          New
+                          To Be Inserted
                         </Badge>
                       )}
                     </div>
