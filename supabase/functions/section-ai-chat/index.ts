@@ -254,11 +254,11 @@ Guidelines for prompts:
       }
       if (generationOptions.includeEndNotes) {
         hasEndNotes = true;
-        optionsInstructions += `\n- END NOTES: Include numbered reference markers [1], [2], etc. in your content. You MUST include a final item with depth 0 labeled "References" or "End Notes" that lists the full citations.`;
+        optionsInstructions += `\n- END NOTES: Include numbered reference markers [1], [2], etc. in your content. At the VERY END of the items array (after all outline content), include a "References" header at depth 0 followed by the full citations at depth 1.`;
       }
       if (generationOptions.includeTableOfContents) {
         hasToc = true;
-        optionsInstructions += `\n- TABLE OF CONTENTS: Your FIRST item (depth 0) MUST be labeled "Table of Contents" followed by nested items (depth 1) listing each major sub-topic that will be covered in this section.`;
+        optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING of the items array (before any outline content), include a "Table of Contents" header at depth 0, followed by items at depth 1 that list each major topic that will appear in the outline below it.`;
       }
       if (generationOptions.outputFormat === 'prose') {
         optionsInstructions += `\n- OUTPUT FORMAT: Write in flowing prose paragraphs rather than bullet points or outline format. Each item's label should be a full paragraph of text.`;
@@ -278,9 +278,14 @@ Guidelines for prompts:
     { "label": "Table of Contents", "depth": 0 },
     { "label": "The Causes of the Event", "depth": 1 },
     { "label": "Key Figures Involved", "depth": 1 },
-    { "label": "The Causes of the Event: The conflict arose from several factors [1]...", "depth": 0 },
-    { "label": "Economic tensions between nations", "depth": 1 },
-    { "label": "Key Figures Involved: The main actors included...", "depth": 0 },
+    { "label": "The Aftermath", "depth": 1 },
+    { "label": "The Causes of the Event", "depth": 0 },
+    { "label": "Economic tensions between nations led to conflict [1]", "depth": 1 },
+    { "label": "Political instability in the region [2]", "depth": 1 },
+    { "label": "Key Figures Involved", "depth": 0 },
+    { "label": "The main actors included leaders from several nations", "depth": 1 },
+    { "label": "The Aftermath", "depth": 0 },
+    { "label": "Long-term consequences shaped the modern world", "depth": 1 },
     { "label": "References", "depth": 0 },
     { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
     { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
@@ -291,13 +296,18 @@ Guidelines for prompts:
     { "label": "Background and Context", "depth": 1 },
     { "label": "Key Events", "depth": 1 },
     { "label": "Aftermath", "depth": 1 },
-    { "label": "Background and Context: A detailed explanation...", "depth": 0 },
-    { "label": "Key Events: The main events included...", "depth": 0 }
+    { "label": "Background and Context", "depth": 0 },
+    { "label": "A detailed explanation of the setting...", "depth": 1 },
+    { "label": "Key Events", "depth": 0 },
+    { "label": "The main events included...", "depth": 1 },
+    { "label": "Aftermath", "depth": 0 },
+    { "label": "The consequences were far-reaching...", "depth": 1 }
   ]`;
     } else if (hasEndNotes) {
       exampleItems = `[
     { "label": "Main point with citation [1]", "depth": 0 },
     { "label": "Supporting detail referencing source [2]", "depth": 1 },
+    { "label": "Another main point", "depth": 0 },
     { "label": "References", "depth": 0 },
     { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
     { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
