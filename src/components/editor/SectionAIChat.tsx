@@ -9,6 +9,7 @@ import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DocumentPlanDialog, SectionPrompt } from './DocumentPlanDialog';
+import type { GenerationOptions } from '@/hooks/useSectionPromptQueue';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -131,7 +132,12 @@ export function SectionAIChat({
     }
   }, [messages]);
 
-  const sendMessage = useCallback(async (userMessage: string, operation: string = 'chat', autoInsert: boolean = false) => {
+  const sendMessage = useCallback(async (
+    userMessage: string, 
+    operation: string = 'chat', 
+    autoInsert: boolean = false,
+    generationOptions?: GenerationOptions
+  ) => {
     if (!userMessage.trim() && operation === 'chat') return;
     
     const messageId = crypto.randomUUID();
@@ -170,6 +176,7 @@ export function SectionAIChat({
             sectionContent,
             documentContext,
             userMessage,
+            generationOptions,
           }),
           signal: abortControllerRef.current.signal,
         }
@@ -237,7 +244,8 @@ export function SectionAIChat({
       
       setTimeout(() => {
         // Auto-send the message with 'expand' operation AND auto-insert the results
-        sendMessage(queuedData.prompt, 'expand', true);
+        // Pass through the generation options from the queued data
+        sendMessage(queuedData.prompt, 'expand', true, queuedData.generationOptions);
       }, delay);
     }
   }, [sectionId, promptQueue, sendMessage]);
@@ -330,7 +338,7 @@ export function SectionAIChat({
     }
   }, [allSections, sectionLabel, sectionContent, documentContext, input, setMessages]);
 
-  const handleApproveplan = useCallback(async (prompts: SectionPrompt[], autoExecute: boolean) => {
+  const handleApproveplan = useCallback(async (prompts: SectionPrompt[], autoExecute: boolean, options?: GenerationOptions) => {
     const newSections = prompts.filter(p => p.isNew && p.enabled && p.prompt.trim());
     const existingSections = prompts.filter(p => !p.isNew && p.enabled && p.prompt.trim());
     
@@ -389,7 +397,8 @@ export function SectionAIChat({
       
       // Queue all prompts with autoExecute flag - each panel will auto-trigger
       promptQueue.queueMultiplePromptsWithAutoExecute(
-        allPromptsToQueue.map(p => ({ sectionId: p.sectionId, prompt: p.prompt }))
+        allPromptsToQueue.map(p => ({ sectionId: p.sectionId, prompt: p.prompt })),
+        options
       );
       
       // Open ALL section panels at once - creates a visible cascade effect
@@ -421,6 +430,7 @@ export function SectionAIChat({
               sectionContent: '',
               documentContext,
               userMessage: prompt,
+              generationOptions: options,
             },
           });
           

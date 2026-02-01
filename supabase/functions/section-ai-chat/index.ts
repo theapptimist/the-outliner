@@ -10,6 +10,12 @@ interface SectionInfo {
   title: string;
 }
 
+interface GenerationOptions {
+  includeCitations?: boolean;
+  historicalDetail?: boolean;
+  outputFormat?: 'outline' | 'prose';
+}
+
 interface SectionAIChatRequest {
   operation: 'expand' | 'summarize' | 'refine' | 'chat' | 'plan-document';
   sectionLabel: string;
@@ -18,6 +24,8 @@ interface SectionAIChatRequest {
   userMessage?: string;
   // For plan-document operation
   sectionList?: SectionInfo[];
+  // Generation options
+  generationOptions?: GenerationOptions;
 }
 
 serve(async (req) => {
@@ -28,7 +36,7 @@ serve(async (req) => {
 
   try {
     const body: SectionAIChatRequest = await req.json();
-    const { operation, sectionLabel, sectionContent, documentContext, userMessage, sectionList } = body;
+    const { operation, sectionLabel, sectionContent, documentContext, userMessage, sectionList, generationOptions } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -227,6 +235,21 @@ Guidelines for prompts:
     }
 
     // Standard section operations
+    
+    // Build generation options instructions
+    let optionsInstructions = '';
+    if (generationOptions) {
+      if (generationOptions.includeCitations) {
+        optionsInstructions += `\n- When writing content, include inline citations and suggest sources where appropriate. Format citations as [Author, Year] or [Source Name].`;
+      }
+      if (generationOptions.historicalDetail) {
+        optionsInstructions += `\n- Be specific about historical actors, dates, and primary sources. Name specific people, institutions, and document references rather than speaking generally.`;
+      }
+      if (generationOptions.outputFormat === 'prose') {
+        optionsInstructions += `\n- Write in flowing prose paragraphs rather than bullet points or outline format.`;
+      }
+    }
+    
     systemPrompt = `You are an AI assistant helping to develop an outline document. 
 You are working on a specific section titled "${sectionLabel}".
 
@@ -234,7 +257,7 @@ Current section content:
 ${sectionContent || '(empty section)'}
 
 ${documentContext ? `Document context:\n${documentContext}\n` : ''}
-
+${optionsInstructions ? `\nSpecial instructions:${optionsInstructions}\n` : ''}
 IMPORTANT: When generating outline items, respond with a JSON object containing:
 1. "message": A brief explanation of what you did
 2. "items": An array of outline items, each with:
