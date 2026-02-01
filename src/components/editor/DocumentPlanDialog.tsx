@@ -23,6 +23,8 @@ export interface GenerationOptions {
   historicalDetail: boolean;
   outputFormat: 'outline' | 'prose';
   closePanelsAfterGeneration: boolean;
+  includeEndNotes: boolean;
+  includeTableOfContents: boolean;
 }
 
 export interface SectionPrompt {
@@ -62,6 +64,8 @@ export function DocumentPlanDialog({
     historicalDetail: false,
     outputFormat: 'outline',
     closePanelsAfterGeneration: true,
+    includeEndNotes: false,
+    includeTableOfContents: false,
   });
 
   // Reset when dialog opens with new prompts
@@ -207,6 +211,32 @@ export function DocumentPlanDialog({
                   id="historical"
                   checked={options.historicalDetail}
                   onCheckedChange={(checked) => setOptions(prev => ({ ...prev, historicalDetail: checked }))}
+                />
+              </div>
+
+              {/* End Notes */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="endnotes" className="text-sm font-medium">End Notes</Label>
+                  <p className="text-xs text-muted-foreground">Generate end notes section with references</p>
+                </div>
+                <Switch
+                  id="endnotes"
+                  checked={options.includeEndNotes}
+                  onCheckedChange={(checked) => setOptions(prev => ({ ...prev, includeEndNotes: checked }))}
+                />
+              </div>
+
+              {/* Table of Contents */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="toc" className="text-sm font-medium">Table of Contents</Label>
+                  <p className="text-xs text-muted-foreground">Include a table of contents outline</p>
+                </div>
+                <Switch
+                  id="toc"
+                  checked={options.includeTableOfContents}
+                  onCheckedChange={(checked) => setOptions(prev => ({ ...prev, includeTableOfContents: checked }))}
                 />
               </div>
 

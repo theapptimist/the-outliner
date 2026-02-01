@@ -5,6 +5,8 @@ export interface GenerationOptions {
   historicalDetail: boolean;
   outputFormat: 'outline' | 'prose';
   closePanelsAfterGeneration: boolean;
+  includeEndNotes: boolean;
+  includeTableOfContents: boolean;
 }
 
 interface QueuedPrompt {
