@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+export interface GenerationOptions {
+  includeCitations: boolean;
+  historicalDetail: boolean;
+  outputFormat: 'outline' | 'prose';
+}
+
 interface QueuedPrompt {
   prompt: string;
   queuedAt: string;
-  autoExecute?: boolean;  // NEW: triggers immediate execution when panel opens
+  autoExecute?: boolean;  // triggers immediate execution when panel opens
   executionIndex?: number; // For staggered execution ordering
+  generationOptions?: GenerationOptions; // AI generation options
 }
 
 const QUEUE_KEY_PREFIX = 'section-prompt-queue';
@@ -150,6 +157,7 @@ export function useSectionPromptQueue(documentId: string) {
    */
   const queueMultiplePromptsWithAutoExecute = useCallback((
     prompts: Array<{ sectionId: string; prompt: string }>,
+    options?: GenerationOptions,
     clearExisting: boolean = true
   ) => {
     if (clearExisting) {
@@ -171,6 +179,7 @@ export function useSectionPromptQueue(documentId: string) {
           queuedAt: new Date().toISOString(),
           autoExecute: true,
           executionIndex: index,
+          generationOptions: options,
         };
         sessionStorage.setItem(key, JSON.stringify(data));
       }

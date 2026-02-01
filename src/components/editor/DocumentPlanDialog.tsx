@@ -13,7 +13,16 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Sparkles, Check, X, GripVertical, Plus, Zap, ListPlus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Sparkles, Check, X, GripVertical, Plus, Zap, ListPlus, ChevronRight, Settings2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+export interface GenerationOptions {
+  includeCitations: boolean;
+  historicalDetail: boolean;
+  outputFormat: 'outline' | 'prose';
+}
 
 export interface SectionPrompt {
   sectionId: string | null; // null for new sections
@@ -27,7 +36,7 @@ interface DocumentPlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sectionPrompts: SectionPrompt[];
-  onApprove: (prompts: SectionPrompt[], autoExecute: boolean) => void;
+  onApprove: (prompts: SectionPrompt[], autoExecute: boolean, options: GenerationOptions) => void;
   onCancel: () => void;
 }
 
@@ -39,8 +48,19 @@ export function DocumentPlanDialog({
   onCancel,
 }: DocumentPlanDialogProps) {
   const [prompts, setPrompts] = useState<SectionPrompt[]>(initialPrompts);
-  const [size, setSize] = useState({ width: 672, height: 600 }); // Default max-w-2xl = 672px
+  const [size, setSize] = useState({ 
+    width: 672, 
+    height: Math.min(720, typeof window !== 'undefined' ? window.innerHeight * 0.8 : 720) 
+  });
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+
+  // Generation options state
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [options, setOptions] = useState<GenerationOptions>({
+    includeCitations: false,
+    historicalDetail: false,
+    outputFormat: 'outline',
+  });
 
   // Reset when dialog opens with new prompts
   useEffect(() => {
@@ -69,7 +89,7 @@ export function DocumentPlanDialog({
 
   const handleApprove = (autoExecute: boolean) => {
     const enabledPrompts = prompts.filter(p => p.enabled && p.prompt.trim());
-    onApprove(enabledPrompts, autoExecute);
+    onApprove(enabledPrompts, autoExecute, options);
     onOpenChange(false);
   };
 
@@ -137,13 +157,78 @@ export function DocumentPlanDialog({
             <Sparkles className="h-5 w-5 text-primary" />
             Review Document Plan
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="sr-only">
             {newSectionsCount > 0 
               ? `${newSectionsCount} new sections will be created. Review and edit the titles and prompts below.`
               : 'Review and edit the AI-generated prompts for each section. Enable or disable sections as needed.'
             }
           </DialogDescription>
         </DialogHeader>
+
+        {/* Generation Options - Collapsible */}
+        <Collapsible open={optionsOpen} onOpenChange={setOptionsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-between px-3 py-2 h-auto text-muted-foreground hover:text-foreground"
+            >
+              <div className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Generation Options</span>
+              </div>
+              <ChevronRight className={`h-4 w-4 transition-transform ${optionsOpen ? 'rotate-90' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="px-1 pb-3">
+            <div className="mt-2 space-y-4 rounded-lg border bg-muted/30 p-4">
+              {/* Include Citations */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="citations" className="text-sm font-medium">Include Citations</Label>
+                  <p className="text-xs text-muted-foreground">Reference sources and suggest footnotes</p>
+                </div>
+                <Switch
+                  id="citations"
+                  checked={options.includeCitations}
+                  onCheckedChange={(checked) => setOptions(prev => ({ ...prev, includeCitations: checked }))}
+                />
+              </div>
+
+              {/* Historical Detail */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="historical" className="text-sm font-medium">Historical Detail</Label>
+                  <p className="text-xs text-muted-foreground">Name specific actors, dates, and primary sources</p>
+                </div>
+                <Switch
+                  id="historical"
+                  checked={options.historicalDetail}
+                  onCheckedChange={(checked) => setOptions(prev => ({ ...prev, historicalDetail: checked }))}
+                />
+              </div>
+
+              {/* Output Format */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Output Format</Label>
+                <RadioGroup 
+                  value={options.outputFormat} 
+                  onValueChange={(value: 'outline' | 'prose') => setOptions(prev => ({ ...prev, outputFormat: value }))}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="outline" id="outline" />
+                    <Label htmlFor="outline" className="text-sm cursor-pointer">Outline</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="prose" id="prose" />
+                    <Label htmlFor="prose" className="text-sm cursor-pointer">Prose</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         <ScrollArea className="flex-1 pr-4 -mr-4">
           <div className="space-y-4 py-2">
