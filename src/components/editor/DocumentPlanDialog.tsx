@@ -22,6 +22,7 @@ export interface GenerationOptions {
   includeCitations: boolean;
   historicalDetail: boolean;
   outputFormat: 'outline' | 'prose';
+  closePanelsAfterGeneration: boolean;
 }
 
 export interface SectionPrompt {
@@ -60,6 +61,7 @@ export function DocumentPlanDialog({
     includeCitations: false,
     historicalDetail: false,
     outputFormat: 'outline',
+    closePanelsAfterGeneration: true,
   });
 
   // Reset when dialog opens with new prompts
@@ -225,6 +227,19 @@ export function DocumentPlanDialog({
                     <Label htmlFor="prose" className="text-sm cursor-pointer">Prose</Label>
                   </div>
                 </RadioGroup>
+              </div>
+
+              {/* Close Panels After Generation */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="close-panels" className="text-sm font-medium">Close Panels After Generation</Label>
+                  <p className="text-xs text-muted-foreground">Automatically close AI windows when complete</p>
+                </div>
+                <Switch
+                  id="close-panels"
+                  checked={options.closePanelsAfterGeneration}
+                  onCheckedChange={(checked) => setOptions(prev => ({ ...prev, closePanelsAfterGeneration: checked }))}
+                />
               </div>
             </div>
           </CollapsibleContent>

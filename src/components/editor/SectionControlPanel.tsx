@@ -156,6 +156,7 @@ export function SectionControlPanel({
                 onUpdateSectionLabel={onUpdateSectionLabel}
                 onInsertSectionContent={onInsertSectionContent}
                 onOpenSectionPanels={onOpenSectionPanels}
+                onClosePanel={onToggle}
                 isFullscreen={isFullscreen}
               />
             </div>

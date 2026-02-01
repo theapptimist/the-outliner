@@ -44,6 +44,8 @@ interface SectionAIChatProps {
   onInsertSectionContent?: (sectionId: string, items: Array<{ label: string; depth: number }>) => void;
   /** Callback to programmatically open multiple section panels (for Auto-Write cascade) */
   onOpenSectionPanels?: (sectionIds: string[]) => void;
+  /** Callback to close this panel (used for auto-close after generation) */
+  onClosePanel?: () => void;
   /** Whether the panel is in fullscreen mode */
   isFullscreen?: boolean;
 }
@@ -71,6 +73,7 @@ export function SectionAIChat({
   onUpdateSectionLabel,
   onInsertSectionContent,
   onOpenSectionPanels,
+  onClosePanel,
   isFullscreen = false,
 }: SectionAIChatProps) {
   const { document } = useDocumentContext();
@@ -202,6 +205,14 @@ export function SectionAIChat({
       if (autoInsert && data?.items && Array.isArray(data.items) && data.items.length > 0) {
         onInsertContent(data.items);
         toast.success(`Inserted ${data.items.length} items into "${sectionLabel.slice(0, 20)}..."`);
+        
+        // Close panel after generation if option is enabled
+        if (generationOptions?.closePanelsAfterGeneration && onClosePanel) {
+          // Small delay to let the user see the success message
+          setTimeout(() => {
+            onClosePanel();
+          }, 500);
+        }
       }
     } catch (error) {
       // Don't show error toast if request was aborted
@@ -219,7 +230,7 @@ export function SectionAIChat({
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [sectionLabel, sectionContent, documentContext, setMessages, queuedPrompt, promptQueue, sectionId, onInsertContent]);
+  }, [sectionLabel, sectionContent, documentContext, setMessages, queuedPrompt, promptQueue, sectionId, onInsertContent, onClosePanel]);
 
   const handleStop = useCallback(() => {
     if (abortControllerRef.current) {
