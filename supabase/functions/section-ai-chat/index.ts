@@ -240,22 +240,73 @@ Guidelines for prompts:
     
     // Build generation options instructions
     let optionsInstructions = '';
+    let hasToc = false;
+    let hasEndNotes = false;
+    let hasCitations = false;
+    
     if (generationOptions) {
       if (generationOptions.includeCitations) {
-        optionsInstructions += `\n- When writing content, include inline citations and suggest sources where appropriate. Format citations as [Author, Year] or [Source Name].`;
+        hasCitations = true;
+        optionsInstructions += `\n- CITATIONS: Include inline citations in your content. Format as [Author, Year] or [Source Name]. Place these within the text where claims are made.`;
       }
       if (generationOptions.historicalDetail) {
-        optionsInstructions += `\n- Be specific about historical actors, dates, and primary sources. Name specific people, institutions, and document references rather than speaking generally.`;
+        optionsInstructions += `\n- HISTORICAL DETAIL: Be specific about historical actors, dates, and primary sources. Name specific people, institutions, and document references rather than speaking generally.`;
       }
       if (generationOptions.includeEndNotes) {
-        optionsInstructions += `\n- Include end notes for sources and references. Format as numbered notes [1], [2], etc., and list the full references at the end of the content.`;
+        hasEndNotes = true;
+        optionsInstructions += `\n- END NOTES: Include numbered reference markers [1], [2], etc. in your content. You MUST include a final item with depth 0 labeled "References" or "End Notes" that lists the full citations.`;
       }
       if (generationOptions.includeTableOfContents) {
-        optionsInstructions += `\n- Begin the section with a brief table of contents listing the major sub-topics that will be covered.`;
+        hasToc = true;
+        optionsInstructions += `\n- TABLE OF CONTENTS: Your FIRST item (depth 0) MUST be labeled "Table of Contents" followed by nested items (depth 1) listing each major sub-topic that will be covered in this section.`;
       }
       if (generationOptions.outputFormat === 'prose') {
-        optionsInstructions += `\n- Write in flowing prose paragraphs rather than bullet points or outline format.`;
+        optionsInstructions += `\n- OUTPUT FORMAT: Write in flowing prose paragraphs rather than bullet points or outline format. Each item's label should be a full paragraph of text.`;
       }
+    }
+    
+    // Build example that matches the options
+    let exampleItems = `[
+    { "label": "First main point", "depth": 0 },
+    { "label": "Supporting detail", "depth": 1 },
+    { "label": "Another detail", "depth": 1 },
+    { "label": "Second main point", "depth": 0 }
+  ]`;
+    
+    if (hasToc && hasEndNotes) {
+      exampleItems = `[
+    { "label": "Table of Contents", "depth": 0 },
+    { "label": "The Causes of the Event", "depth": 1 },
+    { "label": "Key Figures Involved", "depth": 1 },
+    { "label": "The Causes of the Event: The conflict arose from several factors [1]...", "depth": 0 },
+    { "label": "Economic tensions between nations", "depth": 1 },
+    { "label": "Key Figures Involved: The main actors included...", "depth": 0 },
+    { "label": "References", "depth": 0 },
+    { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
+    { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
+  ]`;
+    } else if (hasToc) {
+      exampleItems = `[
+    { "label": "Table of Contents", "depth": 0 },
+    { "label": "Background and Context", "depth": 1 },
+    { "label": "Key Events", "depth": 1 },
+    { "label": "Aftermath", "depth": 1 },
+    { "label": "Background and Context: A detailed explanation...", "depth": 0 },
+    { "label": "Key Events: The main events included...", "depth": 0 }
+  ]`;
+    } else if (hasEndNotes) {
+      exampleItems = `[
+    { "label": "Main point with citation [1]", "depth": 0 },
+    { "label": "Supporting detail referencing source [2]", "depth": 1 },
+    { "label": "References", "depth": 0 },
+    { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
+    { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
+  ]`;
+    } else if (hasCitations) {
+      exampleItems = `[
+    { "label": "The event began in 1914 [Keegan, 1998]", "depth": 0 },
+    { "label": "Economic factors played a key role [Smith, 2005]", "depth": 1 }
+  ]`;
     }
     
     systemPrompt = `You are an AI assistant helping to develop an outline document. 
@@ -265,7 +316,7 @@ Current section content:
 ${sectionContent || '(empty section)'}
 
 ${documentContext ? `Document context:\n${documentContext}\n` : ''}
-${optionsInstructions ? `\nSpecial instructions:${optionsInstructions}\n` : ''}
+${optionsInstructions ? `\n=== REQUIRED FORMATTING ===\nYou MUST follow these instructions:${optionsInstructions}\n` : ''}
 IMPORTANT: When generating outline items, respond with a JSON object containing:
 1. "message": A brief explanation of what you did
 2. "items": An array of outline items, each with:
@@ -275,12 +326,7 @@ IMPORTANT: When generating outline items, respond with a JSON object containing:
 Example response format:
 {
   "message": "I've expanded the section with detailed sub-items covering key aspects.",
-  "items": [
-    { "label": "First main point", "depth": 0 },
-    { "label": "Supporting detail", "depth": 1 },
-    { "label": "Another detail", "depth": 1 },
-    { "label": "Second main point", "depth": 0 }
-  ]
+  "items": ${exampleItems}
 }
 
 If the request doesn't require generating items (like a question), just respond with:
