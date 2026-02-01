@@ -60,12 +60,12 @@ export function DocumentPlanDialog({
   // Generation options state
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [options, setOptions] = useState<GenerationOptions>({
-    includeCitations: false,
-    historicalDetail: false,
+    includeCitations: true,
+    historicalDetail: true,
     outputFormat: 'outline',
     closePanelsAfterGeneration: true,
-    includeEndNotes: false,
-    includeTableOfContents: false,
+    includeEndNotes: true,
+    includeTableOfContents: true,
   });
 
   // Reset when dialog opens with new prompts
