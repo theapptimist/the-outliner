@@ -14,6 +14,8 @@ interface GenerationOptions {
   includeCitations?: boolean;
   historicalDetail?: boolean;
   outputFormat?: 'outline' | 'prose';
+  includeEndNotes?: boolean;
+  includeTableOfContents?: boolean;
 }
 
 interface SectionAIChatRequest {
@@ -244,6 +246,12 @@ Guidelines for prompts:
       }
       if (generationOptions.historicalDetail) {
         optionsInstructions += `\n- Be specific about historical actors, dates, and primary sources. Name specific people, institutions, and document references rather than speaking generally.`;
+      }
+      if (generationOptions.includeEndNotes) {
+        optionsInstructions += `\n- Include end notes for sources and references. Format as numbered notes [1], [2], etc., and list the full references at the end of the content.`;
+      }
+      if (generationOptions.includeTableOfContents) {
+        optionsInstructions += `\n- Begin the section with a brief table of contents listing the major sub-topics that will be covered.`;
       }
       if (generationOptions.outputFormat === 'prose') {
         optionsInstructions += `\n- Write in flowing prose paragraphs rather than bullet points or outline format.`;
