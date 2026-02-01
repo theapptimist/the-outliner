@@ -4,6 +4,7 @@ export interface GenerationOptions {
   includeCitations: boolean;
   historicalDetail: boolean;
   outputFormat: 'outline' | 'prose';
+  closePanelsAfterGeneration: boolean;
 }
 
 interface QueuedPrompt {
