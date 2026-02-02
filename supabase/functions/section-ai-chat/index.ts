@@ -247,7 +247,7 @@ Guidelines for prompts:
     if (generationOptions) {
       if (generationOptions.includeCitations) {
         hasCitations = true;
-        optionsInstructions += `\n- CITATIONS: Include inline citation markers in your content. Use numbered format like [1], [2], [3] for claims that need sources. These markers will be collected into a document-level references section automatically.`;
+        optionsInstructions += `\n- CITATIONS: Include inline citation markers in your content. Use numbered format like [1], [2], [3] for claims that need sources. You MUST also provide a "references" array in your response with the full citation text for each marker you use.`;
       }
       if (generationOptions.historicalDetail) {
         optionsInstructions += `\n- HISTORICAL DETAIL: Be specific about historical actors, dates, and primary sources. Name specific people, institutions, and document references rather than speaking generally.`;
@@ -275,6 +275,15 @@ Guidelines for prompts:
     { "label": "Details with sources [4]", "depth": 1 }
   ]`;
     }
+
+    // Build references example for citations
+    const referencesExample = hasCitations ? `,
+  "references": {
+    "[1]": "Author, A. (Year). Title of the work. Publisher.",
+    "[2]": "Author, B. (Year). Another source title. Journal Name, Volume(Issue), pages.",
+    "[3]": "Author, C. (Year). Third source. Publisher.",
+    "[4]": "Author, D. (Year). Fourth source. Publisher."
+  }` : '';
     
     systemPrompt = `You are an AI assistant helping to develop an outline document. 
 You are working on a specific section titled "${sectionLabel}".
@@ -288,25 +297,28 @@ IMPORTANT: When generating outline items, respond with a JSON object containing:
 1. "message": A brief explanation of what you did
 2. "items": An array of outline items, each with:
    - "label": The text content of the item
-   - "depth": The nesting level (0 = direct child of section, 1 = grandchild, etc.)
+   - "depth": The nesting level (0 = direct child of section, 1 = grandchild, etc.)${hasCitations ? `
+3. "references": An object mapping citation markers like "[1]" to their full citation text. You MUST provide this for every citation marker you use in the items.` : ''}
 
 Example response format:
 {
   "message": "I've expanded the section with detailed sub-items covering key aspects.",
-  "items": ${exampleItems}
+  "items": ${exampleItems}${referencesExample}
 }
 
 If the request doesn't require generating items (like a question), just respond with:
 {
   "message": "Your response here",
-  "items": []
+  "items": []${hasCitations ? `,
+  "references": {}` : ''}
 }`;
 
     // Customize prompt based on operation
     switch (operation) {
       case 'expand':
         userPrompt = `Expand this section with 3-6 detailed sub-items that elaborate on the topic "${sectionLabel}". 
-Each item should be concise but informative. Include nested items where appropriate for complex concepts.
+Each item should be concise but informative. Include nested items where appropriate for complex concepts.${hasCitations ? `
+IMPORTANT: For each citation marker you use (e.g., [1], [2]), you MUST include the full reference in your "references" object.` : ''}
 ${userMessage ? `\nAdditional instructions: ${userMessage}` : ''}`;
         break;
       

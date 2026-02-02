@@ -76,7 +76,7 @@ export function SectionAIChat({
   onClosePanel,
   isFullscreen = false,
 }: SectionAIChatProps) {
-  const { document, setDisplayOptions } = useDocumentContext();
+  const { document, setDisplayOptions, setCitationDefinition } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
   
   const [messages, setMessages] = useSessionStorage<ChatMessage[]>(
@@ -200,6 +200,15 @@ export function SectionAIChat({
       };
       
       setMessages(prev => [...prev, assistantMsg]);
+      
+      // Store any references returned by the AI (always, not just on autoInsert)
+      if (data.references && typeof data.references === 'object') {
+        for (const [marker, text] of Object.entries(data.references)) {
+          if (typeof text === 'string') {
+            setCitationDefinition(marker, text);
+          }
+        }
+      }
       
       // Auto-insert generated items (for multi-window cascade)
       if (autoInsert && data?.items && Array.isArray(data.items) && data.items.length > 0) {
@@ -459,6 +468,15 @@ export function SectionAIChat({
           }
           
           const data = response.data;
+          
+          // Store any references returned by the AI
+          if (data?.references && typeof data.references === 'object') {
+            for (const [marker, text] of Object.entries(data.references)) {
+              if (typeof text === 'string') {
+                setCitationDefinition(marker, text);
+              }
+            }
+          }
           
           if (data?.items && Array.isArray(data.items) && data.items.length > 0) {
             onInsertSectionContent(targetSectionId, data.items);
