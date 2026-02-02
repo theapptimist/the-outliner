@@ -4,12 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { DocumentAIPanel } from './DocumentAIPanel';
 
-interface DocumentAIButtonProps {
-  documentContext?: string;
-  onInsertContent?: (items: Array<{ label: string; depth: number }>) => void;
-}
-
-export function DocumentAIButton({ documentContext, onInsertContent }: DocumentAIButtonProps) {
+export function DocumentAIButton() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -39,8 +34,6 @@ export function DocumentAIButton({ documentContext, onInsertContent }: DocumentA
       <DocumentAIPanel
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        documentContext={documentContext}
-        onInsertContent={onInsertContent}
       />
     </>
   );

@@ -1,7 +1,6 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { 
   Sparkles, 
-  X, 
   Send, 
   Square, 
   Loader2,
@@ -9,7 +8,8 @@ import {
   Wand2,
   ListTree,
   Maximize2,
-  Minimize2
+  Minimize2,
+  BookOpen
 } from 'lucide-react';
 import {
   Dialog,
@@ -22,13 +22,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useDocumentContext } from './context/DocumentContext';
-import { supabase } from '@/integrations/supabase/client';
+import { getFullDocumentText } from '@/lib/documentContentExtractor';
+import { HierarchyNode } from '@/types/node';
 
 interface DocumentAIPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  documentContext?: string;
-  onInsertContent?: (items: Array<{ label: string; depth: number }>) => void;
 }
 
 interface Message {
@@ -36,18 +35,28 @@ interface Message {
   content: string;
 }
 
-export function DocumentAIPanel({ 
-  isOpen, 
-  onClose, 
-  documentContext,
-  onInsertContent 
-}: DocumentAIPanelProps) {
-  const { document } = useDocumentContext();
+export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
+  const { document, hierarchyBlocks } = useDocumentContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Extract document content for context
+  const documentContext = useMemo(() => {
+    if (!hierarchyBlocks) return '';
+    
+    // Convert hierarchyBlocks to the format expected by getFullDocumentText
+    const blocksAsNodes: Record<string, HierarchyNode[]> = {};
+    for (const [id, block] of Object.entries(hierarchyBlocks)) {
+      if (block && typeof block === 'object' && 'tree' in block) {
+        blocksAsNodes[id] = (block as { tree: HierarchyNode[] }).tree;
+      }
+    }
+    
+    return getFullDocumentText(blocksAsNodes, document?.content, 16000);
+  }, [hierarchyBlocks, document?.content]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -60,13 +69,8 @@ export function DocumentAIPanel({
     abortControllerRef.current = new AbortController();
 
     try {
-      const systemPrompt = `You are a document assistant helping with "${document?.meta?.title || 'Untitled Document'}". 
-${documentContext ? `\nDocument context:\n${documentContext}` : ''}
-
-Help the user with their document-related questions and tasks. Be concise and helpful.`;
-
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/section-ai-chat`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/document-ai-chat`,
         {
           method: 'POST',
           headers: {
@@ -74,19 +78,17 @@ Help the user with their document-related questions and tasks. Be concise and he
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages,
-              userMessage,
-            ],
-            type: 'chat',
+            messages: [...messages, userMessage],
+            documentTitle: document?.meta?.title || 'Untitled Document',
+            documentContext,
           }),
           signal: abortControllerRef.current.signal,
         }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get AI response');
       }
 
       // Handle streaming response
@@ -95,6 +97,7 @@ Help the user with their document-related questions and tasks. Be concise and he
 
       const decoder = new TextDecoder();
       let assistantContent = '';
+      let buffer = '';
 
       // Add empty assistant message
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
@@ -103,8 +106,9 @@ Help the user with their document-related questions and tasks. Be concise and he
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -130,9 +134,31 @@ Help the user with their document-related questions and tasks. Be concise and he
           }
         }
       }
+
+      // Process any remaining buffer
+      if (buffer.startsWith('data: ')) {
+        const data = buffer.slice(6).trim();
+        if (data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              setMessages(prev => {
+                const updated = [...prev];
+                if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+                  updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+                }
+                return updated;
+              });
+            }
+          } catch {
+            // Ignore
+          }
+        }
+      }
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
-        // User cancelled
         setMessages(prev => {
           const updated = [...prev];
           if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
@@ -144,7 +170,7 @@ Help the user with their document-related questions and tasks. Be concise and he
         console.error('AI chat error:', error);
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: 'Sorry, I encountered an error. Please try again.' 
+          content: `Sorry, I encountered an error: ${(error as Error).message}` 
         }]);
       }
     } finally {
@@ -164,10 +190,15 @@ Help the user with their document-related questions and tasks. Be concise and he
     }
   }, [handleSend]);
 
+  const handleQuickAction = useCallback((prompt: string) => {
+    setInput(prompt);
+  }, []);
+
   const quickActions = [
     { icon: FileText, label: 'Summarize', prompt: 'Summarize this document concisely' },
     { icon: Wand2, label: 'Improve', prompt: 'Suggest improvements for this document' },
-    { icon: ListTree, label: 'Outline', prompt: 'Create an outline of this document' },
+    { icon: ListTree, label: 'Outline', prompt: 'Analyze the structure of this document' },
+    { icon: BookOpen, label: 'Footnotes', prompt: 'Help me understand and manage the footnotes/citations in this document. How do I add and edit them?' },
   ];
 
   return (
@@ -212,9 +243,7 @@ Help the user with their document-related questions and tasks. Be concise and he
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-xs"
-                onClick={() => {
-                  setInput(action.prompt);
-                }}
+                onClick={() => handleQuickAction(action.prompt)}
               >
                 <action.icon className="h-3 w-3" />
                 {action.label}
@@ -246,7 +275,7 @@ Help the user with their document-related questions and tasks. Be concise and he
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                      "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
                       message.role === 'user'
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
