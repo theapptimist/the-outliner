@@ -596,6 +596,7 @@ export default function Editor() {
         document={document}
         documentVersion={documentVersion}
         onDocumentContentChange={handleDocumentContentChange}
+        onDocumentTitleChange={handleTitleChange}
         onHierarchyBlocksChange={handleHierarchyBlocksChange}
         onUndoRedoChange={handleUndoRedoChange}
       >

@@ -57,6 +57,7 @@ interface DocumentContextValue {
   document: DocumentState | null;
   documentVersion: number;
   setDocumentContent: (content: any) => void;
+  setDocumentTitle: (title: string) => void;
 
   // Hierarchy block sync for usage scanning
   hierarchyBlocks: Record<string, HierarchyNode[]>;
@@ -126,6 +127,7 @@ const DocumentContext = createContext<DocumentContextValue>({
   document: null,
   documentVersion: 0,
   setDocumentContent: () => {},
+  setDocumentTitle: () => {},
 
   hierarchyBlocks: {},
   updateHierarchyBlock: () => {},
@@ -178,6 +180,7 @@ interface DocumentProviderProps {
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
+  onDocumentTitleChange?: (title: string) => void;
   onHierarchyBlocksChange?: (blocks: Record<string, { id: string; tree: HierarchyNode[] }>) => void;
   onUndoRedoChange?: (
     undo: () => void,
@@ -198,6 +201,7 @@ export function DocumentProvider({
   document,
   documentVersion,
   onDocumentContentChange,
+  onDocumentTitleChange,
   onHierarchyBlocksChange,
   onUndoRedoChange,
 }: DocumentProviderProps) {
@@ -314,6 +318,7 @@ export function DocumentProvider({
         document,
         documentVersion,
         setDocumentContent: onDocumentContentChange,
+        setDocumentTitle: onDocumentTitleChange || (() => {}),
         hierarchyBlocks,
         updateHierarchyBlock,
         removeHierarchyBlock,
