@@ -377,6 +377,8 @@ export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]
   const result: CloudDocumentMetadata[] = [];
   const includedIds = new Set<string>();
 
+  console.log('[getRecentCloudDocuments] recentIds from localStorage:', recentIds);
+
   // 1) Fetch "recently opened" docs if we have any IDs
   if (recentIds.length > 0) {
     const { data, error } = await supabase
@@ -387,6 +389,7 @@ export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]
     if (error) {
       console.error('[CloudStorage] Failed to get recent documents:', error);
     } else if (data) {
+      console.log('[getRecentCloudDocuments] Fetched', data.length, 'docs from recentIds');
       const byId = new Map(data.map(d => [d.id, d]));
       // Preserve stored order
       for (const id of recentIds) {
@@ -406,6 +409,8 @@ export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]
 
   // 2) Fill remaining slots with most recently updated docs
   const remaining = MAX_RECENT - result.length;
+  console.log('[getRecentCloudDocuments] remaining slots to fill:', remaining);
+  
   if (remaining > 0) {
     // Fetch a bit more to account for possible overlaps
     const { data, error } = await supabase
@@ -417,6 +422,7 @@ export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]
     if (error) {
       console.error('[CloudStorage] Failed to get fallback recent documents:', error);
     } else if (data) {
+      console.log('[getRecentCloudDocuments] Fetched', data.length, 'fallback docs');
       for (const d of data) {
         if (result.length >= MAX_RECENT) break;
         if (includedIds.has(d.id)) continue;
@@ -431,6 +437,7 @@ export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]
     }
   }
 
+  console.log('[getRecentCloudDocuments] final result count:', result.length);
   return result;
 }
 
