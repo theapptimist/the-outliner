@@ -183,19 +183,22 @@ export function FileMenu({
     }
   }, [documentTitle, isRenaming]);
   
-  // Refresh recent docs list when sheet opens
+  // Refresh recent docs list when sheet opens or when navigating back from recent view
   useEffect(() => {
     async function loadRecent() {
-      if (sheetOpen) {
-        try {
-          const docs = await getRecentCloudDocuments();
-          setRecentDocs(docs);
-        } catch (e) {
-          console.error('Failed to load recent docs:', e);
-        }
+      try {
+        const docs = await getRecentCloudDocuments();
+        console.log('[FileMenu] Loaded recent docs:', docs.length);
+        setRecentDocs(docs);
+      } catch (e) {
+        console.error('[FileMenu] Failed to load recent docs:', e);
       }
     }
+    // Load on mount AND when sheet opens
     loadRecent();
+    if (sheetOpen) {
+      loadRecent();
+    }
   }, [sheetOpen]);
 
   // Focus the input when entering rename mode
