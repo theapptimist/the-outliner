@@ -78,7 +78,7 @@ export function SectionAIChat({
   onClosePanel,
   isFullscreen = false,
 }: SectionAIChatProps) {
-  const { document, setDisplayOptions, setCitationDefinition, hierarchyBlocks, displayOptions } = useDocumentContext();
+  const { document, setDisplayOptions, setCitationDefinition, hierarchyBlocks, displayOptions, setDocumentTitle } = useDocumentContext();
   const { 
     addPerson, addPlace, addDate, addTerm,
     people, places, dates, terms 
@@ -114,6 +114,7 @@ export function SectionAIChat({
   // Document plan dialog state
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<SectionPrompt[]>([]);
+  const [generatedDocTitle, setGeneratedDocTitle] = useState<string | null>(null);
 
   // Prompt queue management
   const promptQueue = useSectionPromptQueue(documentId);
@@ -325,11 +326,17 @@ export function SectionAIChat({
           isNew: true,
         }));
         
+        // Capture generated document title if provided
+        if (data.documentTitle) {
+          setGeneratedDocTitle(data.documentTitle);
+        }
+        
         // Add AI message about the plan FIRST (before opening dialog)
+        const titleNote = data.documentTitle ? ` Title: "${data.documentTitle}".` : '';
         const assistantMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: data.message || `Generated ${planPrompts.length} new sections. Review them and click approve to create them.`,
+          content: data.message || `Generated ${planPrompts.length} new sections.${titleNote} Review them and click approve to create them.`,
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, assistantMsg]);
@@ -425,6 +432,12 @@ export function SectionAIChat({
     ];
     
     setPlanDialogOpen(false);
+    
+    // Apply generated document title if we have one
+    if (generatedDocTitle) {
+      setDocumentTitle(generatedDocTitle);
+      setGeneratedDocTitle(null); // Clear after use
+    }
 
     // Apply display options to document context (TOC, End Notes, Entity Extraction)
     if (displayOptions) {

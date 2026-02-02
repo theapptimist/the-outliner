@@ -61,13 +61,14 @@ serve(async (req) => {
         // Phase 1: Generate NEW sections based on the user's topic
         systemPrompt = `You are a document structure planner. Based on the user's topic, create a comprehensive document outline with 4-7 major sections.
 
-For each section, provide:
-1. A clear, descriptive title
-2. A specific AI prompt that would help generate content for that section
+You must provide:
+1. A concise, descriptive document title (2-6 words, no quotes needed)
+2. For each section: a clear title and a specific AI prompt
 
 IMPORTANT: Respond with a JSON object in this exact format:
 {
   "message": "Brief summary of the document structure you've created",
+  "documentTitle": "The Document Title",
   "newSections": [
     { "title": "Introduction", "prompt": "Write an engaging introduction that..." },
     { "title": "Section Title 2", "prompt": "Explain in detail..." },
@@ -76,6 +77,7 @@ IMPORTANT: Respond with a JSON object in this exact format:
 }
 
 Guidelines:
+- The documentTitle should capture the essence of what the document is about
 - Create 4-7 sections that logically structure the topic
 - First section should typically be an introduction or overview
 - Last section could be a conclusion, summary, or future directions
@@ -175,9 +177,10 @@ Guidelines for prompts:
         
         // Check if this is a "new sections" response or "existing sections" response
         if (parsed.newSections && Array.isArray(parsed.newSections)) {
-          // New sections response - return directly with isNew flag
+          // New sections response - return directly with isNew flag and documentTitle
           const result = {
             message: parsed.message || 'Created document structure with new sections.',
+            documentTitle: parsed.documentTitle || null,
             newSections: parsed.newSections.map((ns: { title: string; prompt: string }) => ({
               title: ns.title || 'Untitled Section',
               prompt: ns.prompt || 'Expand this section with relevant details.',
