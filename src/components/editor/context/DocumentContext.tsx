@@ -40,6 +40,9 @@ export interface DocumentDisplayOptions {
   showEndNotes: boolean;
 }
 
+// Citation definitions for End Notes (marker -> full citation text)
+export type CitationDefinitions = Record<string, string>;
+
 interface DocumentContextValue {
   // Style settings
   outlineStyle: OutlineStyle;
@@ -105,6 +108,10 @@ interface DocumentContextValue {
   // Document display options (TOC, End Notes)
   displayOptions: DocumentDisplayOptions;
   setDisplayOptions: (options: DocumentDisplayOptions) => void;
+
+  // Citation definitions for End Notes
+  citationDefinitions: CitationDefinitions;
+  setCitationDefinition: (marker: string, text: string) => void;
 }
 
 const DocumentContext = createContext<DocumentContextValue>({
@@ -154,6 +161,9 @@ const DocumentContext = createContext<DocumentContextValue>({
 
   displayOptions: { showTableOfContents: false, showEndNotes: false },
   setDisplayOptions: () => {},
+
+  citationDefinitions: {},
+  setCitationDefinition: () => {},
 });
 
 interface DocumentProviderProps {
@@ -209,6 +219,7 @@ export function DocumentProvider({
     showTableOfContents: false,
     showEndNotes: false,
   });
+  const [citationDefinitions, setCitationDefinitions] = useState<CitationDefinitions>({});
 
   const updateHierarchyBlock = useCallback((blockId: string, tree: HierarchyNode[]) => {
     setHierarchyBlocks(prev => {
@@ -282,6 +293,13 @@ export function DocumentProvider({
     onUndoRedoChange?.(undo, redo, canUndo, canRedo);
   }, [onUndoRedoChange]);
 
+  const setCitationDefinition = useCallback((marker: string, text: string) => {
+    setCitationDefinitions(prev => ({
+      ...prev,
+      [marker]: text,
+    }));
+  }, []);
+
   return (
     <DocumentContext.Provider
       value={{
@@ -319,6 +337,8 @@ export function DocumentProvider({
         setPanelState,
         displayOptions,
         setDisplayOptions,
+        citationDefinitions,
+        setCitationDefinition,
       }}
     >
       {children}

@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { EditReferenceDialog } from './EditReferenceDialog';
+
 interface Citation {
   marker: string;
   text?: string;
@@ -5,22 +8,54 @@ interface Citation {
 
 interface EndNotesSectionProps {
   citations: Citation[];
+  citationDefinitions: Record<string, string>;
+  onUpdateCitation: (marker: string, text: string) => void;
 }
 
-export function EndNotesSection({ citations }: EndNotesSectionProps) {
+export function EndNotesSection({ 
+  citations, 
+  citationDefinitions, 
+  onUpdateCitation 
+}: EndNotesSectionProps) {
+  const [editingMarker, setEditingMarker] = useState<string | null>(null);
+
   if (citations.length === 0) return null;
   
+  const editingCitation = citations.find(c => c.marker === editingMarker);
+  
   return (
-    <div className="border-t border-foreground/10 pt-3 mt-4">
-      <div className="text-xs font-medium text-muted-foreground mb-2">References</div>
-      <ul className="text-sm space-y-1 text-muted-foreground">
-        {citations.map((c, i) => (
-          <li key={i} className="break-words">
-            <span className="font-medium">{c.marker}</span>
-            {c.text ? ` ${c.text}` : ' (Reference to be added)'}
-          </li>
-        ))}
-      </ul>
+    <div>
+      <div className="border-t border-foreground/10 pt-3 mt-4">
+        <div className="text-xs font-medium text-muted-foreground mb-2">References</div>
+        <ul className="text-sm space-y-1 text-muted-foreground">
+          {citations.map((c, i) => {
+            const definedText = citationDefinitions[c.marker];
+            return (
+              <li key={i} className="break-words">
+                <button
+                  onClick={() => setEditingMarker(c.marker)}
+                  className="text-left hover:text-foreground transition-colors group"
+                >
+                  <span className="font-medium">{c.marker}</span>
+                  {definedText ? (
+                    <span> {definedText}</span>
+                  ) : (
+                    <span className="italic"> (Click to add reference)</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      
+      <EditReferenceDialog
+        open={!!editingMarker}
+        onOpenChange={(open) => !open && setEditingMarker(null)}
+        marker={editingMarker || ''}
+        currentText={editingMarker ? citationDefinitions[editingMarker] || '' : ''}
+        onSave={onUpdateCitation}
+      />
     </div>
   );
 }
