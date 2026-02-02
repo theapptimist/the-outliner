@@ -408,11 +408,12 @@ export function SectionAIChat({
     
     setPlanDialogOpen(false);
 
-    // Apply display options to document context (TOC and End Notes visibility)
+    // Apply display options to document context (TOC, End Notes, Entity Extraction)
     if (displayOptions) {
       setDisplayOptions({
         showTableOfContents: displayOptions.showTableOfContents,
         showEndNotes: displayOptions.showEndNotes,
+        extractEntities: displayOptions.extractEntities,
       });
     }
     
