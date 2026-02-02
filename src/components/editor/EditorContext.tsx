@@ -15,6 +15,7 @@ import {
 } from './context';
 import { DatesProvider, useDatesContext } from './context/DatesContext';
 import { useNavigation, EntityTab } from '@/contexts/NavigationContext';
+import { normalizeEntityName } from '@/lib/entityNameUtils';
 
 // Re-export types for backward compatibility
 export type { FindReplaceMatch, FindReplaceProvider, PasteHierarchyFn, ScrollToNodeFn, PanelState, CitationDefinitions } from './context';
@@ -65,12 +66,18 @@ function EntityRevealProvider({ children }: { children: ReactNode }) {
   const placesContext = usePlacesContext();
 
   const revealEntityInLibrary = useCallback((entityType: EntityType, matchedText: string) => {
-    const normalizedText = matchedText.toLowerCase().trim();
+    // Normalize the clicked text to match how entities are stored
+    const normalizedText = normalizeEntityName(matchedText).toLowerCase();
+    
+    console.log('[EntityReveal] Click detected:', { entityType, matchedText, normalizedText });
     
     // Find the entity and set it as inspected
     switch (entityType) {
       case 'term': {
-        const term = termsContext.terms.find(t => t.term.toLowerCase() === normalizedText);
+        const term = termsContext.terms.find(t => 
+          normalizeEntityName(t.term).toLowerCase() === normalizedText
+        );
+        console.log('[EntityReveal] Term search:', { found: !!term, termsCount: termsContext.terms.length });
         if (term) {
           termsContext.setInspectedTerm(term);
           setActiveEntityTab('terms');
@@ -78,7 +85,10 @@ function EntityRevealProvider({ children }: { children: ReactNode }) {
         break;
       }
       case 'person': {
-        const person = peopleContext.people.find(p => p.name.toLowerCase() === normalizedText);
+        const person = peopleContext.people.find(p => 
+          normalizeEntityName(p.name).toLowerCase() === normalizedText
+        );
+        console.log('[EntityReveal] Person search:', { found: !!person, peopleCount: peopleContext.people.length });
         if (person) {
           peopleContext.setInspectedPerson(person);
           setActiveEntityTab('people');
@@ -86,7 +96,10 @@ function EntityRevealProvider({ children }: { children: ReactNode }) {
         break;
       }
       case 'place': {
-        const place = placesContext.places.find(p => p.name.toLowerCase() === normalizedText);
+        const place = placesContext.places.find(p => 
+          normalizeEntityName(p.name).toLowerCase() === normalizedText
+        );
+        console.log('[EntityReveal] Place search:', { found: !!place, placesCount: placesContext.places.length });
         if (place) {
           placesContext.setInspectedPlace(place);
           setActiveEntityTab('places');
@@ -94,7 +107,10 @@ function EntityRevealProvider({ children }: { children: ReactNode }) {
         break;
       }
       case 'date': {
-        const date = datesContext.dates.find(d => d.rawText.toLowerCase() === normalizedText);
+        const date = datesContext.dates.find(d => 
+          normalizeEntityName(d.rawText).toLowerCase() === normalizedText
+        );
+        console.log('[EntityReveal] Date search:', { found: !!date, datesCount: datesContext.dates.length });
         if (date) {
           datesContext.setInspectedDate(date);
           setActiveEntityTab('dates');

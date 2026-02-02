@@ -142,11 +142,12 @@ export function LibraryPane({
   }, [isInMasterMode, setActiveEntityTab]);
 
   // Sync local state when activeEntityTab changes from NavigationContext
+  // This works both in master mode AND when revealEntityInLibrary triggers a tab switch
   useEffect(() => {
-    if (isInMasterMode && activeEntityTab && activeEntityTab !== localActiveTab) {
+    if (activeEntityTab && activeEntityTab !== localActiveTab) {
       setLocalActiveTab(activeEntityTab);
     }
-  }, [isInMasterMode, activeEntityTab]);
+  }, [activeEntityTab]);
 
 
   // Get all context values
