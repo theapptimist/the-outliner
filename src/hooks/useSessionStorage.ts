@@ -13,11 +13,14 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, (value: 
     try {
       const item = localStorage.getItem(storageKey);
       if (item) {
-        return JSON.parse(item);
+        const parsed = JSON.parse(item);
+        console.log(`[useSessionStorage] Init from localStorage: ${key}`, { hasStoredValue: true });
+        return parsed;
       }
     } catch (e) {
       console.warn(`Failed to load ${key} from localStorage:`, e);
     }
+    console.log(`[useSessionStorage] Init with default: ${key}`);
     return initialValue;
   });
 
@@ -64,8 +67,9 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, (value: 
 
   // Stable setter reference
   const setValue = useCallback((value: T | ((prev: T) => T)) => {
+    console.log(`[useSessionStorage] setValue called for: ${key}`);
     setStoredValue(value);
-  }, []);
+  }, [key]);
 
   return [storedValue, setValue];
 }
