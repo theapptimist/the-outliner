@@ -1,51 +1,40 @@
 
+# Separate TOC and End Notes from Per-Section Generation
 
-# Fix Confusing TOC and End Notes Structure
+## Problem Summary
 
-## Problem Analysis
+You correctly identified that the current implementation is fundamentally flawed: it tries to inject Table of Contents and End Notes **inside each section's generated content**. This creates nonsensical output where every section gets its own mini-TOC and its own references list.
 
-The current implementation causes confusing output because:
-
-1. **Duplicate Labels**: The TOC lists topic names (e.g., "Key Figures"), then those exact same names appear again as section headers below
-2. **Per-Section TOC**: Each section gets its own mini-TOC, which is redundant for a single section's content
-3. **Structural Confusion**: The flat depth structure with duplicated names creates an outline that reads poorly
-
-**Example of current problematic output:**
-```text
-Table of Contents
-├── The Causes
-├── Key Figures  
-├── Aftermath
-The Causes         ← Same text appears again
-├── Content...
-Key Figures        ← Same text appears again
-├── Content...
-References
-├── [1] Citation...
-```
+**Your actual requirements:**
+1. **Table of Contents** - A single document-level list of all section titles with clickable jump links, displayed above the outline
+2. **End Notes** - A single consolidated references list at the bottom of the entire document, combining citations from all sections
 
 ---
 
-## Solution: Change TOC Semantics
+## Solution Architecture
 
-Instead of duplicating topic names, the **Table of Contents should use descriptive phrases that preview the content** rather than just listing the same headings. This creates meaningful differentiation.
+### 1. Remove TOC/End Notes from Per-Section AI Generation
 
-**Proposed new output structure:**
-```text
-Table of Contents
-├── Overview of the causes leading to conflict
-├── Analysis of key historical figures involved
-├── Long-term consequences and aftermath
-The Causes of the Conflict
-├── Economic tensions between nations [1]
-├── Political instability in the region [2]
-Key Figures Involved
-├── Leaders from several nations shaped events
-The Aftermath
-├── Consequences that shaped the modern world
-References
-├── [1] Smith, J. (1998)...
-```
+The `section-ai-chat` edge function should NOT generate TOC or End Notes items. Instead:
+- Keep `includeCitations` - AI includes inline citations like `[Author, Year]` or `[1]` in the content
+- Remove `includeTableOfContents` from section-level generation entirely
+- Remove `includeEndNotes` from section-level generation - instead, the AI just uses numbered markers `[1]`, `[2]` in the text
+
+### 2. Create Document-Level TOC Component
+
+A new React component that:
+- Renders above the outline (inside `HierarchyBlockView`)
+- Lists all depth-0 nodes (sections) as clickable links
+- Uses the existing `scrollToNode` function to jump to clicked sections
+- Only visible when the TOC option is enabled
+
+### 3. Create Document-Level End Notes Component
+
+A new React component that:
+- Renders below the outline (inside `HierarchyBlockView`)
+- Scans all nodes for citation markers like `[1]`, `[2]` or `[Author, Year]`
+- Displays a consolidated references list
+- For now, shows placeholder citations (future: allow users to define the actual references)
 
 ---
 
@@ -53,55 +42,94 @@ References
 
 ### File: `supabase/functions/section-ai-chat/index.ts`
 
-**1. Update TOC instruction** (line ~261):
-```typescript
-// Before
-optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING... 
-include a "Table of Contents" header at depth 0, followed by items at depth 1 
-that list each major topic that will appear in the outline below it.`;
+**Remove TOC and End Notes generation instructions**:
+- Remove the `hasToc` and `hasEndNotes` logic that adds special items
+- Keep only `includeCitations` (inline markers) and `historicalDetail`
+- The AI should just generate outline content with inline citation markers when requested
 
-// After
-optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING of the 
-items array, include a "Table of Contents" header at depth 0. Follow it with 
-descriptive preview phrases at depth 1 that summarize what each major section 
-will cover. Do NOT simply repeat the exact section headings—instead, write 
-brief descriptions like "Overview of economic factors" or "Analysis of key 
-political figures involved."`;
-```
+### File: `src/components/editor/DocumentPlanDialog.tsx`
 
-**2. Update example JSON** (lines ~277-305) to demonstrate the correct pattern:
+**Update UI to clarify the new behavior**:
+- Change "Table of Contents" description to "Show clickable section list above outline"
+- Change "End Notes" description to "Collect citations into a references section below outline"
 
-```typescript
-if (hasToc && hasEndNotes) {
-  exampleItems = `[
-    { "label": "Table of Contents", "depth": 0 },
-    { "label": "Overview of the causes leading to conflict", "depth": 1 },
-    { "label": "Analysis of key historical figures", "depth": 1 },
-    { "label": "The lasting aftermath and consequences", "depth": 1 },
-    { "label": "The Causes of the Event", "depth": 0 },
-    { "label": "Economic tensions between nations [1]", "depth": 1 },
-    { "label": "Political instability in the region [2]", "depth": 1 },
-    { "label": "Key Figures Involved", "depth": 0 },
-    { "label": "The main actors included leaders from several nations", "depth": 1 },
-    { "label": "The Aftermath", "depth": 0 },
-    { "label": "Long-term consequences shaped the modern world", "depth": 1 },
-    { "label": "References", "depth": 0 },
-    { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
-    { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
-  ]`;
+### File: `src/components/editor/TableOfContents.tsx` (NEW)
+
+Create a new component:
+```tsx
+interface TableOfContentsProps {
+  sections: Array<{ id: string; label: string }>;
+  onNavigate: (sectionId: string) => void;
+}
+
+export function TableOfContents({ sections, onNavigate }: TableOfContentsProps) {
+  if (sections.length === 0) return null;
+  
+  return (
+    <div className="border-b border-foreground/10 pb-2 mb-2">
+      <div className="text-xs font-medium text-muted-foreground mb-1">Contents</div>
+      <ul className="space-y-0.5">
+        {sections.map((section, index) => (
+          <li key={section.id}>
+            <button
+              onClick={() => onNavigate(section.id)}
+              className="text-sm text-primary hover:underline text-left"
+            >
+              {index + 1}. {section.label || '(Untitled)'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 ```
 
-**3. Similarly update the TOC-only example** (lines ~293-305).
+### File: `src/components/editor/EndNotesSection.tsx` (NEW)
 
----
+Create a new component:
+```tsx
+interface EndNotesSectionProps {
+  citations: Array<{ marker: string; text?: string }>;
+}
 
-## Alternative Approach (If User Prefers)
+export function EndNotesSection({ citations }: EndNotesSectionProps) {
+  if (citations.length === 0) return null;
+  
+  return (
+    <div className="border-t border-foreground/10 pt-2 mt-4">
+      <div className="text-xs font-medium text-muted-foreground mb-1">References</div>
+      <ul className="text-sm space-y-0.5 text-muted-foreground">
+        {citations.map((c, i) => (
+          <li key={i}>{c.marker} {c.text || '(Reference to be added)'}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
 
-If the user would rather have the TOC just be a simple list that doesn't duplicate at all, we could:
+### File: `src/components/editor/HierarchyBlockView.tsx`
 
-- **Remove TOC from per-section generation entirely** — only generate it once at the document level
-- **Or**: Have the TOC be a numbered list like "1. Section One, 2. Section Two" rather than topic names
+**Integrate the new components**:
+1. Extract depth-0 nodes as "sections" for the TOC
+2. Scan all nodes for citation markers (e.g., `[1]`, `[2]`) for End Notes
+3. Render `<TableOfContents>` above the outline when the option is enabled
+4. Render `<EndNotesSection>` below the outline when the option is enabled
+5. Pass `scrollToNode` function to TOC for navigation
+
+### File: `src/hooks/useSectionPromptQueue.ts`
+
+**Simplify GenerationOptions**:
+- Remove `includeTableOfContents` from the interface (it's now a display option, not AI generation)
+- Remove `includeEndNotes` from the interface (same reason)
+- Keep `includeCitations` and `historicalDetail` as these affect what the AI writes in the content
+
+### File: `src/components/editor/context/DocumentContext.tsx`
+
+**Add document-level display options state**:
+- Add `showTableOfContents: boolean` and `showEndNotes: boolean` to context
+- These control whether the TOC and End Notes components render
 
 ---
 
@@ -109,19 +137,23 @@ If the user would rather have the TOC just be a simple list that doesn't duplica
 
 | File | Change |
 |------|--------|
-| `supabase/functions/section-ai-chat/index.ts` | Update TOC instruction to use descriptive phrases instead of duplicating headings |
-| `supabase/functions/section-ai-chat/index.ts` | Update all example JSON snippets to demonstrate correct non-duplicate pattern |
+| `supabase/functions/section-ai-chat/index.ts` | Remove TOC/EndNotes generation logic; keep inline citation markers only |
+| `src/components/editor/TableOfContents.tsx` | NEW: Clickable section list component |
+| `src/components/editor/EndNotesSection.tsx` | NEW: Consolidated references component |
+| `src/components/editor/HierarchyBlockView.tsx` | Integrate TOC above and End Notes below the outline |
+| `src/components/editor/DocumentPlanDialog.tsx` | Update toggle descriptions to reflect new behavior |
+| `src/hooks/useSectionPromptQueue.ts` | Simplify GenerationOptions interface |
+| `src/components/editor/context/DocumentContext.tsx` | Add display option state for TOC and End Notes visibility |
 
 ---
 
 ## Testing
 
 After implementation:
-1. Create a new document with "Write about WWI"
-2. Enable TOC and End Notes in Generation Options
-3. Click "Auto-Write Document"
-4. Verify each section has:
-   - A TOC with **descriptive previews** (not duplicated headings)
-   - Main content with clear section headers
-   - References at the end with numbered citations
-
+1. Enable TOC and End Notes in Generation Options
+2. Create a document with multiple sections using "Auto-Write Document"
+3. Verify:
+   - TOC appears **above** the outline with clickable section links
+   - Clicking a TOC item scrolls to that section
+   - End Notes appears **below** the outline showing collected citation markers
+   - Section content does NOT contain embedded TOC or References items
