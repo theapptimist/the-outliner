@@ -253,12 +253,30 @@ export async function bulkDeleteByTitle(title: string): Promise<number> {
   return data?.length ?? 0;
 }
 
+// Recursively check if a hierarchy node tree has any meaningful content
+function hasNonEmptyNodes(nodes: any[]): boolean {
+  if (!Array.isArray(nodes) || nodes.length === 0) return false;
+  
+  return nodes.some(node => {
+    // Check if this node has a non-empty label
+    const label = node.label?.trim?.() || '';
+    if (label.length > 0) return true;
+    
+    // Check children recursively
+    if (Array.isArray(node.children) && hasNonEmptyNodes(node.children)) {
+      return true;
+    }
+    
+    return false;
+  });
+}
+
 // Check if a document is "empty" (no meaningful content)
 function isDocumentEmpty(doc: { content: any; hierarchyBlocks: Record<string, any> }): boolean {
-  // Check hierarchy blocks
+  // Check hierarchy blocks - only count as content if nodes have actual text
   const hasHierarchyContent = Object.values(doc.hierarchyBlocks || {}).some(block => {
     const tree = (block as any)?.tree;
-    return Array.isArray(tree) && tree.length > 0;
+    return hasNonEmptyNodes(tree);
   });
   
   if (hasHierarchyContent) return false;
@@ -270,9 +288,10 @@ function isDocumentEmpty(doc: { content: any; hierarchyBlocks: Record<string, an
   const docContent = content.content;
   if (!Array.isArray(docContent)) return true;
   
-  // Empty if only contains empty paragraphs
+  // Empty if only contains empty paragraphs or hierarchyBlocks with no real content
   const hasRealContent = docContent.some((node: any) => {
-    if (node.type === 'hierarchyBlock') return true;
+    // hierarchyBlock nodes are checked via hierarchyBlocks above
+    if (node.type === 'hierarchyBlock') return false;
     if (node.type === 'paragraph') {
       return node.content && node.content.length > 0;
     }
