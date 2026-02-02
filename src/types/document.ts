@@ -20,6 +20,9 @@ export interface DocumentDisplayOptions {
   extractEntities: boolean;
 }
 
+// Citation definitions for End Notes (marker -> full citation text)
+export type CitationDefinitions = Record<string, string>;
+
 export interface DocumentState {
   meta: DocumentMeta;
   /** TipTap JSON content with embedded hierarchy blocks */
@@ -28,6 +31,8 @@ export interface DocumentState {
   hierarchyBlocks: Record<string, HierarchyBlockData>;
   /** Display options for TOC, End Notes, etc. */
   displayOptions?: DocumentDisplayOptions;
+  /** Citation definitions for End Notes */
+  citationDefinitions?: CitationDefinitions;
 }
 
 export function createEmptyDocument(title: string = 'Untitled'): DocumentState {
@@ -53,5 +58,6 @@ export function createEmptyDocument(title: string = 'Untitled'): DocumentState {
       showEndNotes: false,
       extractEntities: false,
     },
+    citationDefinitions: {},
   };
 }

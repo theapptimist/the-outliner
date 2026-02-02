@@ -50,6 +50,7 @@ interface EditorProviderProps {
   onDocumentTitleChange?: (title: string) => void;
   onHierarchyBlocksChange?: (blocks: Record<string, any>) => void;
   onDisplayOptionsChange?: (options: DocumentDisplayOptions) => void;
+  onCitationDefinitionsChange?: (definitions: Record<string, string>) => void;
   onUndoRedoChange?: (
     undo: () => void,
     redo: () => void,
@@ -148,6 +149,7 @@ export function EditorProvider({
   onDocumentTitleChange,
   onHierarchyBlocksChange,
   onDisplayOptionsChange,
+  onCitationDefinitionsChange,
   onUndoRedoChange,
 }: EditorProviderProps) {
   const documentId = document?.meta?.id ?? 'default';
@@ -166,6 +168,7 @@ export function EditorProvider({
       onDocumentTitleChange={onDocumentTitleChange}
       onHierarchyBlocksChange={onHierarchyBlocksChange}
       onDisplayOptionsChange={onDisplayOptionsChange}
+      onCitationDefinitionsChange={onCitationDefinitionsChange}
       onUndoRedoChange={onUndoRedoChange}
     >
       <SelectionProvider>
