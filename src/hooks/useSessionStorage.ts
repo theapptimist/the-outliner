@@ -27,12 +27,16 @@ export function useSessionStorage<T>(key: string, initialValue: T): [T, (value: 
   // Re-read from storage when key changes (but NOT when initialValue changes)
   useEffect(() => {
     if (prevKeyRef.current !== storageKey) {
+      console.log(`[useSessionStorage] Key changed from ${prevKeyRef.current} to ${storageKey}`);
       prevKeyRef.current = storageKey;
       try {
         const item = localStorage.getItem(storageKey);
         if (item) {
-          setStoredValue(JSON.parse(item));
+          const parsed = JSON.parse(item);
+          console.log(`[useSessionStorage] Loaded from localStorage for new key: ${key}`, { hasValue: true });
+          setStoredValue(parsed);
         } else {
+          console.log(`[useSessionStorage] No localStorage value for new key: ${key}, using initialValue`);
           setStoredValue(initialValueRef.current);
         }
       } catch (e) {

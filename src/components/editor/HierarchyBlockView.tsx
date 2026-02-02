@@ -90,6 +90,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   // Use session storage for tree persistence keyed by blockId
   const [tree, setTreeState] = useSessionStorage<HierarchyNode[]>(`outline-tree:${blockId}`, initialTree);
   const treeRef = useRef<HierarchyNode[]>(tree);
+  
+  // Debug: track tree source (initial vs restored)
+  const mountTimeRef = useRef(Date.now());
+  useEffect(() => {
+    console.log(`[HierarchyBlockView ${blockId}] Mounted with tree node count:`, flattenTree(tree).length, 
+      'from:', tree === initialTree ? 'initialTree (cloud)' : 'localStorage');
+  }, []);
   const [selectedId, setSelectedId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [autoFocusId, setAutoFocusId] = useState<string | null>(() => tree[0]?.id ?? firstNodeId);
