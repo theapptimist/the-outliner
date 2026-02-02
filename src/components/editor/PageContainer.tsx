@@ -1,10 +1,12 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { DocumentAIButton } from './DocumentAIButton';
 
 interface PageContainerProps {
   children: React.ReactNode;
   pageNumber?: number;
   showPageNumber?: boolean;
+  showAIButton?: boolean;
   className?: string;
 }
 
@@ -23,6 +25,7 @@ export function PageContainer({
   children, 
   pageNumber = 1, 
   showPageNumber = true,
+  showAIButton = false,
   className 
 }: PageContainerProps) {
   return (
@@ -43,6 +46,9 @@ export function PageContainer({
           padding: `${SCALED_PADDING}px`,
         }}
       >
+        {/* Document AI Button */}
+        {showAIButton && <DocumentAIButton />}
+        
         {/* Content area */}
         <div className="w-full min-h-full">
           {children}
@@ -72,7 +78,7 @@ export function PaginatedDocument({ children, className }: PaginatedDocumentProp
         className
       )}
     >
-      <PageContainer showPageNumber={false}>
+      <PageContainer showPageNumber={false} showAIButton>
         {children}
       </PageContainer>
     </div>
