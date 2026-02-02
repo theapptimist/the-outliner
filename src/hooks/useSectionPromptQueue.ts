@@ -5,8 +5,8 @@ export interface GenerationOptions {
   historicalDetail: boolean;
   outputFormat: 'outline' | 'prose';
   closePanelsAfterGeneration: boolean;
-  includeEndNotes: boolean;
-  includeTableOfContents: boolean;
+  // NOTE: includeEndNotes and includeTableOfContents are now display-only options
+  // managed by DocumentContext, NOT passed to AI generation
 }
 
 interface QueuedPrompt {

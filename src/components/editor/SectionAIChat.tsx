@@ -8,7 +8,7 @@ import { useDocumentContext } from './context/DocumentContext';
 import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { DocumentPlanDialog, SectionPrompt } from './DocumentPlanDialog';
+import { DocumentPlanDialog, SectionPrompt, DisplayOptions } from './DocumentPlanDialog';
 import type { GenerationOptions } from '@/hooks/useSectionPromptQueue';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -76,7 +76,7 @@ export function SectionAIChat({
   onClosePanel,
   isFullscreen = false,
 }: SectionAIChatProps) {
-  const { document } = useDocumentContext();
+  const { document, setDisplayOptions } = useDocumentContext();
   const documentId = document?.meta?.id || 'unknown';
   
   const [messages, setMessages] = useSessionStorage<ChatMessage[]>(
@@ -349,7 +349,7 @@ export function SectionAIChat({
     }
   }, [allSections, sectionLabel, sectionContent, documentContext, input, setMessages]);
 
-  const handleApproveplan = useCallback(async (prompts: SectionPrompt[], autoExecute: boolean, options?: GenerationOptions) => {
+  const handleApproveplan = useCallback(async (prompts: SectionPrompt[], autoExecute: boolean, options?: GenerationOptions, displayOptions?: DisplayOptions) => {
     const newSections = prompts.filter(p => p.isNew && p.enabled && p.prompt.trim());
     const existingSections = prompts.filter(p => !p.isNew && p.enabled && p.prompt.trim());
     
@@ -398,6 +398,14 @@ export function SectionAIChat({
     ];
     
     setPlanDialogOpen(false);
+
+    // Apply display options to document context (TOC and End Notes visibility)
+    if (displayOptions) {
+      setDisplayOptions({
+        showTableOfContents: displayOptions.showTableOfContents,
+        showEndNotes: displayOptions.showEndNotes,
+      });
+    }
     
     if (autoExecute && onOpenSectionPanels) {
       // TRUE MULTI-WINDOW CASCADE: Queue prompts with autoExecute flag
@@ -489,7 +497,7 @@ export function SectionAIChat({
         toast.success(`Queued ${totalCount} prompts for sections`);
       }
     }
-  }, [promptQueue, onCreateSection, onUpdateSectionLabel, onInsertSectionContent, onOpenSectionPanels, allSections, documentContext]);
+  }, [promptQueue, onCreateSection, onUpdateSectionLabel, onInsertSectionContent, onOpenSectionPanels, allSections, documentContext, setDisplayOptions]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

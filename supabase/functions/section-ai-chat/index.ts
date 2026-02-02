@@ -239,26 +239,18 @@ Guidelines for prompts:
     // Standard section operations
     
     // Build generation options instructions
+    // NOTE: TOC and End Notes are now handled at the document level as UI components,
+    // NOT as items in the AI-generated outline. Only citations and historical detail affect AI output.
     let optionsInstructions = '';
-    let hasToc = false;
-    let hasEndNotes = false;
     let hasCitations = false;
     
     if (generationOptions) {
       if (generationOptions.includeCitations) {
         hasCitations = true;
-        optionsInstructions += `\n- CITATIONS: Include inline citations in your content. Format as [Author, Year] or [Source Name]. Place these within the text where claims are made.`;
+        optionsInstructions += `\n- CITATIONS: Include inline citation markers in your content. Use numbered format like [1], [2], [3] for claims that need sources. These markers will be collected into a document-level references section automatically.`;
       }
       if (generationOptions.historicalDetail) {
         optionsInstructions += `\n- HISTORICAL DETAIL: Be specific about historical actors, dates, and primary sources. Name specific people, institutions, and document references rather than speaking generally.`;
-      }
-      if (generationOptions.includeEndNotes) {
-        hasEndNotes = true;
-        optionsInstructions += `\n- END NOTES: Include numbered reference markers [1], [2], etc. in your content. At the VERY END of the items array (after all outline content), include a "References" header at depth 0 followed by the full citations at depth 1.`;
-      }
-      if (generationOptions.includeTableOfContents) {
-        hasToc = true;
-        optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING of the items array, include a "Table of Contents" header at depth 0. Follow it with descriptive preview phrases at depth 1 that summarize what each major section will cover. Do NOT simply repeat the exact section headings—instead, write brief descriptions like "Overview of economic factors" or "Analysis of key political figures involved."`;
       }
       if (generationOptions.outputFormat === 'prose') {
         optionsInstructions += `\n- OUTPUT FORMAT: Write in flowing prose paragraphs rather than bullet points or outline format. Each item's label should be a full paragraph of text.`;
@@ -266,6 +258,7 @@ Guidelines for prompts:
     }
     
     // Build example that matches the options
+    // Simplified examples since TOC and End Notes are now document-level UI components
     let exampleItems = `[
     { "label": "First main point", "depth": 0 },
     { "label": "Supporting detail", "depth": 1 },
@@ -273,49 +266,13 @@ Guidelines for prompts:
     { "label": "Second main point", "depth": 0 }
   ]`;
     
-    if (hasToc && hasEndNotes) {
+    if (hasCitations) {
       exampleItems = `[
-    { "label": "Table of Contents", "depth": 0 },
-    { "label": "Overview of the causes leading to conflict", "depth": 1 },
-    { "label": "Analysis of key historical figures", "depth": 1 },
-    { "label": "The lasting aftermath and consequences", "depth": 1 },
-    { "label": "The Causes of the Event", "depth": 0 },
-    { "label": "Economic tensions between nations [1]", "depth": 1 },
-    { "label": "Political instability in the region [2]", "depth": 1 },
-    { "label": "Key Figures Involved", "depth": 0 },
-    { "label": "The main actors included leaders from several nations", "depth": 1 },
-    { "label": "The Aftermath", "depth": 0 },
-    { "label": "Long-term consequences shaped the modern world", "depth": 1 },
-    { "label": "References", "depth": 0 },
-    { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
-    { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
-  ]`;
-    } else if (hasToc) {
-      exampleItems = `[
-    { "label": "Table of Contents", "depth": 0 },
-    { "label": "Overview of the background and context", "depth": 1 },
-    { "label": "Analysis of key events that unfolded", "depth": 1 },
-    { "label": "The lasting aftermath and impact", "depth": 1 },
-    { "label": "Background and Context", "depth": 0 },
-    { "label": "A detailed explanation of the setting...", "depth": 1 },
-    { "label": "Key Events", "depth": 0 },
-    { "label": "The main events included...", "depth": 1 },
-    { "label": "Aftermath", "depth": 0 },
-    { "label": "The consequences were far-reaching...", "depth": 1 }
-  ]`;
-    } else if (hasEndNotes) {
-      exampleItems = `[
-    { "label": "Main point with citation [1]", "depth": 0 },
-    { "label": "Supporting detail referencing source [2]", "depth": 1 },
-    { "label": "Another main point", "depth": 0 },
-    { "label": "References", "depth": 0 },
-    { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
-    { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
-  ]`;
-    } else if (hasCitations) {
-      exampleItems = `[
-    { "label": "The event began in 1914 [Keegan, 1998]", "depth": 0 },
-    { "label": "Economic factors played a key role [Smith, 2005]", "depth": 1 }
+    { "label": "The event began in 1914 [1]", "depth": 0 },
+    { "label": "Economic factors played a key role [2]", "depth": 1 },
+    { "label": "Political tensions escalated [3]", "depth": 1 },
+    { "label": "Another major topic", "depth": 0 },
+    { "label": "Details with sources [4]", "depth": 1 }
   ]`;
     }
     
