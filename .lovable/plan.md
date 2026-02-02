@@ -1,156 +1,127 @@
 
-# Document Plan Dialog Enhancement
 
-## Overview
+# Fix Confusing TOC and End Notes Structure
 
-This plan enhances the Document Plan dialog with two improvements:
-1. **Taller default height** for better visibility without scrolling
-2. **AI Generation Options** - collapsible controls that let users configure how the AI generates content
+## Problem Analysis
+
+The current implementation causes confusing output because:
+
+1. **Duplicate Labels**: The TOC lists topic names (e.g., "Key Figures"), then those exact same names appear again as section headers below
+2. **Per-Section TOC**: Each section gets its own mini-TOC, which is redundant for a single section's content
+3. **Structural Confusion**: The flat depth structure with duplicated names creates an outline that reads poorly
+
+**Example of current problematic output:**
+```text
+Table of Contents
+├── The Causes
+├── Key Figures  
+├── Aftermath
+The Causes         ← Same text appears again
+├── Content...
+Key Figures        ← Same text appears again
+├── Content...
+References
+├── [1] Citation...
+```
 
 ---
 
-## Current State Analysis
+## Solution: Change TOC Semantics
 
-The `DocumentPlanDialog.tsx` currently:
-- Uses a default height of 600px (line 42)
-- Has a resize handle but no quick way to maximize
-- Contains only section prompts with enable/disable checkboxes
-- No options to control AI behavior
+Instead of duplicating topic names, the **Table of Contents should use descriptive phrases that preview the content** rather than just listing the same headings. This creates meaningful differentiation.
+
+**Proposed new output structure:**
+```text
+Table of Contents
+├── Overview of the causes leading to conflict
+├── Analysis of key historical figures involved
+├── Long-term consequences and aftermath
+The Causes of the Conflict
+├── Economic tensions between nations [1]
+├── Political instability in the region [2]
+Key Figures Involved
+├── Leaders from several nations shaped events
+The Aftermath
+├── Consequences that shaped the modern world
+References
+├── [1] Smith, J. (1998)...
+```
 
 ---
 
-## Proposed Changes
+## Implementation Changes
 
-### 1. Increase Default Height
+### File: `supabase/functions/section-ai-chat/index.ts`
 
-**Simple change**: Increase the default height from 600px to 720px (or 80vh, whichever is smaller) to show more sections without scrolling.
-
-**Location**: `DocumentPlanDialog.tsx`, line 42
+**1. Update TOC instruction** (line ~261):
 ```typescript
 // Before
-const [size, setSize] = useState({ width: 672, height: 600 });
+optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING... 
+include a "Table of Contents" header at depth 0, followed by items at depth 1 
+that list each major topic that will appear in the outline below it.`;
 
-// After  
-const [size, setSize] = useState({ 
-  width: 672, 
-  height: Math.min(720, window.innerHeight * 0.8) 
-});
+// After
+optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING of the 
+items array, include a "Table of Contents" header at depth 0. Follow it with 
+descriptive preview phrases at depth 1 that summarize what each major section 
+will cover. Do NOT simply repeat the exact section headings—instead, write 
+brief descriptions like "Overview of economic factors" or "Analysis of key 
+political figures involved."`;
 ```
 
----
-
-### 2. Add AI Options Panel
-
-Add a collapsible "Generation Options" section between the header and the section list. This keeps the dialog clean by default but allows power users to configure AI behavior.
-
-**New Options (with Switch toggles):**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| Include Citations | Off | AI will reference sources and suggest footnotes |
-| Historical Detail | Off | Name specific actors, dates, and primary sources |
-| Output Format | Outline (default) | Choose between "Outline" or "Prose" |
-
-**UI Design:**
-```text
-┌─────────────────────────────────────────────────────┐
-│ ✨ Review Document Plan                        [×]  │
-│ 3 new sections will be created...                   │
-├─────────────────────────────────────────────────────┤
-│ ▶ Generation Options                    [collapsed] │
-├─────────────────────────────────────────────────────┤
-│  When expanded:                                     │
-│  ┌───────────────────────────────────────────────┐  │
-│  │ Include Citations         ○────────────       │  │
-│  │ Historical Detail         ───────────○       │  │
-│  │ Output: ○ Outline  ○ Prose                   │  │
-│  └───────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────┤
-│ [ScrollArea with section cards...]                  │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-### 3. Pass Options to AI
-
-When the user approves the plan, pass these options to the edge function, which will include them in the AI prompt.
-
-**Data Flow:**
-1. Dialog stores options in local state
-2. `onApprove` callback receives options alongside prompts
-3. Options are passed to `section-ai-chat` edge function
-4. Edge function modifies the system prompt based on options
-
----
-
-## Implementation Details
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/editor/DocumentPlanDialog.tsx` | Add options state, collapsible UI, pass to onApprove |
-| `src/components/editor/SectionAIChat.tsx` | Update `handleApprovePlan` to include options |
-| `supabase/functions/section-ai-chat/index.ts` | Accept options, modify prompts accordingly |
-
----
-
-### New Interface Definition
+**2. Update example JSON** (lines ~277-305) to demonstrate the correct pattern:
 
 ```typescript
-export interface GenerationOptions {
-  includeCitations: boolean;
-  historicalDetail: boolean;
-  outputFormat: 'outline' | 'prose';
+if (hasToc && hasEndNotes) {
+  exampleItems = `[
+    { "label": "Table of Contents", "depth": 0 },
+    { "label": "Overview of the causes leading to conflict", "depth": 1 },
+    { "label": "Analysis of key historical figures", "depth": 1 },
+    { "label": "The lasting aftermath and consequences", "depth": 1 },
+    { "label": "The Causes of the Event", "depth": 0 },
+    { "label": "Economic tensions between nations [1]", "depth": 1 },
+    { "label": "Political instability in the region [2]", "depth": 1 },
+    { "label": "Key Figures Involved", "depth": 0 },
+    { "label": "The main actors included leaders from several nations", "depth": 1 },
+    { "label": "The Aftermath", "depth": 0 },
+    { "label": "Long-term consequences shaped the modern world", "depth": 1 },
+    { "label": "References", "depth": 0 },
+    { "label": "[1] Smith, J. (1998). The History of Conflict. Oxford Press.", "depth": 1 },
+    { "label": "[2] Jones, M. (2005). War and Peace. Cambridge University.", "depth": 1 }
+  ]`;
 }
 ```
 
----
-
-### Edge Function Prompt Modifications
-
-When options are enabled, the system prompt will include:
-
-**For `includeCitations: true`:**
-```text
-When writing content, include inline citations and suggest sources where appropriate. 
-Format citations as [Author, Year] or [Source Name].
-```
-
-**For `historicalDetail: true`:**
-```text
-Be specific about historical actors, dates, and primary sources. 
-Name specific people, institutions, and document references rather than speaking generally.
-```
-
-**For `outputFormat: 'prose'`:**
-```text
-Write in flowing prose paragraphs rather than bullet points or outline format.
-```
+**3. Similarly update the TOC-only example** (lines ~293-305).
 
 ---
 
-## Risk Assessment
+## Alternative Approach (If User Prefers)
 
-| Risk | Mitigation |
-|------|------------|
-| Dialog positioning issues (previous failure) | We are NOT changing positioning or fullscreen logic |
-| Resize logic conflicts | We are only changing the initial height value |
-| State complexity | Options are simple boolean/enum values with no side effects |
+If the user would rather have the TOC just be a simple list that doesn't duplicate at all, we could:
 
-**What we are NOT doing:**
-- No fullscreen toggle (that caused the previous rollback)
-- No changes to resize drag behavior
-- No changes to dialog positioning CSS
+- **Remove TOC from per-section generation entirely** — only generate it once at the document level
+- **Or**: Have the TOC be a numbered list like "1. Section One, 2. Section Two" rather than topic names
 
 ---
 
-## Testing Checklist
+## Summary of Changes
 
-1. Open Document Plan dialog → verify taller height
-2. Click "Generation Options" → verify it expands/collapses
-3. Toggle options → verify visual feedback
-4. Approve plan with options enabled → verify AI prompts reflect options
-5. Verify resize handle still works correctly
-6. Test on different viewport heights
+| File | Change |
+|------|--------|
+| `supabase/functions/section-ai-chat/index.ts` | Update TOC instruction to use descriptive phrases instead of duplicating headings |
+| `supabase/functions/section-ai-chat/index.ts` | Update all example JSON snippets to demonstrate correct non-duplicate pattern |
+
+---
+
+## Testing
+
+After implementation:
+1. Create a new document with "Write about WWI"
+2. Enable TOC and End Notes in Generation Options
+3. Click "Auto-Write Document"
+4. Verify each section has:
+   - A TOC with **descriptive previews** (not duplicated headings)
+   - Main content with clear section headers
+   - References at the end with numbered citations
+
