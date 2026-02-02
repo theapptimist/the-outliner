@@ -384,9 +384,15 @@ export function FileMenu({
                   key={doc.id}
                   data-allow-pointer
                   onClick={() => {
-                    onOpenRecent(doc.id);
+                    console.log('[FileMenu] Opening recent doc:', doc.id, doc.title);
+                    // Close menus first, then trigger open (async-safe)
                     setSheetOpen(false);
                     setShowRecent(false);
+                    // Use setTimeout to ensure the open happens after sheet cleanup
+                    setTimeout(() => {
+                      console.log('[FileMenu] Calling onOpenRecent now');
+                      onOpenRecent(doc.id);
+                    }, 0);
                   }}
                   className="w-full flex items-start gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50 text-left"
                 >
