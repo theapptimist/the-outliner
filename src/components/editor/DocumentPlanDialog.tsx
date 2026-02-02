@@ -23,8 +23,12 @@ export interface GenerationOptions {
   historicalDetail: boolean;
   outputFormat: 'outline' | 'prose';
   closePanelsAfterGeneration: boolean;
-  includeEndNotes: boolean;
-  includeTableOfContents: boolean;
+}
+
+// Display options - these control UI rendering, not AI generation
+export interface DisplayOptions {
+  showTableOfContents: boolean;
+  showEndNotes: boolean;
 }
 
 export interface SectionPrompt {
@@ -39,7 +43,7 @@ interface DocumentPlanDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sectionPrompts: SectionPrompt[];
-  onApprove: (prompts: SectionPrompt[], autoExecute: boolean, options: GenerationOptions) => void;
+  onApprove: (prompts: SectionPrompt[], autoExecute: boolean, options: GenerationOptions, displayOptions: DisplayOptions) => void;
   onCancel: () => void;
 }
 
@@ -64,8 +68,12 @@ export function DocumentPlanDialog({
     historicalDetail: true,
     outputFormat: 'outline',
     closePanelsAfterGeneration: true,
-    includeEndNotes: true,
-    includeTableOfContents: true,
+  });
+
+  // Display options - control UI rendering of TOC and End Notes
+  const [displayOptions, setDisplayOptions] = useState<DisplayOptions>({
+    showTableOfContents: true,
+    showEndNotes: true,
   });
 
   // Reset when dialog opens with new prompts
@@ -95,7 +103,7 @@ export function DocumentPlanDialog({
 
   const handleApprove = (autoExecute: boolean) => {
     const enabledPrompts = prompts.filter(p => p.enabled && p.prompt.trim());
-    onApprove(enabledPrompts, autoExecute, options);
+    onApprove(enabledPrompts, autoExecute, options, displayOptions);
     onOpenChange(false);
   };
 
@@ -218,12 +226,12 @@ export function DocumentPlanDialog({
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="endnotes" className="text-sm font-medium">End Notes</Label>
-                  <p className="text-xs text-muted-foreground">Generate end notes section with references</p>
+                  <p className="text-xs text-muted-foreground">Collect citations into a references section below outline</p>
                 </div>
                 <Switch
                   id="endnotes"
-                  checked={options.includeEndNotes}
-                  onCheckedChange={(checked) => setOptions(prev => ({ ...prev, includeEndNotes: checked }))}
+                  checked={displayOptions.showEndNotes}
+                  onCheckedChange={(checked) => setDisplayOptions(prev => ({ ...prev, showEndNotes: checked }))}
                 />
               </div>
 
@@ -231,12 +239,12 @@ export function DocumentPlanDialog({
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="toc" className="text-sm font-medium">Table of Contents</Label>
-                  <p className="text-xs text-muted-foreground">Include a table of contents outline</p>
+                  <p className="text-xs text-muted-foreground">Show clickable section list above outline</p>
                 </div>
                 <Switch
                   id="toc"
-                  checked={options.includeTableOfContents}
-                  onCheckedChange={(checked) => setOptions(prev => ({ ...prev, includeTableOfContents: checked }))}
+                  checked={displayOptions.showTableOfContents}
+                  onCheckedChange={(checked) => setDisplayOptions(prev => ({ ...prev, showTableOfContents: checked }))}
                 />
               </div>
 

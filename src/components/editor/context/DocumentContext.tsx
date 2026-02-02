@@ -34,6 +34,12 @@ export interface PanelState {
   onCloseAllPanels: () => void;
 }
 
+// Display options for document-level features (TOC, End Notes)
+export interface DocumentDisplayOptions {
+  showTableOfContents: boolean;
+  showEndNotes: boolean;
+}
+
 interface DocumentContextValue {
   // Style settings
   outlineStyle: OutlineStyle;
@@ -95,6 +101,10 @@ interface DocumentContextValue {
   // Panel state for AI toolbar
   panelState: PanelState;
   setPanelState: (state: PanelState) => void;
+
+  // Document display options (TOC, End Notes)
+  displayOptions: DocumentDisplayOptions;
+  setDisplayOptions: (options: DocumentDisplayOptions) => void;
 }
 
 const DocumentContext = createContext<DocumentContextValue>({
@@ -141,6 +151,9 @@ const DocumentContext = createContext<DocumentContextValue>({
 
   panelState: { openPanelCount: 0, totalSectionCount: 0, onOpenAllPanels: () => {}, onCloseAllPanels: () => {} },
   setPanelState: () => {},
+
+  displayOptions: { showTableOfContents: false, showEndNotes: false },
+  setDisplayOptions: () => {},
 });
 
 interface DocumentProviderProps {
@@ -191,6 +204,10 @@ export function DocumentProvider({
     totalSectionCount: 0,
     onOpenAllPanels: () => {},
     onCloseAllPanels: () => {},
+  });
+  const [displayOptions, setDisplayOptions] = useState<DocumentDisplayOptions>({
+    showTableOfContents: false,
+    showEndNotes: false,
   });
 
   const updateHierarchyBlock = useCallback((blockId: string, tree: HierarchyNode[]) => {
@@ -300,6 +317,8 @@ export function DocumentProvider({
         registerUndoRedo,
         panelState,
         setPanelState,
+        displayOptions,
+        setDisplayOptions,
       }}
     >
       {children}

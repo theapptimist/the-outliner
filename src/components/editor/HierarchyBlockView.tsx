@@ -1,5 +1,5 @@
 import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 import { HierarchyNode, NodeType, DropPosition } from '@/types/node';
@@ -23,6 +23,8 @@ import { SimpleOutlineView } from './SimpleOutlineView';
 import { VirtualizedOutline, useVirtualizationEnabled } from './VirtualizedOutline';
 import { RevealCodes } from './RevealCodes';
 import { FindReplaceMatch, FindReplaceProvider, useEditorContext } from './EditorContext';
+import { TableOfContents } from './TableOfContents';
+import { EndNotesSection, extractCitations } from './EndNotesSection';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -63,6 +65,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     dates,
     people,
     places,
+    // Display options for TOC and End Notes
+    displayOptions,
+    scrollToNode: contextScrollToNode,
   } = useEditorContext();
   
   // Compute initial tree: prefer saved data from document, fallback to empty node
@@ -305,6 +310,37 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
   }, [undo, redo]);
 
   const flatNodes = flattenTree(tree);
+
+  // Compute TOC sections (depth-0 nodes only)
+  const tocSections = useMemo(() => {
+    return flatNodes
+      .filter(n => n.depth === 0 && n.type !== 'body')
+      .map(n => ({ id: n.id, label: n.label || '' }));
+  }, [flatNodes]);
+
+  // Compute citations from all nodes
+  const citations = useMemo(() => {
+    return extractCitations(flatNodes);
+  }, [flatNodes]);
+
+  // Handle TOC navigation
+  const handleTocNavigate = useCallback((nodeId: string) => {
+    setSelectedId(nodeId);
+    setAutoFocusId(nodeId);
+    // Expand collapsed ancestors if needed
+    setTree(prev => {
+      let next = prev;
+      let cur = findNode(next, nodeId);
+      while (cur?.parentId) {
+        const parent = findNode(next, cur.parentId);
+        if (parent?.collapsed) {
+          next = toggleCollapse(next, parent.id);
+        }
+        cur = parent ?? null;
+      }
+      return next;
+    });
+  }, [setTree]);
 
   const addNode = useCallback((
     parentId: string | null = null,
@@ -928,6 +964,13 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
       />
       </Suspense>
       
+      {/* Table of Contents - displayed above outline when enabled */}
+      {!isCollapsed && displayOptions.showTableOfContents && tocSections.length > 0 && (
+        <TableOfContents 
+          sections={tocSections} 
+          onNavigate={handleTocNavigate}
+        />
+      )}
       
       {/* Outline view - use virtualized version for large outlines */}
       {!isCollapsed && flatNodes.length >= 100 && (
@@ -1125,6 +1168,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onDeleteBlock={() => deleteBlockNode()}
           />
         </div>
+      )}
+
+      {/* End Notes - displayed below outline when enabled */}
+      {!isCollapsed && displayOptions.showEndNotes && citations.length > 0 && (
+        <EndNotesSection citations={citations} />
       )}
       
       {isCollapsed && (
