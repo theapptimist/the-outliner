@@ -253,6 +253,83 @@ export async function bulkDeleteByTitle(title: string): Promise<number> {
   return data?.length ?? 0;
 }
 
+// Check if a document is "empty" (no meaningful content)
+function isDocumentEmpty(doc: { content: any; hierarchyBlocks: Record<string, any> }): boolean {
+  // Check hierarchy blocks
+  const hasHierarchyContent = Object.values(doc.hierarchyBlocks || {}).some(block => {
+    const tree = (block as any)?.tree;
+    return Array.isArray(tree) && tree.length > 0;
+  });
+  
+  if (hasHierarchyContent) return false;
+
+  // Check TipTap content
+  const content = doc.content;
+  if (!content || typeof content !== 'object') return true;
+  
+  const docContent = content.content;
+  if (!Array.isArray(docContent)) return true;
+  
+  // Empty if only contains empty paragraphs
+  const hasRealContent = docContent.some((node: any) => {
+    if (node.type === 'hierarchyBlock') return true;
+    if (node.type === 'paragraph') {
+      return node.content && node.content.length > 0;
+    }
+    // Any other node type counts as content
+    return node.type !== 'paragraph';
+  });
+  
+  return !hasRealContent;
+}
+
+// Find empty documents for the current user
+export async function findEmptyDocuments(): Promise<CloudDocumentMetadata[]> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('id, title, content, hierarchy_blocks, created_at, updated_at');
+
+  if (error) {
+    console.error('[CloudStorage] Failed to find empty documents:', error);
+    return [];
+  }
+
+  const emptyDocs = data.filter(doc => 
+    isDocumentEmpty({
+      content: doc.content,
+      hierarchyBlocks: parseHierarchyBlocks(doc.hierarchy_blocks),
+    })
+  );
+
+  return emptyDocs.map(d => ({
+    id: d.id,
+    title: d.title,
+    createdAt: d.created_at,
+    updatedAt: d.updated_at,
+  }));
+}
+
+// Purge (delete) empty documents, optionally excluding specific IDs
+export async function purgeEmptyDocuments(excludeIds: string[] = []): Promise<number> {
+  const emptyDocs = await findEmptyDocuments();
+  const toDelete = emptyDocs.filter(doc => !excludeIds.includes(doc.id));
+  
+  if (toDelete.length === 0) return 0;
+
+  const { error } = await supabase
+    .from('documents')
+    .delete()
+    .in('id', toDelete.map(d => d.id));
+
+  if (error) {
+    console.error('[CloudStorage] Failed to purge empty documents:', error);
+    throw error;
+  }
+
+  console.log('[CloudStorage] Purged', toDelete.length, 'empty documents');
+  return toDelete.length;
+}
+
 const RECENT_CLOUD_KEY = 'outliner:recent-cloud';
 const MAX_RECENT = 5;
 

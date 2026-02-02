@@ -24,8 +24,9 @@ import {
   Copy,
   LogOut,
   Cloud,
+  Eraser,
 } from 'lucide-react';
-import { getRecentCloudDocuments, CloudDocumentMetadata } from '@/lib/cloudDocumentStorage';
+import { getRecentCloudDocuments, CloudDocumentMetadata, purgeEmptyDocuments } from '@/lib/cloudDocumentStorage';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -405,6 +406,28 @@ export function FileMenu({
                   </div>
                 </button>
               ))}
+              <div className="h-px bg-border my-2" />
+              <button
+                onClick={async () => {
+                  try {
+                    const count = await purgeEmptyDocuments();
+                    if (count > 0) {
+                      toast.success(`Purged ${count} empty document${count > 1 ? 's' : ''}`);
+                      // Refresh the list
+                      const docs = await getRecentCloudDocuments();
+                      setRecentDocs(docs);
+                    } else {
+                      toast.info('No empty documents found');
+                    }
+                  } catch (e) {
+                    toast.error('Failed to purge empty documents');
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-destructive/10 text-destructive"
+              >
+                <Eraser className="h-4 w-4" />
+                <span>Purge Empty Documents</span>
+              </button>
             </div>
           ) : (
             <div className="p-3 space-y-0.5">
