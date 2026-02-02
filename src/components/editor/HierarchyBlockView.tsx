@@ -980,6 +980,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
         <TableOfContents 
           sections={tocSections} 
           onNavigate={handleTocNavigate}
+          documentTitle={document?.meta?.title}
         />
       )}
       

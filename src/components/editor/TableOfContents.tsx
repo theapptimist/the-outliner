@@ -1,14 +1,20 @@
 interface TableOfContentsProps {
   sections: Array<{ id: string; label: string }>;
   onNavigate: (sectionId: string) => void;
+  documentTitle?: string;
 }
 
-export function TableOfContents({ sections, onNavigate }: TableOfContentsProps) {
+export function TableOfContents({ sections, onNavigate, documentTitle }: TableOfContentsProps) {
   if (sections.length === 0) return null;
   
   return (
-    <div className="border-b border-foreground/10 pb-3 mb-3">
-      <div className="text-xs font-medium text-muted-foreground mb-2">Contents</div>
+    <div className="border-b border-foreground/10 pb-4 mb-4">
+      {/* Document Title - Centered */}
+      {documentTitle && (
+        <h1 className="text-xl font-bold text-center mb-4">{documentTitle}</h1>
+      )}
+      
+      <div className="text-sm font-semibold text-muted-foreground mb-2">Table of Contents</div>
       <ul className="space-y-1">
         {sections.map((section, index) => (
           <li key={section.id}>
