@@ -12,6 +12,7 @@ import { SectionControlPanel } from './SectionControlPanel';
 import { SectionToolbar } from './SectionToolbar';
 import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
 import { useDocumentContext } from './context/DocumentContext';
+import { useAutoExtractEntities } from '@/hooks/useAutoExtractEntities';
 
 interface SimpleOutlineViewProps {
   nodes: FlatNode[];
@@ -130,26 +131,45 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     editor, 
     // Terms
     terms, 
+    addTerm,
     highlightMode, 
     highlightedTerm,
     // Dates
     dates,
+    addDate,
     dateHighlightMode,
     highlightedDate,
     // People
     people,
+    addPerson,
     peopleHighlightMode,
     highlightedPerson,
     // Places
     places,
+    addPlace,
     placesHighlightMode,
     highlightedPlace,
   } = useEditorContext();
 
-  // Get document context for prompt queue and panel state
-  const { document: docState, setPanelState } = useDocumentContext();
+  // Get document context for prompt queue, panel state, and display options
+  const { document: docState, setPanelState, displayOptions, hierarchyBlocks } = useDocumentContext();
   const documentId = docState?.meta?.id || 'unknown';
   const promptQueue = useSectionPromptQueue(documentId);
+
+  // Auto-extract entities hook for cascade mode completion
+  const { autoExtractEntities, isExtracting } = useAutoExtractEntities({
+    addPerson,
+    addPlace,
+    addDate,
+    addTerm,
+    existingPeople: people,
+    existingPlaces: places,
+    existingDates: dates,
+    existingTerms: terms,
+  });
+
+  // Track previous panel count to detect when cascade completes
+  const prevPanelCountRef = useRef(0);
 
   const scheduleTextareaResize = useCallback((nodeId: string) => {
     const existing = resizeRafByIdRef.current.get(nodeId);
@@ -518,6 +538,23 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       onCloseAllPanels: handleCloseAllSectionPanels,
     });
   }, [openSectionPanels.size, allSections.length, setPanelState, handleOpenAllSectionPanels, handleCloseAllSectionPanels]);
+
+  // Trigger entity extraction when cascade completes (all panels close after being open)
+  useEffect(() => {
+    const prevCount = prevPanelCountRef.current;
+    const currentCount = openSectionPanels.size;
+    
+    // Detect cascade completion: panels went from >0 to 0 AND extractEntities is enabled
+    if (prevCount > 0 && currentCount === 0 && displayOptions.extractEntities) {
+      console.log('[SimpleOutlineView] Cascade completed, triggering entity extraction');
+      // Wait a bit for content to settle
+      setTimeout(() => {
+        autoExtractEntities(hierarchyBlocks, docState?.content);
+      }, 500);
+    }
+    
+    prevPanelCountRef.current = currentCount;
+  }, [openSectionPanels.size, displayOptions.extractEntities, autoExtractEntities, hierarchyBlocks, docState?.content]);
 
   // Callback to create a new depth-0 section for document planning
   // Accepts an optional afterId to support chaining (each section inserted after the previous)

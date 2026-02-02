@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
 import { useDocumentContext } from './context/DocumentContext';
 import { useSectionPromptQueue } from '@/hooks/useSectionPromptQueue';
+import { useAutoExtractEntities } from '@/hooks/useAutoExtractEntities';
+import { useEditorContext } from './EditorContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DocumentPlanDialog, SectionPrompt, DisplayOptions } from './DocumentPlanDialog';
@@ -76,8 +78,24 @@ export function SectionAIChat({
   onClosePanel,
   isFullscreen = false,
 }: SectionAIChatProps) {
-  const { document, setDisplayOptions, setCitationDefinition } = useDocumentContext();
+  const { document, setDisplayOptions, setCitationDefinition, hierarchyBlocks, displayOptions } = useDocumentContext();
+  const { 
+    addPerson, addPlace, addDate, addTerm,
+    people, places, dates, terms 
+  } = useEditorContext();
   const documentId = document?.meta?.id || 'unknown';
+
+  // Auto-extract entities hook
+  const { autoExtractEntities, isExtracting } = useAutoExtractEntities({
+    addPerson,
+    addPlace,
+    addDate,
+    addTerm,
+    existingPeople: people,
+    existingPlaces: places,
+    existingDates: dates,
+    existingTerms: terms,
+  });
   
   const [messages, setMessages] = useSessionStorage<ChatMessage[]>(
     `section-chat:${documentId}:${sectionId}`,
@@ -492,6 +510,14 @@ export function SectionAIChat({
       
       if (successCount > 0) {
         toast.success(`Generated content for ${successCount} section${successCount !== 1 ? 's' : ''}`);
+        
+        // Trigger entity extraction if enabled in display options
+        if (displayOptions.extractEntities) {
+          // Wait a bit for content to settle, then extract entities
+          setTimeout(() => {
+            autoExtractEntities(hierarchyBlocks, document?.content);
+          }, 500);
+        }
       } else {
         toast.error('Failed to generate content. Please try again.');
       }
