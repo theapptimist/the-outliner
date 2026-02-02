@@ -68,6 +68,9 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     // Display options for TOC and End Notes
     displayOptions,
     scrollToNode: contextScrollToNode,
+    // Citation definitions for End Notes
+    citationDefinitions,
+    setCitationDefinition,
   } = useEditorContext();
   
   // Compute initial tree: prefer saved data from document, fallback to empty node
@@ -1172,7 +1175,11 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
       {/* End Notes - displayed below outline when enabled */}
       {!isCollapsed && displayOptions.showEndNotes && citations.length > 0 && (
-        <EndNotesSection citations={citations} />
+        <EndNotesSection 
+          citations={citations} 
+          citationDefinitions={citationDefinitions}
+          onUpdateCitation={setCitationDefinition}
+        />
       )}
       
       {isCollapsed && (

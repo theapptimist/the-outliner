@@ -16,7 +16,7 @@ import {
 import { DatesProvider, useDatesContext } from './context/DatesContext';
 
 // Re-export types for backward compatibility
-export type { FindReplaceMatch, FindReplaceProvider, PasteHierarchyFn, ScrollToNodeFn, PanelState } from './context';
+export type { FindReplaceMatch, FindReplaceProvider, PasteHierarchyFn, ScrollToNodeFn, PanelState, CitationDefinitions } from './context';
 export type { SelectionSource, InsertTextAtCursorFn } from './context';
 export type { DefinedTerm, TermUsage, HighlightMode } from './context';
 export type { Person, PersonUsage, PeopleHighlightMode } from './context';
