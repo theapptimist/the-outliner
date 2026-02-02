@@ -9,7 +9,8 @@ import {
   ListTree,
   Maximize2,
   Minimize2,
-  BookOpen
+  BookOpen,
+  CheckCircle2
 } from 'lucide-react';
 import {
   Dialog,
@@ -24,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useDocumentContext } from './context/DocumentContext';
 import { getFullDocumentText } from '@/lib/documentContentExtractor';
 import { HierarchyNode } from '@/types/node';
+import { toast } from 'sonner';
 
 interface DocumentAIPanelProps {
   isOpen: boolean;
@@ -33,10 +35,15 @@ interface DocumentAIPanelProps {
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  toolCall?: {
+    name: string;
+    arguments: any;
+    applied?: boolean;
+  };
 }
 
 export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
-  const { document, hierarchyBlocks } = useDocumentContext();
+  const { document, hierarchyBlocks, citationDefinitions, setCitationDefinition, setDisplayOptions, displayOptions } = useDocumentContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,6 +64,21 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
     
     return getFullDocumentText(blocksAsNodes, document?.content, 16000);
   }, [hierarchyBlocks, document?.content]);
+
+  // Apply citation updates from tool call
+  const applyCitations = useCallback((citations: Record<string, string>) => {
+    // Enable End Notes display if not already enabled
+    if (!displayOptions.showEndNotes) {
+      setDisplayOptions({ ...displayOptions, showEndNotes: true });
+    }
+    
+    // Apply each citation
+    for (const [marker, text] of Object.entries(citations)) {
+      setCitationDefinition(marker, text);
+    }
+    
+    toast.success(`Updated ${Object.keys(citations).length} citation(s)`);
+  }, [setCitationDefinition, setDisplayOptions, displayOptions]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -81,6 +103,7 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
             messages: [...messages, userMessage],
             documentTitle: document?.meta?.title || 'Untitled Document',
             documentContext,
+            existingCitations: citationDefinitions,
           }),
           signal: abortControllerRef.current.signal,
         }
@@ -98,6 +121,7 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
       const decoder = new TextDecoder();
       let assistantContent = '';
       let buffer = '';
+      let toolCallData: { name: string; arguments: string } | null = null;
 
       // Add empty assistant message
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
@@ -117,9 +141,11 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
             
             try {
               const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantContent += content;
+              const delta = parsed.choices?.[0]?.delta;
+              
+              // Handle regular content
+              if (delta?.content) {
+                assistantContent += delta.content;
                 setMessages(prev => {
                   const updated = [...prev];
                   if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
@@ -127,6 +153,18 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
                   }
                   return updated;
                 });
+              }
+              
+              // Handle tool calls
+              if (delta?.tool_calls) {
+                for (const toolCall of delta.tool_calls) {
+                  if (toolCall.function?.name) {
+                    toolCallData = { name: toolCall.function.name, arguments: '' };
+                  }
+                  if (toolCall.function?.arguments && toolCallData) {
+                    toolCallData.arguments += toolCall.function.arguments;
+                  }
+                }
               }
             } catch {
               // Ignore parse errors for partial JSON
@@ -141,21 +179,76 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
         if (data !== '[DONE]') {
           try {
             const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantContent += content;
-              setMessages(prev => {
-                const updated = [...prev];
-                if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
-                  updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+            const delta = parsed.choices?.[0]?.delta;
+            if (delta?.content) {
+              assistantContent += delta.content;
+            }
+            if (delta?.tool_calls) {
+              for (const toolCall of delta.tool_calls) {
+                if (toolCall.function?.name) {
+                  toolCallData = { name: toolCall.function.name, arguments: '' };
                 }
-                return updated;
-              });
+                if (toolCall.function?.arguments && toolCallData) {
+                  toolCallData.arguments += toolCall.function.arguments;
+                }
+              }
             }
           } catch {
             // Ignore
           }
         }
+      }
+
+      // If we got a tool call, process it
+      if (toolCallData && toolCallData.name === 'update_citations') {
+        try {
+          const args = JSON.parse(toolCallData.arguments);
+          const { citations, summary } = args;
+          
+          // Apply the citations
+          applyCitations(citations);
+          
+          // Update the message to show what was done
+          setMessages(prev => {
+            const updated = [...prev];
+            if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+              updated[updated.length - 1] = {
+                role: 'assistant',
+                content: summary || `Updated ${Object.keys(citations).length} citation(s).`,
+                toolCall: {
+                  name: 'update_citations',
+                  arguments: args,
+                  applied: true,
+                },
+              };
+            }
+            return updated;
+          });
+        } catch (e) {
+          console.error('Failed to parse tool call arguments:', e);
+          setMessages(prev => {
+            const updated = [...prev];
+            if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+              updated[updated.length - 1] = {
+                role: 'assistant',
+                content: assistantContent || 'I tried to update the citations but encountered an error.',
+              };
+            }
+            return updated;
+          });
+        }
+      } else if (!assistantContent) {
+        // No content and no tool call - something went wrong
+        setMessages(prev => {
+          const updated = [...prev];
+          if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+            updated[updated.length - 1] = {
+              role: 'assistant',
+              content: 'I received an empty response. Please try again.',
+            };
+          }
+          return updated;
+        });
       }
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
@@ -177,7 +270,7 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, document?.meta?.title, documentContext]);
+  }, [input, isLoading, messages, document?.meta?.title, documentContext, citationDefinitions, applyCitations]);
 
   const handleStop = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -198,7 +291,7 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
     { icon: FileText, label: 'Summarize', prompt: 'Summarize this document concisely' },
     { icon: Wand2, label: 'Improve', prompt: 'Suggest improvements for this document' },
     { icon: ListTree, label: 'Outline', prompt: 'Analyze the structure of this document' },
-    { icon: BookOpen, label: 'Footnotes', prompt: 'Help me understand and manage the footnotes/citations in this document. How do I add and edit them?' },
+    { icon: BookOpen, label: 'Redo Footnotes', prompt: 'Please redo all the footnotes/citations for this document based on its content. Generate appropriate bibliographic references.' },
   ];
 
   return (
@@ -262,7 +355,7 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
               <div className="text-center text-muted-foreground text-sm py-8">
                 <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>Ask me anything about your document</p>
-                <p className="text-xs mt-1">I can help summarize, improve, or analyze your content</p>
+                <p className="text-xs mt-1">I can help summarize, improve, or update footnotes</p>
               </div>
             ) : (
               messages.map((message, index) => (
@@ -275,15 +368,23 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                      "max-w-[85%] rounded-lg px-3 py-2 text-sm",
                       message.role === 'user'
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
                     )}
                   >
-                    {message.content || (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                    {message.toolCall?.applied && (
+                      <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 mb-1.5 pb-1.5 border-b border-current/20">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>Citations updated</span>
+                      </div>
                     )}
+                    <div className="whitespace-pre-wrap">
+                      {message.content || (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+                    </div>
                   </div>
                 </div>
               ))
