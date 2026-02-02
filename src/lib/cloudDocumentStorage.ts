@@ -176,6 +176,9 @@ export async function saveCloudDocument(doc: DocumentState, userId: string): Pro
 
   console.log('[CloudStorage] Saved document:', doc.meta.id, doc.meta.title);
 
+  // Track save as a "recent" signal
+  addToRecentCloudDocuments(doc.meta.id);
+
   return {
     ...doc,
     meta: {
@@ -252,10 +255,13 @@ function addToRecentCloudDocuments(id: string) {
   }
 }
 
-// Get recent documents (last opened). Falls back to "last updated" if no recent list exists.
+// Get recent documents (last opened + fallback to last updated to fill slots).
 export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]> {
   const recentIds = getRecentCloudIds();
+  const result: CloudDocumentMetadata[] = [];
+  const includedIds = new Set<string>();
 
+  // 1) Fetch "recently opened" docs if we have any IDs
   if (recentIds.length > 0) {
     const { data, error } = await supabase
       .from('documents')
@@ -264,39 +270,52 @@ export async function getRecentCloudDocuments(): Promise<CloudDocumentMetadata[]
 
     if (error) {
       console.error('[CloudStorage] Failed to get recent documents:', error);
-      return [];
+    } else if (data) {
+      const byId = new Map(data.map(d => [d.id, d]));
+      // Preserve stored order
+      for (const id of recentIds) {
+        const d = byId.get(id);
+        if (d) {
+          result.push({
+            id: d.id,
+            title: d.title,
+            createdAt: d.created_at,
+            updatedAt: d.updated_at,
+          });
+          includedIds.add(d.id);
+        }
+      }
     }
-
-    const byId = new Map(data.map(d => [d.id, d]));
-    return recentIds
-      .map(id => byId.get(id))
-      .filter((d): d is NonNullable<typeof d> => Boolean(d))
-      .map(d => ({
-        id: d.id,
-        title: d.title,
-        createdAt: d.created_at,
-        updatedAt: d.updated_at,
-      }));
   }
 
-  // Fallback: most recently updated
-  const { data, error } = await supabase
-    .from('documents')
-    .select('id, title, created_at, updated_at')
-    .order('updated_at', { ascending: false })
-    .limit(5);
+  // 2) Fill remaining slots with most recently updated docs
+  const remaining = MAX_RECENT - result.length;
+  if (remaining > 0) {
+    // Fetch a bit more to account for possible overlaps
+    const { data, error } = await supabase
+      .from('documents')
+      .select('id, title, created_at, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(remaining + includedIds.size);
 
-  if (error) {
-    console.error('[CloudStorage] Failed to get recent documents:', error);
-    return [];
+    if (error) {
+      console.error('[CloudStorage] Failed to get fallback recent documents:', error);
+    } else if (data) {
+      for (const d of data) {
+        if (result.length >= MAX_RECENT) break;
+        if (includedIds.has(d.id)) continue;
+        result.push({
+          id: d.id,
+          title: d.title,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        });
+        includedIds.add(d.id);
+      }
+    }
   }
 
-  return data.map(d => ({
-    id: d.id,
-    title: d.title,
-    createdAt: d.created_at,
-    updatedAt: d.updated_at,
-  }));
+  return result;
 }
 
 // Export document as JSON file
