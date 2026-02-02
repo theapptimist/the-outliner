@@ -1,7 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
-import { DocumentState, createEmptyDocument, HierarchyBlockData } from '@/types/document';
+import { DocumentState, createEmptyDocument, HierarchyBlockData, DocumentDisplayOptions } from '@/types/document';
 import { Json } from '@/integrations/supabase/types';
 import { withRetry } from './fetchWithRetry';
+
+const DEFAULT_DISPLAY_OPTIONS: DocumentDisplayOptions = {
+  showTableOfContents: false,
+  showEndNotes: false,
+  extractEntities: false,
+};
 
 export interface CloudDocumentMetadata {
   id: string;
@@ -86,6 +92,10 @@ export async function loadCloudDocument(id: string): Promise<DocumentState | nul
     // Track "recent" by opens (not just saves)
     addToRecentCloudDocuments(data.id);
 
+    // Extract displayOptions from content if it was stored there
+    const contentData = data.content || {};
+    const displayOptions: DocumentDisplayOptions = (contentData as any)?.displayOptions ?? DEFAULT_DISPLAY_OPTIONS;
+
     return {
       meta: {
         id: data.id,
@@ -96,6 +106,7 @@ export async function loadCloudDocument(id: string): Promise<DocumentState | nul
       },
       content: data.content || {},
       hierarchyBlocks: parseHierarchyBlocks(data.hierarchy_blocks),
+      displayOptions,
     };
   });
 }
@@ -111,6 +122,12 @@ export async function saveCloudDocument(doc: DocumentState, userId: string): Pro
     .eq('id', doc.meta.id)
     .maybeSingle();
 
+  // Embed displayOptions in content for storage
+  const contentWithDisplayOptions = {
+    ...doc.content,
+    displayOptions: doc.displayOptions ?? DEFAULT_DISPLAY_OPTIONS,
+  };
+
   let result;
   
   if (existing) {
@@ -119,7 +136,7 @@ export async function saveCloudDocument(doc: DocumentState, userId: string): Pro
       .from('documents')
       .update({
         title: doc.meta.title,
-        content: doc.content as unknown as Json,
+        content: contentWithDisplayOptions as unknown as Json,
         hierarchy_blocks: doc.hierarchyBlocks as unknown as Json,
         updated_at: now,
         is_master: doc.meta.isMaster ?? false,
@@ -141,7 +158,7 @@ export async function saveCloudDocument(doc: DocumentState, userId: string): Pro
         id: doc.meta.id,
         user_id: userId,
         title: doc.meta.title,
-        content: doc.content as unknown as Json,
+        content: contentWithDisplayOptions as unknown as Json,
         hierarchy_blocks: doc.hierarchyBlocks as unknown as Json,
         created_at: doc.meta.createdAt,
         updated_at: now,

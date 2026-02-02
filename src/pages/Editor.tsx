@@ -11,7 +11,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
 import { SaveAsMasterDialog } from '@/components/editor/SaveAsMasterDialog';
-import { DocumentState, createEmptyDocument, HierarchyBlockData } from '@/types/document';
+import { DocumentState, createEmptyDocument, HierarchyBlockData, DocumentDisplayOptions } from '@/types/document';
 import { HierarchyNode } from '@/types/node';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebouncedAutoSave } from '@/hooks/useDebouncedAutoSave';
@@ -553,6 +553,14 @@ export default function Editor() {
     setHasUnsavedChanges(true);
   }, []);
 
+  const handleDisplayOptionsChange = useCallback((options: DocumentDisplayOptions) => {
+    setDocument(prev => prev ? {
+      ...prev,
+      displayOptions: options,
+    } : null);
+    setHasUnsavedChanges(true);
+  }, []);
+
   const handleSignOut = useCallback(async () => {
     await signOut();
     navigate('/');
@@ -598,6 +606,7 @@ export default function Editor() {
         onDocumentContentChange={handleDocumentContentChange}
         onDocumentTitleChange={handleTitleChange}
         onHierarchyBlocksChange={handleHierarchyBlocksChange}
+        onDisplayOptionsChange={handleDisplayOptionsChange}
         onUndoRedoChange={handleUndoRedoChange}
       >
         <div className="h-screen flex bg-background">
