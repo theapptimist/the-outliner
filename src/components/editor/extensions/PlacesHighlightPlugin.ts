@@ -134,7 +134,7 @@ function findPlacesMatches(
       if (from < to && from >= 0) {
         decorations.push(
           Decoration.inline(from, to, {
-            class: 'place-highlight',
+            class: 'place-highlight entity-clickable',
             'data-place-id': place.id,
           })
         );

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef } 
 import { FlatNode, DropPosition, HierarchyNode } from '@/types/node';
 import { OutlineStyle, getOutlinePrefix, getOutlinePrefixCustom, MixedStyleConfig, DEFAULT_MIXED_CONFIG, getLevelStyle } from '@/lib/outlineStyles';
 import { cn } from '@/lib/utils';
-import { useEditorContext, DefinedTerm, HighlightMode } from './EditorContext';
+import { useEditorContext, DefinedTerm, HighlightMode, EntityType } from './EditorContext';
 import { toast } from '@/hooks/use-toast';
 import { SmartPasteDialog, SmartPasteAction } from './SmartPasteDialog';
 import { analyzeOutlineText, SmartPasteResult } from '@/lib/outlinePasteParser';
@@ -303,6 +303,16 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     return new RegExp(`(${escaped.join('|')})`, 'gi');
   }, [dates, dateHighlightMode, highlightedDate?.id, escapeRegex]);
 
+  // Get entity reveal function
+  const { revealEntityInLibrary } = useEditorContext();
+
+  // Handle click on a highlighted entity
+  const handleEntityClick = useCallback((e: React.MouseEvent, entityType: EntityType, matchedText: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    revealEntityInLibrary(entityType, matchedText);
+  }, [revealEntityInLibrary]);
+
   // Helper to render text with all entity highlights (terms, people, places, dates)
   const renderHighlightedText = useCallback((text: string) => {
     const hasAnyHighlight = termHighlightRegex || peopleHighlightRegex || placesHighlightRegex || dateHighlightRegex;
@@ -317,6 +327,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
       end: number;
       text: string;
       className: string;
+      entityType: EntityType;
     }
     
     const allMatches: MatchInfo[] = [];
@@ -330,7 +341,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           start: match.index,
           end: match.index + match[0].length,
           text: match[0],
-          className: 'term-highlight',
+          className: 'term-highlight entity-clickable',
+          entityType: 'term',
         });
       }
     }
@@ -344,7 +356,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           start: match.index,
           end: match.index + match[0].length,
           text: match[0],
-          className: 'person-highlight',
+          className: 'person-highlight entity-clickable',
+          entityType: 'person',
         });
       }
     }
@@ -358,7 +371,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           start: match.index,
           end: match.index + match[0].length,
           text: match[0],
-          className: 'place-highlight',
+          className: 'place-highlight entity-clickable',
+          entityType: 'place',
         });
       }
     }
@@ -372,7 +386,8 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
           start: match.index,
           end: match.index + match[0].length,
           text: match[0],
-          className: 'date-highlight',
+          className: 'date-highlight entity-clickable',
+          entityType: 'date',
         });
       }
     }
@@ -405,9 +420,15 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
         parts.push(text.slice(lastIndex, m.start));
       }
       
-      // Add highlighted match
+      // Add highlighted match with click handler
       parts.push(
-        <span key={key++} className={m.className}>
+        <span 
+          key={key++} 
+          className={m.className}
+          onClick={(e) => handleEntityClick(e, m.entityType, m.text)}
+          role="button"
+          tabIndex={0}
+        >
           {m.text}
         </span>
       );
@@ -421,7 +442,7 @@ export const SimpleOutlineView = forwardRef<HTMLDivElement, SimpleOutlineViewPro
     }
     
     return parts.length > 0 ? parts : (text || ' ');
-  }, [termHighlightRegex, peopleHighlightRegex, placesHighlightRegex, dateHighlightRegex]);
+  }, [termHighlightRegex, peopleHighlightRegex, placesHighlightRegex, dateHighlightRegex, handleEntityClick]);
 
   // Track text selection in textarea and include source context
   const handleSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>, nodePrefix: string, nodeLabel: string) => {

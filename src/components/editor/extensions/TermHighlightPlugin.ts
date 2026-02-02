@@ -59,7 +59,7 @@ function findTermMatches(
         
         decorations.push(
           Decoration.inline(from, to, {
-            class: 'term-highlight',
+            class: 'term-highlight entity-clickable',
             'data-term-id': term.id,
           })
         );

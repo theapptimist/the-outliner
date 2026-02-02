@@ -75,7 +75,7 @@ function findDateMatches(
 
         decorations.push(
           Decoration.inline(from, to, {
-            class: 'date-highlight',
+            class: 'date-highlight entity-clickable',
             'data-date-id': date.id,
           })
         );

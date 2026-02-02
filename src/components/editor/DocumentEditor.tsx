@@ -11,7 +11,7 @@ import { DateHighlightExtension, dateHighlightPluginKey } from './extensions/Dat
 import { PeopleHighlightExtension, peopleHighlightPluginKey } from './extensions/PeopleHighlightPlugin';
 import { PlacesHighlightExtension, placesHighlightPluginKey } from './extensions/PlacesHighlightPlugin';
 import { PaginatedDocument } from './PageContainer';
-import { useEditorContext } from './EditorContext';
+import { useEditorContext, EntityType } from './EditorContext';
 
 export function DocumentEditor() {
   const {
@@ -39,6 +39,8 @@ export function DocumentEditor() {
     places,
     placesHighlightMode,
     highlightedPlace,
+    // Entity reveal
+    revealEntityInLibrary,
   } = useEditorContext();
   
   // Use a ref to access the current value in the placeholder callback
@@ -260,9 +262,37 @@ export function DocumentEditor() {
     setInsertHierarchyHandler(handleInsertHierarchy);
   }, [handleInsertHierarchy, setInsertHierarchyHandler]);
 
+  // Handle click on entity highlights in TipTap
+  const handleEntityHighlightClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    
+    // Check if clicked on an entity highlight
+    const highlightClasses = ['term-highlight', 'person-highlight', 'place-highlight', 'date-highlight'];
+    const matchedClass = highlightClasses.find(cls => target.classList.contains(cls));
+    
+    if (matchedClass) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const matchedText = target.textContent || '';
+      let entityType: EntityType;
+      
+      switch (matchedClass) {
+        case 'term-highlight': entityType = 'term'; break;
+        case 'person-highlight': entityType = 'person'; break;
+        case 'place-highlight': entityType = 'place'; break;
+        case 'date-highlight': entityType = 'date'; break;
+        default: return;
+      }
+      
+      revealEntityInLibrary(entityType, matchedText);
+    }
+  }, [revealEntityInLibrary]);
+
   return (
     <div
       className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative"
+      onClick={handleEntityHighlightClick}
       onMouseDown={(e) => {
         if (!editor) return;
         const t = e.target as HTMLElement | null;
