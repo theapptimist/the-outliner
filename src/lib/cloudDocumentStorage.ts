@@ -272,7 +272,7 @@ function hasNonEmptyNodes(nodes: any[]): boolean {
 }
 
 // Check if a document is "empty" (no meaningful content)
-function isDocumentEmpty(doc: { content: any; hierarchyBlocks: Record<string, any> }): boolean {
+export function isDocumentEmpty(doc: { content: any; hierarchyBlocks: Record<string, any> }): boolean {
   // Check hierarchy blocks - only count as content if nodes have actual text
   const hasHierarchyContent = Object.values(doc.hierarchyBlocks || {}).some(block => {
     const tree = (block as any)?.tree;

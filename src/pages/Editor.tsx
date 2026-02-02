@@ -24,6 +24,7 @@ import {
   importCloudDocument,
   createCloudDocument,
   createLocalDocument,
+  isDocumentEmpty,
 } from '@/lib/cloudDocumentStorage';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -369,7 +370,9 @@ export default function Editor() {
   }, [document]);
 
   const handleNew = useCallback(() => {
-    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+    // Skip confirmation if the document is empty (no real content)
+    const docIsEmpty = document && isDocumentEmpty(document);
+    if (hasUnsavedChanges && !docIsEmpty && !confirm('Discard unsaved changes?')) return;
     
     // Create LOCAL-ONLY document - not persisted until explicit save
     const localDoc = createLocalDocument('Untitled');
@@ -377,7 +380,7 @@ export default function Editor() {
     setDocumentVersion(v => v + 1);
     setHasUnsavedChanges(true); // Mark as unsaved so user knows to save
     toast.success('New document created (not yet saved)');
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, document]);
 
   const handleSave = useCallback(async () => {
     if (!user || !document) return;
@@ -419,7 +422,8 @@ export default function Editor() {
 
   // Handle navigation to a document (for both regular open and link navigation)
   const handleNavigateToDocument = useCallback(async (id: string, skipConfirm = false) => {
-    if (!skipConfirm && hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+    const docIsEmpty = document && isDocumentEmpty(document);
+    if (!skipConfirm && hasUnsavedChanges && !docIsEmpty && !confirm('Discard unsaved changes?')) return;
     
     try {
       const doc = await loadCloudDocument(id);
@@ -433,7 +437,7 @@ export default function Editor() {
     } catch (e) {
       toast.error('Failed to open document');
     }
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, document]);
 
   // Handle prompt to save as master (just sets pending - dialog controlled by pendingNavigation)
   const handlePromptSaveAsMaster = useCallback((pending: PendingNavigation) => {
@@ -466,7 +470,8 @@ export default function Editor() {
   }, [user, document]);
 
   const handleOpenDocument = useCallback(async (id: string) => {
-    if (hasUnsavedChanges && !confirm('Discard unsaved changes?')) return;
+    const docIsEmpty = document && isDocumentEmpty(document);
+    if (hasUnsavedChanges && !docIsEmpty && !confirm('Discard unsaved changes?')) return;
 
     try {
       const doc = await loadCloudDocument(id);
@@ -481,7 +486,7 @@ export default function Editor() {
     } catch (e) {
       toast.error('Failed to open document');
     }
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, document]);
 
   const handleDelete = useCallback(async () => {
     if (!user || !document) return;
