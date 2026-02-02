@@ -52,17 +52,16 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
 
   // Extract document content for context
   const documentContext = useMemo(() => {
-    if (!hierarchyBlocks) return '';
-    
-    // Convert hierarchyBlocks to the format expected by getFullDocumentText
-    const blocksAsNodes: Record<string, HierarchyNode[]> = {};
-    for (const [id, block] of Object.entries(hierarchyBlocks)) {
-      if (block && typeof block === 'object' && 'tree' in block) {
-        blocksAsNodes[id] = (block as { tree: HierarchyNode[] }).tree;
-      }
+    if (!hierarchyBlocks || Object.keys(hierarchyBlocks).length === 0) {
+      console.log('[DocumentAI] No hierarchy blocks available');
+      return '';
     }
     
-    return getFullDocumentText(blocksAsNodes, document?.content, 16000);
+    // hierarchyBlocks from context is already Record<string, HierarchyNode[]>
+    // getFullDocumentText expects this format directly
+    const result = getFullDocumentText(hierarchyBlocks, document?.content, 16000);
+    console.log('[DocumentAI] Extracted document context length:', result.length);
+    return result;
   }, [hierarchyBlocks, document?.content]);
 
   // Apply citation updates from tool call
