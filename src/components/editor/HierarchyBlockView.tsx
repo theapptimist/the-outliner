@@ -105,6 +105,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
 
   useEffect(() => {
     treeRef.current = tree;
+    console.log('[HierarchyBlockView] tree changed - node count:', flattenTree(tree).length);
     // Sync tree to document context for usage scanning
     updateHierarchyBlock(blockId, tree);
   }, [tree, blockId, updateHierarchyBlock]);
@@ -1070,6 +1071,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
             onPasteNodes={handlePasteNodes}
             onPasteHierarchy={handlePasteHierarchy}
             onInsertSectionContent={(sectionId, items) => {
+              console.log('[onInsertSectionContent] Called with', { sectionId, itemCount: items.length });
               if (items.length === 0) return;
               
               // Filter out empty items
@@ -1082,6 +1084,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
               // This is critical for auto-write cascade where sections are created
               // just before content insertion - avoids stale closure issues
               setTree(currentTree => {
+                console.log('[onInsertSectionContent] setTree callback - current tree node count:', flattenTree(currentTree).length);
                 const sectionNode = findNode(currentTree, sectionId);
                 if (!sectionNode) {
                   console.warn(`[onInsertSectionContent] Section ${sectionId} not found in current tree state`);
@@ -1132,6 +1135,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
                   parentStack[item.depth + 1] = newNode.id;
                 }
                 
+                console.log('[onInsertSectionContent] After insert - new tree node count:', flattenTree(next).length);
                 return next;
               });
               
