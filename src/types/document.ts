@@ -13,12 +13,21 @@ export interface HierarchyBlockData {
   tree: HierarchyNode[];
 }
 
+// Display options for document-level features (TOC, End Notes, Entity Extraction)
+export interface DocumentDisplayOptions {
+  showTableOfContents: boolean;
+  showEndNotes: boolean;
+  extractEntities: boolean;
+}
+
 export interface DocumentState {
   meta: DocumentMeta;
   /** TipTap JSON content with embedded hierarchy blocks */
   content: any;
   /** Map of hierarchy block IDs to their tree data */
   hierarchyBlocks: Record<string, HierarchyBlockData>;
+  /** Display options for TOC, End Notes, etc. */
+  displayOptions?: DocumentDisplayOptions;
 }
 
 export function createEmptyDocument(title: string = 'Untitled'): DocumentState {
@@ -39,5 +48,10 @@ export function createEmptyDocument(title: string = 'Untitled'): DocumentState {
       ],
     },
     hierarchyBlocks: {},
+    displayOptions: {
+      showTableOfContents: false,
+      showEndNotes: false,
+      extractEntities: false,
+    },
   };
 }

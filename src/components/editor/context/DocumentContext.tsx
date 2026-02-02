@@ -1,7 +1,7 @@
-import { createContext, useContext, ReactNode, useState, useCallback } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import { OutlineStyle, MixedStyleConfig, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
-import { DocumentState } from '@/types/document';
+import { DocumentState, DocumentDisplayOptions } from '@/types/document';
 import { HierarchyNode } from '@/types/node';
 
 export type FindReplaceMatch =
@@ -34,12 +34,8 @@ export interface PanelState {
   onCloseAllPanels: () => void;
 }
 
-// Display options for document-level features (TOC, End Notes, Entity Extraction)
-export interface DocumentDisplayOptions {
-  showTableOfContents: boolean;
-  showEndNotes: boolean;
-  extractEntities: boolean;
-}
+// Re-export DocumentDisplayOptions from document.ts
+export type { DocumentDisplayOptions } from '@/types/document';
 
 // Citation definitions for End Notes (marker -> full citation text)
 export type CitationDefinitions = Record<string, string>;
@@ -182,6 +178,7 @@ interface DocumentProviderProps {
   onDocumentContentChange: (content: any) => void;
   onDocumentTitleChange?: (title: string) => void;
   onHierarchyBlocksChange?: (blocks: Record<string, { id: string; tree: HierarchyNode[] }>) => void;
+  onDisplayOptionsChange?: (options: DocumentDisplayOptions) => void;
   onUndoRedoChange?: (
     undo: () => void,
     redo: () => void,
@@ -203,6 +200,7 @@ export function DocumentProvider({
   onDocumentContentChange,
   onDocumentTitleChange,
   onHierarchyBlocksChange,
+  onDisplayOptionsChange,
   onUndoRedoChange,
 }: DocumentProviderProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -220,12 +218,29 @@ export function DocumentProvider({
     onOpenAllPanels: () => {},
     onCloseAllPanels: () => {},
   });
-  const [displayOptions, setDisplayOptions] = useState<DocumentDisplayOptions>({
-    showTableOfContents: false,
-    showEndNotes: false,
-    extractEntities: false,
-  });
+  
+  // Initialize displayOptions from document or use defaults
+  const [displayOptions, setDisplayOptionsLocal] = useState<DocumentDisplayOptions>(() => 
+    document?.displayOptions ?? {
+      showTableOfContents: false,
+      showEndNotes: false,
+      extractEntities: false,
+    }
+  );
   const [citationDefinitions, setCitationDefinitions] = useState<CitationDefinitions>({});
+
+  // Sync displayOptions when document changes (e.g., loading a different document)
+  useEffect(() => {
+    if (document?.displayOptions) {
+      setDisplayOptionsLocal(document.displayOptions);
+    }
+  }, [document?.meta?.id]); // Re-sync when document ID changes
+
+  // Wrapper that updates local state AND notifies parent for persistence
+  const setDisplayOptions = useCallback((options: DocumentDisplayOptions) => {
+    setDisplayOptionsLocal(options);
+    onDisplayOptionsChange?.(options);
+  }, [onDisplayOptionsChange]);
 
   const updateHierarchyBlock = useCallback((blockId: string, tree: HierarchyNode[]) => {
     setHierarchyBlocks(prev => {

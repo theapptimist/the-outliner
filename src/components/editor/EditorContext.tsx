@@ -1,6 +1,6 @@
 import { ReactNode, createContext, useContext, useCallback } from 'react';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
-import { DocumentState } from '@/types/document';
+import { DocumentState, DocumentDisplayOptions } from '@/types/document';
 import { 
   DocumentProvider, 
   useDocumentContext,
@@ -49,6 +49,7 @@ interface EditorProviderProps {
   onDocumentContentChange: (content: any) => void;
   onDocumentTitleChange?: (title: string) => void;
   onHierarchyBlocksChange?: (blocks: Record<string, any>) => void;
+  onDisplayOptionsChange?: (options: DocumentDisplayOptions) => void;
   onUndoRedoChange?: (
     undo: () => void,
     redo: () => void,
@@ -146,6 +147,7 @@ export function EditorProvider({
   onDocumentContentChange,
   onDocumentTitleChange,
   onHierarchyBlocksChange,
+  onDisplayOptionsChange,
   onUndoRedoChange,
 }: EditorProviderProps) {
   const documentId = document?.meta?.id ?? 'default';
@@ -163,6 +165,7 @@ export function EditorProvider({
       onDocumentContentChange={onDocumentContentChange}
       onDocumentTitleChange={onDocumentTitleChange}
       onHierarchyBlocksChange={onHierarchyBlocksChange}
+      onDisplayOptionsChange={onDisplayOptionsChange}
       onUndoRedoChange={onUndoRedoChange}
     >
       <SelectionProvider>
