@@ -34,10 +34,11 @@ export interface PanelState {
   onCloseAllPanels: () => void;
 }
 
-// Display options for document-level features (TOC, End Notes)
+// Display options for document-level features (TOC, End Notes, Entity Extraction)
 export interface DocumentDisplayOptions {
   showTableOfContents: boolean;
   showEndNotes: boolean;
+  extractEntities: boolean;
 }
 
 // Citation definitions for End Notes (marker -> full citation text)
@@ -159,7 +160,7 @@ const DocumentContext = createContext<DocumentContextValue>({
   panelState: { openPanelCount: 0, totalSectionCount: 0, onOpenAllPanels: () => {}, onCloseAllPanels: () => {} },
   setPanelState: () => {},
 
-  displayOptions: { showTableOfContents: false, showEndNotes: false },
+  displayOptions: { showTableOfContents: false, showEndNotes: false, extractEntities: false },
   setDisplayOptions: () => {},
 
   citationDefinitions: {},
@@ -218,6 +219,7 @@ export function DocumentProvider({
   const [displayOptions, setDisplayOptions] = useState<DocumentDisplayOptions>({
     showTableOfContents: false,
     showEndNotes: false,
+    extractEntities: false,
   });
   const [citationDefinitions, setCitationDefinitions] = useState<CitationDefinitions>({});
 

@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Sparkles, Check, X, GripVertical, Plus, Zap, ListPlus, ChevronRight, Settings2 } from 'lucide-react';
+import { Sparkles, Check, X, GripVertical, Plus, Zap, ListPlus, ChevronRight, Settings2, Users } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 export interface GenerationOptions {
@@ -29,6 +29,7 @@ export interface GenerationOptions {
 export interface DisplayOptions {
   showTableOfContents: boolean;
   showEndNotes: boolean;
+  extractEntities: boolean;
 }
 
 export interface SectionPrompt {
@@ -70,10 +71,11 @@ export function DocumentPlanDialog({
     closePanelsAfterGeneration: true,
   });
 
-  // Display options - control UI rendering of TOC and End Notes
+  // Display options - control UI rendering of TOC, End Notes, and Entity Extraction
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>({
     showTableOfContents: true,
     showEndNotes: true,
+    extractEntities: true,
   });
 
   // Reset when dialog opens with new prompts
@@ -245,6 +247,19 @@ export function DocumentPlanDialog({
                   id="toc"
                   checked={displayOptions.showTableOfContents}
                   onCheckedChange={(checked) => setDisplayOptions(prev => ({ ...prev, showTableOfContents: checked }))}
+                />
+              </div>
+
+              {/* Extract Entities */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="extract-entities" className="text-sm font-medium">Extract Entities</Label>
+                  <p className="text-xs text-muted-foreground">Auto-detect people, places, dates, and terms</p>
+                </div>
+                <Switch
+                  id="extract-entities"
+                  checked={displayOptions.extractEntities}
+                  onCheckedChange={(checked) => setDisplayOptions(prev => ({ ...prev, extractEntities: checked }))}
                 />
               </div>
 
