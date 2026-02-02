@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AlertTriangle } from 'lucide-react';
+import { findDocumentsByTitle } from '@/lib/cloudDocumentStorage';
 
 interface SaveAsDialogProps {
   open: boolean;
@@ -17,6 +19,7 @@ interface SaveAsDialogProps {
   onSave: (title: string, isMaster: boolean) => void;
   defaultTitle?: string;
   defaultIsMaster?: boolean;
+  currentDocId?: string;
 }
 
 export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(function SaveAsDialog({
@@ -25,16 +28,53 @@ export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(functi
   onSave,
   defaultTitle = '',
   defaultIsMaster = false,
+  currentDocId,
 }, ref) {
   const [title, setTitle] = useState(defaultTitle);
   const [isMaster, setIsMaster] = useState(defaultIsMaster);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTitle(defaultTitle);
       setIsMaster(defaultIsMaster);
+      setDuplicateWarning(null);
     }
   }, [open, defaultTitle, defaultIsMaster]);
+
+  // Debounced duplicate check
+  useEffect(() => {
+    if (!open || !title.trim()) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setIsChecking(true);
+      try {
+        const existing = await findDocumentsByTitle(title.trim());
+        // Filter out the current document (if editing)
+        const duplicates = existing.filter(doc => doc.id !== currentDocId);
+        
+        if (duplicates.length > 0) {
+          setDuplicateWarning(
+            duplicates.length === 1
+              ? 'A document with this title already exists'
+              : `${duplicates.length} documents with this title already exist`
+          );
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch (e) {
+        console.error('[SaveAsDialog] Failed to check duplicates:', e);
+      } finally {
+        setIsChecking(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [title, open, currentDocId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +103,12 @@ export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(functi
                 className="mt-2"
                 autoFocus
               />
+              {duplicateWarning && (
+                <div className="flex items-center gap-1.5 mt-2 text-xs text-warning">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{duplicateWarning}</span>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center space-x-2">
@@ -88,7 +134,7 @@ export const SaveAsDialog = forwardRef<HTMLDivElement, SaveAsDialogProps>(functi
               Cancel
             </Button>
             <Button type="submit" disabled={!title.trim()}>
-              Save
+              {duplicateWarning ? 'Save Anyway' : 'Save'}
             </Button>
           </DialogFooter>
         </form>

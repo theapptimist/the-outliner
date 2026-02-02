@@ -49,6 +49,26 @@ function parseHierarchyBlocks(json: Json | null): Record<string, HierarchyBlockD
   return blocks;
 }
 
+// Check if a document with the given title already exists (for duplicate detection)
+export async function findDocumentsByTitle(title: string): Promise<CloudDocumentMetadata[]> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('id, title, created_at, updated_at')
+    .ilike('title', title);
+
+  if (error) {
+    console.error('[CloudStorage] Failed to find documents by title:', error);
+    return [];
+  }
+
+  return data.map(d => ({
+    id: d.id,
+    title: d.title,
+    createdAt: d.created_at,
+    updatedAt: d.updated_at,
+  }));
+}
+
 // List all documents for the current user
 export async function listCloudDocuments(): Promise<CloudDocumentMetadata[]> {
   return withRetry(async () => {
