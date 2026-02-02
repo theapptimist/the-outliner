@@ -566,6 +566,14 @@ export default function Editor() {
     setHasUnsavedChanges(true);
   }, []);
 
+  const handleCitationDefinitionsChange = useCallback((definitions: Record<string, string>) => {
+    setDocument(prev => prev ? {
+      ...prev,
+      citationDefinitions: definitions,
+    } : null);
+    setHasUnsavedChanges(true);
+  }, []);
+
   const handleSignOut = useCallback(async () => {
     await signOut();
     navigate('/');
@@ -612,6 +620,7 @@ export default function Editor() {
         onDocumentTitleChange={handleTitleChange}
         onHierarchyBlocksChange={handleHierarchyBlocksChange}
         onDisplayOptionsChange={handleDisplayOptionsChange}
+        onCitationDefinitionsChange={handleCitationDefinitionsChange}
         onUndoRedoChange={handleUndoRedoChange}
       >
         <div className="h-screen flex bg-background">
