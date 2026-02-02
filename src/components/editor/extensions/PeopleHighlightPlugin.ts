@@ -135,7 +135,7 @@ function findPeopleMatches(
       if (from < to && from >= 0) {
         decorations.push(
           Decoration.inline(from, to, {
-            class: 'person-highlight',
+            class: 'person-highlight entity-clickable',
             'data-person-id': person.id,
           })
         );

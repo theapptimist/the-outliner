@@ -84,6 +84,18 @@
   background-color: hsl(140 60% 55% / 0.4);
 }
 
+/* Clickable entity highlights - common styles */
+.entity-clickable {
+  cursor: pointer;
+  user-select: text;
+  outline: none;
+}
+
+.entity-clickable:focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.5);
+  outline-offset: 1px;
+}
+
 
 .ProseMirror {
   outline: none;
