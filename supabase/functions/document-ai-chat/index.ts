@@ -14,6 +14,7 @@ interface DocumentAIChatRequest {
   messages: Message[];
   documentTitle?: string;
   documentContext?: string;
+  existingCitations?: Record<string, string>;
 }
 
 serve(async (req) => {
@@ -24,7 +25,7 @@ serve(async (req) => {
 
   try {
     const body: DocumentAIChatRequest = await req.json();
-    const { messages, documentTitle, documentContext } = body;
+    const { messages, documentTitle, documentContext, existingCitations } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -34,15 +35,47 @@ serve(async (req) => {
     // Build system prompt for document-level AI assistance
     const systemPrompt = `You are a helpful document assistant for "${documentTitle || 'this document'}".
 
-${documentContext ? `Document content/context:\n${documentContext}\n\n` : ''}Your role is to help the user with their document. You can:
+${documentContext ? `Document content/context:\n${documentContext}\n\n` : ''}${existingCitations && Object.keys(existingCitations).length > 0 ? `Existing citation definitions:\n${JSON.stringify(existingCitations, null, 2)}\n\n` : ''}Your role is to help the user with their document. You can:
 - Answer questions about the document's content
 - Suggest improvements to structure or writing
 - Help summarize or analyze sections
 - Provide information related to the document's topic
-- Help with footnotes, citations, and references
+- **Create, update, or redo footnotes/citations using the update_citations tool**
 
-Be concise, helpful, and reference specific parts of the document when relevant.
-If the user asks about footnotes or citations, explain how they can use the citation markers (e.g., [1], [2]) in their outline and define them in the End Notes panel.`;
+When the user asks you to "redo", "create", "update", or "fix" footnotes/citations:
+1. Analyze the document content for citation markers like [1], [2], etc.
+2. Generate appropriate bibliographic references based on the document's topic
+3. Use the update_citations tool to apply the changes directly
+
+Be concise, helpful, and reference specific parts of the document when relevant.`;
+
+    // Define the tool for updating citations
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "update_citations",
+          description: "Update or create citation definitions for the document's End Notes. Use this when the user asks to redo, create, update, or fix footnotes/citations.",
+          parameters: {
+            type: "object",
+            properties: {
+              citations: {
+                type: "object",
+                description: "A mapping of citation markers (e.g., '[1]', '[2]') to their full bibliographic text",
+                additionalProperties: {
+                  type: "string"
+                }
+              },
+              summary: {
+                type: "string",
+                description: "A brief summary of what changes were made to the citations"
+              }
+            },
+            required: ["citations", "summary"]
+          }
+        }
+      }
+    ];
 
     // Prepare messages for the API
     const apiMessages = [
@@ -59,6 +92,7 @@ If the user asks about footnotes or citations, explain how they can use the cita
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: apiMessages,
+        tools,
         temperature: 0.7,
         max_tokens: 2000,
         stream: true,
