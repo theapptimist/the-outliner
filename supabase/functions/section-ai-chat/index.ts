@@ -258,7 +258,7 @@ Guidelines for prompts:
       }
       if (generationOptions.includeTableOfContents) {
         hasToc = true;
-        optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING of the items array (before any outline content), include a "Table of Contents" header at depth 0, followed by items at depth 1 that list each major topic that will appear in the outline below it.`;
+        optionsInstructions += `\n- TABLE OF CONTENTS: At the VERY BEGINNING of the items array, include a "Table of Contents" header at depth 0. Follow it with descriptive preview phrases at depth 1 that summarize what each major section will cover. Do NOT simply repeat the exact section headings—instead, write brief descriptions like "Overview of economic factors" or "Analysis of key political figures involved."`;
       }
       if (generationOptions.outputFormat === 'prose') {
         optionsInstructions += `\n- OUTPUT FORMAT: Write in flowing prose paragraphs rather than bullet points or outline format. Each item's label should be a full paragraph of text.`;
@@ -276,11 +276,11 @@ Guidelines for prompts:
     if (hasToc && hasEndNotes) {
       exampleItems = `[
     { "label": "Table of Contents", "depth": 0 },
-    { "label": "The Causes of the Event", "depth": 1 },
-    { "label": "Key Figures Involved", "depth": 1 },
-    { "label": "The Aftermath", "depth": 1 },
+    { "label": "Overview of the causes leading to conflict", "depth": 1 },
+    { "label": "Analysis of key historical figures", "depth": 1 },
+    { "label": "The lasting aftermath and consequences", "depth": 1 },
     { "label": "The Causes of the Event", "depth": 0 },
-    { "label": "Economic tensions between nations led to conflict [1]", "depth": 1 },
+    { "label": "Economic tensions between nations [1]", "depth": 1 },
     { "label": "Political instability in the region [2]", "depth": 1 },
     { "label": "Key Figures Involved", "depth": 0 },
     { "label": "The main actors included leaders from several nations", "depth": 1 },
@@ -293,9 +293,9 @@ Guidelines for prompts:
     } else if (hasToc) {
       exampleItems = `[
     { "label": "Table of Contents", "depth": 0 },
-    { "label": "Background and Context", "depth": 1 },
-    { "label": "Key Events", "depth": 1 },
-    { "label": "Aftermath", "depth": 1 },
+    { "label": "Overview of the background and context", "depth": 1 },
+    { "label": "Analysis of key events that unfolded", "depth": 1 },
+    { "label": "The lasting aftermath and impact", "depth": 1 },
     { "label": "Background and Context", "depth": 0 },
     { "label": "A detailed explanation of the setting...", "depth": 1 },
     { "label": "Key Events", "depth": 0 },
