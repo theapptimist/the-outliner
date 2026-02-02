@@ -34,6 +34,7 @@ interface EditorProviderProps {
   document: DocumentState;
   documentVersion: number;
   onDocumentContentChange: (content: any) => void;
+  onDocumentTitleChange?: (title: string) => void;
   onHierarchyBlocksChange?: (blocks: Record<string, any>) => void;
   onUndoRedoChange?: (
     undo: () => void,
@@ -54,6 +55,7 @@ export function EditorProvider({
   document,
   documentVersion,
   onDocumentContentChange,
+  onDocumentTitleChange,
   onHierarchyBlocksChange,
   onUndoRedoChange,
 }: EditorProviderProps) {
@@ -70,6 +72,7 @@ export function EditorProvider({
       document={document}
       documentVersion={documentVersion}
       onDocumentContentChange={onDocumentContentChange}
+      onDocumentTitleChange={onDocumentTitleChange}
       onHierarchyBlocksChange={onHierarchyBlocksChange}
       onUndoRedoChange={onUndoRedoChange}
     >

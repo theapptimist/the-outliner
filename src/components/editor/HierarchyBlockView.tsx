@@ -59,6 +59,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
     updateHierarchyBlock,
     removeHierarchyBlock,
     document,
+    setDocumentTitle,
     navigateToDocument,
     // Entity data for Adaptive Cognitive Pacing
     terms,
@@ -981,6 +982,7 @@ export function HierarchyBlockView({ node, deleteNode: deleteBlockNode, selected
           sections={tocSections} 
           onNavigate={handleTocNavigate}
           documentTitle={document?.meta?.title}
+          onTitleChange={setDocumentTitle}
         />
       )}
       
