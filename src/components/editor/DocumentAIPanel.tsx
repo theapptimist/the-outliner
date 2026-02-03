@@ -64,18 +64,47 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
     return result;
   }, [hierarchyBlocks, document?.content]);
 
+  // Extract all citation markers present in the document context
+  const documentMarkers = useMemo(() => {
+    const markers = new Set<string>();
+    const pattern = /\[(\d+)\]/g;
+    let match;
+    while ((match = pattern.exec(documentContext)) !== null) {
+      markers.add(`[${match[1]}]`);
+    }
+    console.log('[DocumentAI] Found document markers:', Array.from(markers));
+    return markers;
+  }, [documentContext]);
+
   // Apply citation updates from tool call
   const applyCitations = useCallback((citations: Record<string, string>) => {
     // Normalize AI-produced keys into the marker format used in the document (e.g. "[6]").
-    // We've seen models return "_6" or "6" instead of "[6]".
-    const normalizeMarker = (raw: string) => {
-      const trimmed = String(raw).trim();
-      const underscoreNum = trimmed.match(/^_(\d+)$/);
-      if (underscoreNum) return `[${underscoreNum[1]}]`;
-      const plainNum = trimmed.match(/^(\d+)$/);
-      if (plainNum) return `[${plainNum[1]}]`;
-      if (trimmed.startsWith('[') && trimmed.endsWith(']')) return trimmed;
-      return `[${trimmed}]`;
+    // Models sometimes return malformed keys like "'[6]'收录于", "_6", "6", etc.
+    const normalizeMarker = (raw: string): string | null => {
+      const str = String(raw).trim();
+      
+      // First, try to extract a bracketed numeric marker anywhere in the string
+      // This handles cases like "'[6]'收录于" → "[6]"
+      const bracketedMatch = str.match(/\[(\d+)\]/);
+      if (bracketedMatch) {
+        return `[${bracketedMatch[1]}]`;
+      }
+      
+      // Handle "_6" format
+      const underscoreNum = str.match(/^_(\d+)$/);
+      if (underscoreNum) {
+        return `[${underscoreNum[1]}]`;
+      }
+      
+      // Handle plain number "6"
+      const plainNum = str.match(/^(\d+)$/);
+      if (plainNum) {
+        return `[${plainNum[1]}]`;
+      }
+      
+      // If nothing matched, return null to indicate invalid key
+      console.warn('[DocumentAI] Could not normalize marker:', raw);
+      return null;
     };
 
     // Enable End Notes display if not already enabled
@@ -83,17 +112,45 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
       setDisplayOptions({ ...displayOptions, showEndNotes: true });
     }
     
-    // Apply each citation
+    // Normalize and filter entries
     const normalizedEntries = Object.entries(citations)
       .map(([marker, text]) => [normalizeMarker(marker), text] as const)
-      .filter(([marker, text]) => !!marker && typeof text === 'string' && text.trim().length > 0);
+      .filter((entry): entry is [string, string] => {
+        const [marker, text] = entry;
+        if (!marker) return false;
+        if (typeof text !== 'string' || text.trim().length === 0) return false;
+        return true;
+      });
+    
+    // Filter to only markers that exist in the document
+    const applicableEntries = normalizedEntries.filter(([marker]) => documentMarkers.has(marker));
+    const skippedCount = normalizedEntries.length - applicableEntries.length;
+    
+    console.log('[DocumentAI] Citation application:', {
+      received: Object.keys(citations),
+      normalized: normalizedEntries.map(([m]) => m),
+      documentMarkers: Array.from(documentMarkers),
+      applying: applicableEntries.map(([m]) => m),
+      skipped: skippedCount,
+    });
 
-    for (const [marker, text] of normalizedEntries) {
+    // Apply each valid citation
+    for (const [marker, text] of applicableEntries) {
       setCitationDefinition(marker, text);
     }
     
-    toast.success(`Updated ${normalizedEntries.length} citation(s)`);
-  }, [setCitationDefinition, setDisplayOptions, displayOptions]);
+    // Provide detailed feedback
+    if (applicableEntries.length > 0) {
+      const appliedList = applicableEntries.map(([m]) => m).join(', ');
+      toast.success(`Updated ${applicableEntries.length} citation(s): ${appliedList}`);
+    } else if (normalizedEntries.length > 0) {
+      toast.error(`No matching citations found. AI returned keys that don't match document markers.`);
+    } else {
+      toast.error(`Could not parse any citation keys from AI response.`);
+    }
+    
+    return { applied: applicableEntries.length, skipped: skippedCount };
+  }, [setCitationDefinition, setDisplayOptions, displayOptions, documentMarkers]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -220,20 +277,24 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
           const args = JSON.parse(toolCallData.arguments);
           const { citations, summary } = args;
           
-          // Apply the citations
-          applyCitations(citations);
+          // Apply the citations and get result
+          const result = applyCitations(citations);
           
           // Update the message to show what was done
+          const resultMessage = result.applied > 0 
+            ? `${summary || `Updated ${result.applied} citation(s).`}${result.skipped > 0 ? ` (${result.skipped} unmatched keys skipped)` : ''}`
+            : `Could not apply citations. The AI returned keys that don't match your document's citation markers ([1], [2], etc.).`;
+          
           setMessages(prev => {
             const updated = [...prev];
             if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
               updated[updated.length - 1] = {
                 role: 'assistant',
-                content: summary || `Updated ${Object.keys(citations).length} citation(s).`,
+                content: resultMessage,
                 toolCall: {
                   name: 'update_citations',
                   arguments: args,
-                  applied: true,
+                  applied: result.applied > 0,
                 },
               };
             }
@@ -246,7 +307,7 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
             if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
               updated[updated.length - 1] = {
                 role: 'assistant',
-                content: assistantContent || 'I tried to update the citations but encountered an error.',
+                content: assistantContent || 'I tried to update the citations but encountered an error parsing the response.',
               };
             }
             return updated;
