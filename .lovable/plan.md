@@ -1,62 +1,84 @@
 
-Goal: Fix “Open Recent” so it reliably shows multiple useful recent documents (not just a single “Untitled”), while preserving the “recently opened” behavior.
+## Goal
+Make the top-left Document AI “Redo Footnotes” actually update the visible References list by correctly mapping the AI tool output to the document’s citation markers (e.g., `[6]`).
 
-What I found (current behavior + root cause)
-- The File menu’s “Open Recent” list is powered by `getRecentCloudDocuments()` in `src/lib/cloudDocumentStorage.ts`.
-- `getRecentCloudDocuments()` uses a local list of IDs stored in the browser (`outliner:recent-cloud`). If that list has at least 1 ID, it ONLY returns those documents via `.in('id', recentIds)`.
-- Your report (“there’s basically nothing there except usually one untitled doc”) matches this: the “recent-cloud” list often contains just the currently-opened doc, so “Open Recent” becomes a 1-item list.
-- Even if you have many saved docs (and “Open…” can see them), “Open Recent” won’t fall back to “most recently updated” once it has any IDs at all.
+Right now, the AI *is* calling the `update_citations` tool, but it returns keys like `"'[6]'收录于"` (contains `[6]` plus extra characters). The UI currently treats that whole string as the marker, so it writes a definition for a marker that doesn’t exist in your document. Result: the References list stays at “(Click to add reference)”.
 
-High-level fix
-- Make `getRecentCloudDocuments()` return a “best effort” list up to MAX_RECENT:
-  1) Prefer “recently opened” docs in the order stored in local storage.
-  2) If that yields fewer than MAX_RECENT (or some are missing/deleted), fill the remaining slots with the most recently updated documents (excluding any already included).
-- Additionally, strengthen how we populate the recent list by recording “recent” not only on load/open, but also on explicit “Save” (so documents you actively work on surface in “Open Recent” even if you didn’t open them via the Open dialog recently).
+## What I found (from your network log)
+The AI response includes a tool call like:
+- key: `"'[6]'收录于"`
+- value: a bibliography entry
 
-Implementation plan (code changes)
-1) Update `getRecentCloudDocuments()` (src/lib/cloudDocumentStorage.ts)
-   - Keep reading `recentIds` from local storage as it does now.
-   - Query the “recently opened” IDs:
-     - `.in('id', recentIds)` as today.
-     - Reconstruct order using the stored ID order (as today).
-   - If fewer than `MAX_RECENT` docs were found:
-     - Run a second query to fetch additional docs ordered by `updated_at desc`, limited to the remaining count.
-     - Exclude IDs already present in the list (to avoid duplicates).
-     - Append these to the result.
-   - Return the combined list.
-   - Edge cases handled:
-     - If recentIds includes deleted docs, they won’t be returned by the first query; we’ll fill from the fallback query.
-     - If the user has fewer than MAX_RECENT docs total, we return whatever exists.
+Your References UI looks up definitions using exact markers extracted from the outline text (`[1]`, `[2]`, …). Since `"'[6]'收录于"` ≠ `[6]`, nothing shows.
 
-2) Improve “recent” tracking by saving
-   - In `saveCloudDocument()` (src/lib/cloudDocumentStorage.ts), after a successful save, call `addToRecentCloudDocuments(doc.meta.id)`.
-   - Rationale: users often create/open a single document and then work across multiple docs via other UI flows; saving is a strong “this document is relevant” signal. This also helps in cases where “recent opens” isn’t being updated as expected due to navigation patterns.
+## Implementation plan (no behavior guesswork; make it provably work)
 
-3) Small UX verification adjustments in FileMenu (optional but recommended)
-   - Ensure “Open Recent” shows up more predictably:
-     - With the new combined list, `recentDocs.length` should usually be > 0, so the “Open Recent” entry will appear.
-   - (Optional) Rename the small section title or tooltip in diagnostics (if any) to clarify that the list is “Recent (opened + updated)” to match the new behavior.
+### 1) Make citation marker normalization robust in `DocumentAIPanel`
+Update the `normalizeMarker()` logic so it can handle:
+- keys containing a bracketed marker anywhere inside the string, e.g. `"'[6]'收录于"` → `[6]`
+- quoted markers, e.g. `"'[6]'"` → `[6]`
+- plain numbers, e.g. `6` or `_6` → `[6]`
 
-Testing plan (manual, end-to-end)
-1) Baseline check
-   - Open the editor.
-   - Open File Menu → confirm “Open Recent” appears and shows more than just one item (assuming multiple documents exist in your account).
-2) Confirm fallback works when “recent-cloud” has only 1 ID
-   - Clear just the “recent-cloud” local storage key (or simulate it by opening only one document).
-   - Re-open the app → File Menu → Open Recent should now show the current doc plus additional recently updated docs.
-3) Confirm save updates recents
-   - Open a document (any).
-   - Make a small change and Save.
-   - Open File Menu → Open Recent should include that document near the top (at least within the 5 items).
-4) Regression checks
-   - “Open…” dialog still lists all documents correctly.
-   - Clicking a recent item opens the selected doc and updates the recent ordering.
+New approach:
+- Convert to string and trim
+- First try to **extract the first bracketed marker** anywhere: `const m = raw.match(/\[(\d+)\]/)`; if found → return `[${m[1]}]`
+- Else fall back to existing `_6` / `6` handling
+- Else, if it already looks like `[...]`, keep it
+- Else wrap it (last resort)
 
-Files that will be changed
-- src/lib/cloudDocumentStorage.ts (main fix: combine “recently opened” + “recently updated”; also add recent tracking on save)
-- (Possibly) src/components/editor/FileMenu.tsx (only if we decide to adjust labeling/UX; not required for the core bug)
+Why: Your extracted citations are numeric markers (`[1]`–`[6]`), and this guarantees the keys map.
 
-Notes / trade-offs
-- This approach keeps the “recently opened” intent, but prevents the UI from becoming empty/useless when the local recent list is short.
-- It is purely a frontend behavior change; no backend schema changes required.
+### 2) Only apply citations that actually exist in the document (optional but recommended)
+To avoid the AI writing definitions for junk keys, we can:
+- compute a `Set` of markers currently present in the document (you already have `citations` shown in References; we can derive this set inside the panel by scanning `documentContext` with a simple regex like `/\[(\d+)\]/g` and collecting `[n]`)
+- when applying tool output, **filter** to markers that are present
+- show a toast like:
+  - “Updated 6 citations: [1] [2] [3] [4] [5] [6]”
+  - or if 0 were applied: “No matching citations found to update (expected markers like [1], [2]…)”
 
+This makes it obvious when the tool output didn’t match the document.
+
+### 3) Improve the backend function prompt to prevent malformed keys
+In `supabase/functions/document-ai-chat/index.ts`, tighten the tool instruction so the model is much less likely to invent extra text in keys:
+- Explicitly: “The `citations` object keys MUST be exactly one of: `[1]`, `[2]`, … (no quotes, no extra words, no other characters).”
+- Add: “Do not use any language other than the marker for keys.”
+- Add: “If you see markers in the document, only output those.”
+
+This reduces reliance on normalization, but we’ll still keep normalization as a safety net.
+
+### 4) Add lightweight UI feedback for trust
+In `DocumentAIPanel.tsx`:
+- After applying, append a small “Applied: [1]–[6]” line to the assistant message (or include it in the “Citations updated” header).
+- If parsing succeeds but 0 citations match, show an error toast and display a message explaining what keys were received vs what markers exist (briefly).
+
+This addresses the “it says it did it but nothing changed” experience.
+
+### 5) Verify end-to-end (the important part)
+After implementation:
+1. Open the document
+2. Ensure the outline contains `[1] … [6]` (your screenshot shows it does)
+3. Click the top-left sparkle icon → “Redo Footnotes”
+4. Confirm:
+   - Toast says “Updated 6 citation(s)” (or similar)
+   - References list shows actual bibliography text next to `[1] … [6]`
+5. Refresh the page and confirm they still persist (since citationDefinitions are persisted in document state already)
+
+## Edge cases handled
+- Tool keys include extra characters (your current failure mode) → fixed by extracting bracketed marker
+- Tool keys are `6` / `_6` → already supported, will remain supported
+- Tool returns citations for markers not present in document → filtered out (if we implement step 2), and user gets a clear message
+- Model responds with plain text and no tool call → UI should show “No citations updated” (we can detect tool call absence and prompt retry)
+
+## Files to change
+- `src/components/editor/DocumentAIPanel.tsx`
+  - strengthen `normalizeMarker()`
+  - (optional) filter to markers present in the doc
+  - improve user feedback/toasts
+- `supabase/functions/document-ai-chat/index.ts`
+  - tighten system prompt instructions for tool output keys
+
+## Next feature suggestions (optional)
+- Add a “Preview changes” step: show the proposed references before applying them.
+- Add a “Redo only missing references” action (fill only ones still showing “Click to add reference”).
+- Add a “Citation style” selector (Chicago / MLA / APA) for AI-generated references.
+- Add an “Audit citations” action: find unused references and missing markers.
