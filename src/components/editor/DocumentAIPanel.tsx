@@ -66,17 +66,33 @@ export function DocumentAIPanel({ isOpen, onClose }: DocumentAIPanelProps) {
 
   // Apply citation updates from tool call
   const applyCitations = useCallback((citations: Record<string, string>) => {
+    // Normalize AI-produced keys into the marker format used in the document (e.g. "[6]").
+    // We've seen models return "_6" or "6" instead of "[6]".
+    const normalizeMarker = (raw: string) => {
+      const trimmed = String(raw).trim();
+      const underscoreNum = trimmed.match(/^_(\d+)$/);
+      if (underscoreNum) return `[${underscoreNum[1]}]`;
+      const plainNum = trimmed.match(/^(\d+)$/);
+      if (plainNum) return `[${plainNum[1]}]`;
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) return trimmed;
+      return `[${trimmed}]`;
+    };
+
     // Enable End Notes display if not already enabled
     if (!displayOptions.showEndNotes) {
       setDisplayOptions({ ...displayOptions, showEndNotes: true });
     }
     
     // Apply each citation
-    for (const [marker, text] of Object.entries(citations)) {
+    const normalizedEntries = Object.entries(citations)
+      .map(([marker, text]) => [normalizeMarker(marker), text] as const)
+      .filter(([marker, text]) => !!marker && typeof text === 'string' && text.trim().length > 0);
+
+    for (const [marker, text] of normalizedEntries) {
       setCitationDefinition(marker, text);
     }
     
-    toast.success(`Updated ${Object.keys(citations).length} citation(s)`);
+    toast.success(`Updated ${normalizedEntries.length} citation(s)`);
   }, [setCitationDefinition, setDisplayOptions, displayOptions]);
 
   const handleSend = useCallback(async () => {
