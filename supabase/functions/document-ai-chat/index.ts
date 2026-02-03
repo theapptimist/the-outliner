@@ -43,9 +43,17 @@ ${documentContext ? `Document content/context:\n${documentContext}\n\n` : ''}${e
 - **Create, update, or redo footnotes/citations using the update_citations tool**
 
 When the user asks you to "redo", "create", "update", or "fix" footnotes/citations:
-1. Analyze the document content for citation markers like [1], [2], etc.
-2. Generate appropriate bibliographic references based on the document's topic
+1. Scan the document content for citation markers like [1], [2], [3], etc.
+2. Generate appropriate bibliographic references based on the document's topic and context
 3. Use the update_citations tool to apply the changes directly
+
+**CRITICAL INSTRUCTIONS FOR update_citations TOOL:**
+- The citations object keys MUST be EXACTLY the marker strings: "[1]", "[2]", "[3]", etc.
+- Do NOT add quotes, extra text, or any other characters to the keys
+- Do NOT use formats like: "_1", "1", "'[1]'", "[1] some text", or any non-English text in keys
+- ONLY use keys that match markers actually found in the document
+- Example of CORRECT format: { "[1]": "Author Name. Book Title. Publisher, Year.", "[2]": "..." }
+- Example of WRONG format: { "'[1]'": "...", "_1": "...", "[1] citation": "..." }
 
 Be concise, helpful, and reference specific parts of the document when relevant.`;
 
