@@ -16,6 +16,7 @@ import { HierarchyNode } from '@/types/node';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebouncedAutoSave } from '@/hooks/useDebouncedAutoSave';
 import { useCloudStylePreferences } from '@/hooks/useCloudStylePreferences';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import {
   loadCloudDocument,
   saveCloudDocument,
@@ -208,6 +209,9 @@ export default function Editor() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   
+  // User settings (includes startWithOutline)
+  const { settings: userSettings } = useUserSettings();
+  
   // Cloud-synced style preferences
   const { 
     currentMixedConfig, 
@@ -285,12 +289,12 @@ export default function Editor() {
         }
         
         // No existing document - create LOCAL-ONLY document (not persisted until save)
-        const localDoc = createLocalDocument('Untitled');
+        const localDoc = createLocalDocument('Untitled', userSettings.startWithOutline);
         setDocument(localDoc);
       } catch (e) {
         console.error('Failed to load document:', e);
         // Fallback to local-only empty document
-        const localDoc = createLocalDocument('Untitled');
+        const localDoc = createLocalDocument('Untitled', userSettings.startWithOutline);
         setDocument(localDoc);
       }
       setIsLoading(false);
@@ -299,7 +303,7 @@ export default function Editor() {
     if (user) {
       loadInitialDocument();
     }
-  }, [user]);
+  }, [user, userSettings.startWithOutline]);
 
   const handleUndoRedoChange = useCallback((
     undo: () => void,
@@ -375,12 +379,12 @@ export default function Editor() {
     if (hasUnsavedChanges && !docIsEmpty && !confirm('Discard unsaved changes?')) return;
     
     // Create LOCAL-ONLY document - not persisted until explicit save
-    const localDoc = createLocalDocument('Untitled');
+    const localDoc = createLocalDocument('Untitled', userSettings.startWithOutline);
     setDocument(localDoc);
     setDocumentVersion(v => v + 1);
     setHasUnsavedChanges(true); // Mark as unsaved so user knows to save
     toast.success('New document created (not yet saved)');
-  }, [hasUnsavedChanges, document]);
+  }, [hasUnsavedChanges, document, userSettings.startWithOutline]);
 
   const handleSave = useCallback(async () => {
     if (!user || !document) return;
@@ -497,7 +501,7 @@ export default function Editor() {
       // Clear current doc ID from localStorage
       localStorage.removeItem(CURRENT_DOC_KEY);
       // Create a new local-only document instead of auto-persisting
-      const localDoc = createLocalDocument('Untitled');
+      const localDoc = createLocalDocument('Untitled', userSettings.startWithOutline);
       setDocument(localDoc);
       setDocumentVersion(v => v + 1);
       setHasUnsavedChanges(false);
@@ -505,7 +509,7 @@ export default function Editor() {
     } catch (e) {
       toast.error('Failed to delete document');
     }
-  }, [user, document]);
+  }, [user, document, userSettings.startWithOutline]);
 
   const handleExport = useCallback(() => {
     if (!document) return;
