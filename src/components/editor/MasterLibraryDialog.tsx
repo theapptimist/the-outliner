@@ -264,7 +264,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter }: LibraryTabC
   }
   
   return (
-    <ScrollArea className="h-[400px]">
+    <ScrollArea className="flex-1">
       <div className="space-y-2 p-1">
         {filteredEntities.map(entity => (
           <MasterEntityCard
@@ -308,7 +308,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Library className="h-5 w-5" />
