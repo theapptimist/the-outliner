@@ -379,8 +379,8 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] flex flex-col p-0 gap-0">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MasterLibraryTab)} className="flex-1 flex flex-col min-h-0">
+      <DialogContent className="max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] flex flex-col p-0 gap-0 overflow-hidden">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MasterLibraryTab)} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b shrink-0">
             <div className="flex items-center justify-between pr-8">
               <DialogTitle className="flex items-center gap-2">
@@ -465,9 +465,9 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
               ))}
             </div>
             
-            {/* Document Explorer Strip - Only show for My Library tab */}
-            {activeTab === 'my-library' && libraryDocuments.length > 0 && (
-              <div className="w-48 flex flex-col border-r border-border/30 bg-muted/10 shrink-0">
+            {/* Document Explorer Strip - Always show for My Library tab */}
+            {activeTab === 'my-library' && (
+              <div className="w-48 flex flex-col border-r border-border/30 bg-muted/10 shrink-0 min-h-0 overflow-hidden">
                 <div className="px-3 py-2 border-b border-border/30">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -485,82 +485,91 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     )}
                   </div>
                 </div>
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 min-h-0">
                   <div className="p-2 space-y-0.5">
-                    {/* Select All */}
-                    <button
-                      onClick={() => {
-                        if (selectedDocumentIds.size === libraryDocuments.length) {
-                          setSelectedDocumentIds(new Set());
-                        } else {
-                          setSelectedDocumentIds(new Set(libraryDocuments.map(d => d.id)));
-                        }
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors",
-                        selectedDocumentIds.size === libraryDocuments.length
-                          ? "bg-primary/10 text-foreground"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <div className={cn(
-                        "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                        selectedDocumentIds.size === libraryDocuments.length
-                          ? "bg-primary border-primary"
-                          : "border-border"
-                      )}>
-                        {selectedDocumentIds.size === libraryDocuments.length && (
-                          <Check className="h-3 w-3 text-primary-foreground" />
-                        )}
-                      </div>
-                      <span className="font-medium">All Documents</span>
-                    </button>
-                    
-                    <div className="h-px bg-border/50 my-1.5" />
-                    
-                    {loadingDocs ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    {libraryDocuments.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                        <FileText className="h-8 w-8 mb-2 opacity-30" />
+                        <p className="text-xs text-center">No documents with entities yet</p>
                       </div>
                     ) : (
-                      libraryDocuments.map(doc => (
+                      <>
+                        {/* Select All */}
                         <button
-                          key={doc.id}
                           onClick={() => {
-                            setSelectedDocumentIds(prev => {
-                              const next = new Set(prev);
-                              if (next.has(doc.id)) {
-                                next.delete(doc.id);
-                              } else {
-                                next.add(doc.id);
-                              }
-                              return next;
-                            });
+                            if (selectedDocumentIds.size === libraryDocuments.length) {
+                              setSelectedDocumentIds(new Set());
+                            } else {
+                              setSelectedDocumentIds(new Set(libraryDocuments.map(d => d.id)));
+                            }
                           }}
                           className={cn(
-                            "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
-                            selectedDocumentIds.has(doc.id)
+                            "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors",
+                            selectedDocumentIds.size === libraryDocuments.length
                               ? "bg-primary/10 text-foreground"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                         >
                           <div className={cn(
                             "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                            selectedDocumentIds.has(doc.id)
+                            selectedDocumentIds.size === libraryDocuments.length
                               ? "bg-primary border-primary"
                               : "border-border"
                           )}>
-                            {selectedDocumentIds.has(doc.id) && (
+                            {selectedDocumentIds.size === libraryDocuments.length && (
                               <Check className="h-3 w-3 text-primary-foreground" />
                             )}
                           </div>
-                          <FileText className="h-3 w-3 shrink-0 opacity-50" />
-                          <span className="truncate flex-1">{doc.title}</span>
-                          <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
-                            {doc.entityCount}
-                          </Badge>
+                          <span className="font-medium">All Documents</span>
                         </button>
-                      ))
+                        
+                        <div className="h-px bg-border/50 my-1.5" />
+                        
+                        {loadingDocs ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : (
+                          libraryDocuments.map(doc => (
+                            <button
+                              key={doc.id}
+                              onClick={() => {
+                                setSelectedDocumentIds(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(doc.id)) {
+                                    next.delete(doc.id);
+                                  } else {
+                                    next.add(doc.id);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
+                                selectedDocumentIds.has(doc.id)
+                                  ? "bg-primary/10 text-foreground"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              )}
+                            >
+                              <div className={cn(
+                                "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                                selectedDocumentIds.has(doc.id)
+                                  ? "bg-primary border-primary"
+                                  : "border-border"
+                              )}>
+                                {selectedDocumentIds.has(doc.id) && (
+                                  <Check className="h-3 w-3 text-primary-foreground" />
+                                )}
+                              </div>
+                              <FileText className="h-3 w-3 shrink-0 opacity-50" />
+                              <span className="truncate flex-1">{doc.title}</span>
+                              <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+                                {doc.entityCount}
+                              </Badge>
+                            </button>
+                          ))
+                        )}
+                      </>
                     )}
                   </div>
                 </ScrollArea>
@@ -568,7 +577,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
             )}
             
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
               {/* Expandable Search Bar */}
               {searchOpen && (
                 <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/10">
@@ -640,8 +649,8 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
               )}
               
               {/* Tab Content */}
-              <div className="flex-1 min-h-0">
-                <TabsContent value="my-library" className="mt-0 h-full">
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <TabsContent value="my-library" className="mt-0 h-full overflow-auto">
                   <LibraryTabContent 
                     scope="my-library" 
                     searchQuery={searchQuery}
@@ -649,7 +658,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     selectedDocumentIds={selectedDocumentIds}
                   />
                 </TabsContent>
-                <TabsContent value="shared" className="mt-0 h-full">
+                <TabsContent value="shared" className="mt-0 h-full overflow-auto">
                   <LibraryTabContent 
                     scope="shared" 
                     searchQuery={searchQuery}
@@ -657,7 +666,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     selectedDocumentIds={selectedDocumentIds}
                   />
                 </TabsContent>
-                <TabsContent value="public" className="mt-0 h-full">
+                <TabsContent value="public" className="mt-0 h-full overflow-auto">
                   <LibraryTabContent 
                     scope="public" 
                     searchQuery={searchQuery}
