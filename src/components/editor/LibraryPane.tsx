@@ -820,7 +820,7 @@ export function LibraryPane({
   return (
     <div className="flex h-full">
       {/* Vertical Tool Strip */}
-      <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20">
+      <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20 overflow-y-auto shrink-0">
         {/* Full Page Toggle */}
         {onToggleFullPage && (
           <Tooltip>
