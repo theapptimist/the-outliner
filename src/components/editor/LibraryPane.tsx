@@ -818,9 +818,20 @@ export function LibraryPane({
   }
 
   return (
-    <div className="flex h-full">
-      {/* Vertical Tool Strip */}
-      <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20 overflow-y-auto shrink-0">
+    <div className="flex flex-col h-full">
+      {/* Master Library Bar - spans full width */}
+      <button
+        data-allow-pointer
+        onClick={() => setMasterLibraryOpen(true)}
+        className="flex items-center justify-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 hover:bg-muted/30 transition-colors shrink-0 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <Library className="h-4 w-4" />
+        Master Library
+      </button>
+      
+      <div className="flex flex-1 min-h-0">
+        {/* Vertical Tool Strip */}
+        <div className="flex flex-col items-center gap-0.5 px-0.5 py-1 border-r border-border/30 bg-muted/20 overflow-y-auto shrink-0">
         {/* Full Page Toggle */}
         {onToggleFullPage && (
           <Tooltip>
@@ -1183,19 +1194,6 @@ export function LibraryPane({
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Master Library Bar */}
-        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border/30 bg-muted/10 shrink-0">
-          <Button
-            data-allow-pointer
-            variant="outline"
-            size="sm"
-            onClick={() => setMasterLibraryOpen(true)}
-            className="h-7 gap-1.5 text-xs"
-          >
-            <Library className="h-3.5 w-3.5" />
-            Master Library
-          </Button>
-        </div>
         {/* Show Usages Pane if an entity is being inspected */}
         {inspectedTerm && activeTab === 'terms' && (
           <EntityUsagesPane
@@ -1784,6 +1782,7 @@ export function LibraryPane({
         open={masterLibraryOpen}
         onOpenChange={setMasterLibraryOpen}
       />
+      </div>
     </div>
   );
 }
