@@ -23,7 +23,7 @@ import { FileMenu } from './FileMenu';
 import { cn } from '@/lib/utils';
 
 // Lazy load the AI toolbar since it's rarely used immediately
-const LazyAIToolbar = lazy(() => import('./AIToolbar'));
+const LazyAIToolbar = lazy(() => import('./AIToolbar').then(m => ({ default: m.AIToolbar })));
 
 import type { SidebarTab } from '@/contexts/NavigationContext';
 
