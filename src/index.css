@@ -43,6 +43,7 @@
     --ring: 200 100% 45%;
 
     --brand: 32 98% 50%;
+    --purple: 285 98% 50%;
 
     --radius: 0.5rem;
 
@@ -118,6 +119,7 @@
     --ring: 200 100% 60%;
 
     --brand: 32 98% 50%;
+    --purple: 285 98% 50%;
 
     /* Node type colors */
     --node-default: 220 10% 70%;
