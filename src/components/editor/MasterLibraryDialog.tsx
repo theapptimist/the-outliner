@@ -38,7 +38,7 @@ import { useMasterLibraryDocuments } from '@/hooks/useMasterLibraryDocuments';
 import { useDocumentContext } from './context';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { checkMigrationNeeded, migrateDocumentEntitiesToMaster } from '@/lib/masterEntityMigration';
+import { checkMigrationNeeded, migrateDocumentEntitiesToMaster, backfillSourceDocumentIds } from '@/lib/masterEntityMigration';
 
 type MasterLibraryTab = 'my-library' | 'shared' | 'public';
 
@@ -314,8 +314,9 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   // Migration state
   const { user } = useAuth();
   const { toast } = useToast();
-  const [migrationInfo, setMigrationInfo] = useState<{ needed: boolean; count: number } | null>(null);
+  const [migrationInfo, setMigrationInfo] = useState<{ needed: boolean; count: number; backfillNeeded: boolean; backfillCount: number } | null>(null);
   const [isMigrating, setIsMigrating] = useState(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
   const [migrationComplete, setMigrationComplete] = useState(false);
   
   // Get counts for badges
@@ -331,6 +332,8 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
         setMigrationInfo({
           needed: result.needed,
           count: result.documentEntityCount,
+          backfillNeeded: result.backfillNeeded,
+          backfillCount: result.backfillCount,
         });
       });
     }
@@ -366,6 +369,31 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
       }
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  const handleBackfill = async () => {
+    if (!user?.id) return;
+    
+    setIsBackfilling(true);
+    try {
+      const result = await backfillSourceDocumentIds(user.id);
+      if (result.success) {
+        toast({
+          title: 'Backfill complete',
+          description: `${result.updatedCount} entities linked to their source documents`,
+        });
+        setMigrationInfo(prev => prev ? { ...prev, backfillNeeded: false, backfillCount: 0 } : null);
+        refreshDocs();
+      } else {
+        toast({
+          title: 'Backfill failed',
+          description: result.errors[0] || 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsBackfilling(false);
     }
   };
 
@@ -638,10 +666,46 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                 </div>
               )}
               
+              {/* Backfill Banner - for entities migrated before source_document_id tracking */}
+              {migrationInfo?.backfillNeeded && !migrationInfo?.needed && activeTab === 'my-library' && (
+                <div className="mx-3 my-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        Link entities to documents
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {migrationInfo.backfillCount} entities need to be linked to their source documents for filtering.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 h-7"
+                        onClick={handleBackfill}
+                        disabled={isBackfilling}
+                      >
+                        {isBackfilling ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            Linking...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-3.5 w-3.5 mr-1.5" />
+                            Link to Documents
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* Migration Complete Message */}
               {migrationComplete && activeTab === 'my-library' && (
-                <div className="mx-3 my-2 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
-                  <div className="flex items-center gap-2 text-green-600">
+                <div className="mx-3 my-2 p-3 rounded-lg border border-success/30 bg-success/5">
+                  <div className="flex items-center gap-2 text-success">
                     <CheckCircle className="h-4 w-4" />
                     <span className="text-sm">Entities imported successfully!</span>
                   </div>
