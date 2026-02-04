@@ -284,8 +284,8 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
   }
   
   return (
-    <ScrollArea className="flex-1">
-      <div className="space-y-2 p-1">
+    <div className="h-full overflow-auto p-3">
+      <div className="space-y-2">
         {filteredEntities.map(entity => (
           <MasterEntityCard
             key={entity.id}
@@ -297,7 +297,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
           />
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -713,32 +713,30 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
               )}
               
               {/* Tab Content */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <TabsContent value="my-library" className="mt-0 h-full overflow-auto">
-                  <LibraryTabContent 
-                    scope="my-library" 
-                    searchQuery={searchQuery}
-                    entityTypeFilter={entityFilter}
-                    selectedDocumentIds={selectedDocumentIds}
-                  />
-                </TabsContent>
-                <TabsContent value="shared" className="mt-0 h-full overflow-auto">
-                  <LibraryTabContent 
-                    scope="shared" 
-                    searchQuery={searchQuery}
-                    entityTypeFilter={entityFilter}
-                    selectedDocumentIds={selectedDocumentIds}
-                  />
-                </TabsContent>
-                <TabsContent value="public" className="mt-0 h-full overflow-auto">
-                  <LibraryTabContent 
-                    scope="public" 
-                    searchQuery={searchQuery}
-                    entityTypeFilter={entityFilter}
-                    selectedDocumentIds={selectedDocumentIds}
-                  />
-                </TabsContent>
-              </div>
+              <TabsContent value="my-library" className="mt-0 flex-1 min-h-0 overflow-hidden">
+                <LibraryTabContent 
+                  scope="my-library" 
+                  searchQuery={searchQuery}
+                  entityTypeFilter={entityFilter}
+                  selectedDocumentIds={selectedDocumentIds}
+                />
+              </TabsContent>
+              <TabsContent value="shared" className="mt-0 flex-1 min-h-0 overflow-hidden">
+                <LibraryTabContent 
+                  scope="shared" 
+                  searchQuery={searchQuery}
+                  entityTypeFilter={entityFilter}
+                  selectedDocumentIds={selectedDocumentIds}
+                />
+              </TabsContent>
+              <TabsContent value="public" className="mt-0 flex-1 min-h-0 overflow-hidden">
+                <LibraryTabContent 
+                  scope="public" 
+                  searchQuery={searchQuery}
+                  entityTypeFilter={entityFilter}
+                  selectedDocumentIds={selectedDocumentIds}
+                />
+              </TabsContent>
             </div>
           </div>
         </Tabs>
