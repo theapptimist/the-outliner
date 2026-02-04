@@ -81,6 +81,7 @@ export default {
           reference: "hsl(var(--node-reference))",
         },
         brand: "hsl(var(--brand))",
+        purple: "hsl(var(--purple))",
       },
       borderRadius: {
         lg: "var(--radius)",

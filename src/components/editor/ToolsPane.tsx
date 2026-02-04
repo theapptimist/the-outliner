@@ -111,8 +111,8 @@ export function ToolsPane({
           <div className="flex justify-center">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-accent/15 hover:text-accent transition-colors">
-                  <Layers className="h-4 w-4 text-accent" />
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-purple/15 hover:text-purple transition-colors">
+                  <Layers className="h-4 w-4 text-purple" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
@@ -122,7 +122,7 @@ export function ToolsPane({
           </div>
         ) : (
           <div className="space-y-1">
-            <span className="text-[10px] font-medium text-accent uppercase tracking-wider px-1">
+            <span className="text-[10px] font-medium text-purple uppercase tracking-wider px-1">
               Style
             </span>
             <OutlineStylePicker
