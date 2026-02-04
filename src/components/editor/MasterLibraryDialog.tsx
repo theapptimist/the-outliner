@@ -312,36 +312,36 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
       <DialogContent className="max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] flex flex-col p-0 gap-0">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MasterLibraryTab)} className="flex-1 flex flex-col min-h-0">
           <DialogHeader className="px-4 py-3 border-b shrink-0">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pr-8">
               <DialogTitle className="flex items-center gap-2">
                 <Library className="h-5 w-5" />
                 Master Library
               </DialogTitle>
               
-              <TabsList className="h-8 bg-muted/50">
-                <TabsTrigger value="my-library" className="h-7 px-3 text-xs flex items-center gap-1.5">
-                  <Library className="h-3 w-3" />
+              <TabsList className="h-9 bg-muted p-1">
+                <TabsTrigger value="my-library" className="h-7 px-4 text-sm font-medium flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Library className="h-3.5 w-3.5" />
                   <span>My Library</span>
                   {masterEntities.length > 0 && (
-                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                       {masterEntities.length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="shared" className="h-7 px-3 text-xs flex items-center gap-1.5">
-                  <Users className="h-3 w-3" />
+                <TabsTrigger value="shared" className="h-7 px-4 text-sm font-medium flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Users className="h-3.5 w-3.5" />
                   <span>Shared</span>
                   {sharedCount > 0 && (
-                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                       {sharedCount}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="public" className="h-7 px-3 text-xs flex items-center gap-1.5">
-                  <Globe className="h-3 w-3" />
+                <TabsTrigger value="public" className="h-7 px-4 text-sm font-medium flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Globe className="h-3.5 w-3.5" />
                   <span>Public</span>
                   {publicEntities.length > 0 && (
-                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                       {publicEntities.length}
                     </Badge>
                   )}
