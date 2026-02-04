@@ -12,6 +12,8 @@ import {
   Loader2,
   ExternalLink,
   X,
+  Upload,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +33,8 @@ import { useEntityPermissions } from '@/hooks/useEntityPermissions';
 import { usePublicEntities } from '@/hooks/usePublicEntities';
 import { useDocumentContext } from './context';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { checkMigrationNeeded, migrateDocumentEntitiesToMaster } from '@/lib/masterEntityMigration';
 
 type MasterLibraryTab = 'my-library' | 'shared' | 'public';
 
@@ -237,7 +241,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter }: LibraryTabC
             <Library className="h-10 w-10 mb-3 opacity-40" />
             <p className="text-sm font-medium">Your library is empty</p>
             <p className="text-xs mt-1 text-center max-w-[200px]">
-              Save entities from your documents to reuse them across projects
+              {searchQuery ? 'No entities match your search' : 'Entities you create will automatically appear here'}
             </p>
           </>
         )}
@@ -287,17 +291,62 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const [entityFilter, setEntityFilter] = useState<EntityType | undefined>(undefined);
   const [searchOpen, setSearchOpen] = useState(false);
   
+  // Migration state
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [migrationInfo, setMigrationInfo] = useState<{ needed: boolean; count: number } | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationComplete, setMigrationComplete] = useState(false);
+  
   // Get counts for badges
-  const { entities: masterEntities } = useMasterEntities();
+  const { entities: masterEntities, refresh: refreshMaster } = useMasterEntities();
   const { publicEntities } = usePublicEntities();
   const { getSharedWithMe } = useEntityPermissions();
   const [sharedCount, setSharedCount] = useState(0);
+  
+  // Check if migration is needed when dialog opens
+  useEffect(() => {
+    if (open && user?.id && !migrationComplete) {
+      checkMigrationNeeded(user.id).then(result => {
+        setMigrationInfo({
+          needed: result.needed,
+          count: result.documentEntityCount,
+        });
+      });
+    }
+  }, [open, user?.id, migrationComplete]);
   
   useEffect(() => {
     if (open) {
       getSharedWithMe().then(ids => setSharedCount(ids.length));
     }
   }, [open, getSharedWithMe]);
+  
+  const handleMigration = async () => {
+    if (!user?.id) return;
+    
+    setIsMigrating(true);
+    try {
+      const result = await migrateDocumentEntitiesToMaster(user.id);
+      if (result.success) {
+        toast({
+          title: 'Migration complete',
+          description: `${result.migratedCount} entities imported to Master Library${result.skippedCount > 0 ? ` (${result.skippedCount} duplicates skipped)` : ''}`,
+        });
+        setMigrationComplete(true);
+        setMigrationInfo(null);
+        refreshMaster();
+      } else {
+        toast({
+          title: 'Migration failed',
+          description: result.errors[0] || 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const entityTypes: { type: EntityType | undefined; icon: typeof User; label: string; color?: string }[] = [
     { type: undefined, icon: Library, label: 'All' },
@@ -419,6 +468,51 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                   >
                     <X className="h-4 w-4" />
                   </Button>
+                </div>
+              )}
+              
+              {/* Migration Banner */}
+              {migrationInfo?.needed && !migrationComplete && activeTab === 'my-library' && (
+                <div className="mx-3 my-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
+                  <div className="flex items-start gap-3">
+                    <Upload className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        Import existing entities
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Found {migrationInfo.count} entities in your documents. Import them to your Master Library for easy reuse across all projects.
+                      </p>
+                      <Button
+                        size="sm"
+                        className="mt-2 h-7"
+                        onClick={handleMigration}
+                        disabled={isMigrating}
+                      >
+                        {isMigrating ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            Importing...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-3.5 w-3.5 mr-1.5" />
+                            Import All Entities
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Migration Complete Message */}
+              {migrationComplete && activeTab === 'my-library' && (
+                <div className="mx-3 my-2 p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm">Entities imported successfully!</span>
+                  </div>
                 </div>
               )}
               

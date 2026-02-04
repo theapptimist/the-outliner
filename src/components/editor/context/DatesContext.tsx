@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useMasterEntitySync } from '@/hooks/useMasterEntitySync';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { TaggedDate, DateUsage, scanForDateUsages, parseDateFromRawText } from '@/lib/dateScanner';
@@ -127,6 +128,9 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
     setHighlightedDate(null);
   }, [documentVersion]);
 
+  // Sync to Master Library
+  const { syncToMaster } = useMasterEntitySync();
+
   // Add a single date
   const addDate = useCallback((date: Date, rawText: string, description?: string) => {
     const newDate: TaggedDate = {
@@ -137,7 +141,10 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
       usages: [],
     };
     setDates(prev => [...prev, newDate]);
-  }, [setDates]);
+    
+    // Sync to Master Library (fire and forget)
+    syncToMaster('dates', { date: date.toISOString(), rawText, description });
+  }, [setDates, syncToMaster]);
 
   // Remove a date
   const removeDate = useCallback((id: string) => {
