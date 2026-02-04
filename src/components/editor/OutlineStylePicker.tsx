@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronDown, Star, Settings2 } from 'lucide-react';
+import { ChevronDown, Star, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ManageStylesDialog } from './ManageStylesDialog';
 import { Separator } from '@/components/ui/separator';
@@ -186,7 +186,7 @@ export function OutlineStylePicker({
                 setPopoverOpen(false);
               }}
             >
-              <Settings2 className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5" />
               Manage Styles
             </Button>
           </div>
