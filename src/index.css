@@ -155,9 +155,39 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
+  /* Font size settings */
+  html[data-font-size="small"] {
+    font-size: 14px;
+  }
+
+  html[data-font-size="medium"] {
+    font-size: 16px;
+  }
+
+  html[data-font-size="large"] {
+    font-size: 18px;
+  }
+
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+}
+
+/* Page width utilities for editor */
+.page-narrow {
+  max-width: 640px;
+}
+
+.page-normal {
+  max-width: 800px;
+}
+
+.page-wide {
+  max-width: 1024px;
+}
+
+.page-full {
+  max-width: 100%;
 }
 
 @layer components {

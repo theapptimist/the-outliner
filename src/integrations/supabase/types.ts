@@ -205,6 +205,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          auto_descend: boolean
+          auto_save: boolean
+          created_at: string
+          font_size: string
+          id: string
+          page_width: string
+          show_row_highlight: boolean
+          show_slash_placeholder: boolean
+          theme: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_descend?: boolean
+          auto_save?: boolean
+          created_at?: string
+          font_size?: string
+          id?: string
+          page_width?: string
+          show_row_highlight?: boolean
+          show_slash_placeholder?: boolean
+          theme?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_descend?: boolean
+          auto_save?: boolean
+          created_at?: string
+          font_size?: string
+          id?: string
+          page_width?: string
+          show_row_highlight?: boolean
+          show_slash_placeholder?: boolean
+          theme?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_style_preferences: {
         Row: {
           created_at: string
