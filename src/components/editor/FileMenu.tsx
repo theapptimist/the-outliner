@@ -504,25 +504,6 @@ export function FileMenu({
 
               <div className="h-px bg-border my-3" />
 
-              <MenuItem
-                icon={<Settings className="h-3.5 w-3.5" />}
-                label="Settings"
-                onClick={() => {
-                  setSheetOpen(false);
-                  navigate('/settings');
-                }}
-              />
-
-              {onSignOut && (
-                <MenuItem
-                  icon={<LogOut className="h-3.5 w-3.5" />}
-                  label="Sign Out"
-                  onClick={() => handleAction(onSignOut)}
-                />
-              )}
-
-              <div className="h-px bg-border my-3" />
-
               <div className="flex items-center gap-2 px-2.5 py-2 text-[10px] text-muted-foreground">
                 <Cloud className="h-3 w-3" />
                 <span>Cloud synced</span>
