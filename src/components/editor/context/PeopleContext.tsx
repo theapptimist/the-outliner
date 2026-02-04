@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useMasterEntitySync } from '@/hooks/useMasterEntitySync';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
@@ -187,6 +188,9 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
     setHighlightedPerson(null);
   }, [documentVersion]);
 
+  // Sync to Master Library
+  const { syncToMaster } = useMasterEntitySync();
+
   const addPerson = useCallback((name: string, role?: string, description?: string) => {
     const normalizedName = normalizeEntityName(name);
     if (!normalizedName) return; // Don't add empty names
@@ -199,7 +203,10 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
       usages: [],
     };
     setPeople(prev => [...prev, newPerson]);
-  }, [setPeople]);
+    
+    // Sync to Master Library (fire and forget)
+    syncToMaster('people', { name: normalizedName, role, description });
+  }, [setPeople, syncToMaster]);
 
   const removePerson = useCallback((id: string) => {
     setPeople(prev => prev.filter(p => p.id !== id));

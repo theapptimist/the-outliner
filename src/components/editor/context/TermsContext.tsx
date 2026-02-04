@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useMasterEntitySync } from '@/hooks/useMasterEntitySync';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig } from '@/lib/outlineStyles';
 import { scanForTermUsages } from '@/lib/termScanner';
@@ -102,6 +103,9 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
     setHighlightedTerm(null);
   }, [documentVersion]);
 
+  // Sync to Master Library
+  const { syncToMaster } = useMasterEntitySync();
+
   // Add a single term
   const addTerm = useCallback((term: string, definition: string, source?: { nodePrefix: string; nodeLabel: string }) => {
     const newTerm: DefinedTerm = {
@@ -112,7 +116,10 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
       usages: [],
     };
     setTerms(prev => [...prev, newTerm]);
-  }, [setTerms]);
+    
+    // Sync to Master Library (fire and forget)
+    syncToMaster('terms', { term, definition });
+  }, [setTerms, syncToMaster]);
 
   // Add extracted terms from AI generation (built into context, no registration needed)
   const addExtractedTerms = useCallback((extractedTerms: Array<{ term: string; definition: string; sourceLabel: string }>) => {
@@ -128,9 +135,15 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
     setTerms(prev => {
       const existingLower = new Set(prev.map(t => t.term.toLowerCase()));
       const toAdd = newTerms.filter(t => !existingLower.has(t.term.toLowerCase()));
+      
+      // Sync new terms to Master Library
+      toAdd.forEach(t => {
+        syncToMaster('terms', { term: t.term, definition: t.definition });
+      });
+      
       return [...prev, ...toAdd];
     });
-  }, [setTerms]);
+  }, [setTerms, syncToMaster]);
 
   // Recalculate usages for all terms by scanning hierarchy blocks
   const recalculateUsages = useCallback((

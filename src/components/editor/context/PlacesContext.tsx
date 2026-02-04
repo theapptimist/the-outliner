@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useCloudEntities } from '@/hooks/useCloudEntities';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
+import { useMasterEntitySync } from '@/hooks/useMasterEntitySync';
 import { HierarchyNode } from '@/types/node';
 import { OutlineStyle, MixedStyleConfig, getOutlinePrefix, getOutlinePrefixCustom, DEFAULT_MIXED_CONFIG } from '@/lib/outlineStyles';
 import { normalizeEntityName } from '@/lib/entityNameUtils';
@@ -186,6 +187,9 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
     setHighlightedPlace(null);
   }, [documentVersion]);
 
+  // Sync to Master Library
+  const { syncToMaster } = useMasterEntitySync();
+
   const addPlace = useCallback((name: string, significance?: string) => {
     const normalizedName = normalizeEntityName(name);
     if (!normalizedName) return; // Don't add empty names
@@ -197,7 +201,10 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
       usages: [],
     };
     setPlaces(prev => [...prev, newPlace]);
-  }, [setPlaces]);
+    
+    // Sync to Master Library (fire and forget)
+    syncToMaster('places', { name: normalizedName, significance });
+  }, [setPlaces, syncToMaster]);
 
   const removePlace = useCallback((id: string) => {
     setPlaces(prev => prev.filter(p => p.id !== id));
