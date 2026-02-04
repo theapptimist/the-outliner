@@ -44,6 +44,7 @@
 
     --brand: 32 98% 50%;
     --purple: 285 98% 50%;
+    --green: 147 82% 37%;
 
     --radius: 0.5rem;
 
@@ -120,6 +121,7 @@
 
     --brand: 32 98% 50%;
     --purple: 285 98% 50%;
+    --green: 147 82% 37%;
 
     /* Node type colors */
     --node-default: 220 10% 70%;

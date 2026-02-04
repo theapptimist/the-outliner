@@ -31,7 +31,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
     <>
       {/* Text Formatting */}
       {!collapsed && (
-        <span className="text-[10px] font-medium text-primary uppercase tracking-wider px-1">
+        <span className="text-[10px] font-medium text-green uppercase tracking-wider px-1">
           Format
         </span>
       )}
@@ -175,7 +175,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
 
       {/* Lists & Blocks - 2x2 grid */}
       {!collapsed && (
-        <span className="text-[10px] font-medium text-success uppercase tracking-wider px-1">
+        <span className="text-[10px] font-medium text-green uppercase tracking-wider px-1">
           Blocks
         </span>
       )}
