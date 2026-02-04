@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,18 +16,49 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { LogOut, KeyRound, Trash2, Mail } from 'lucide-react';
+import { LogOut, KeyRound, Trash2, Mail, User, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function AccountSection() {
   const { user, signOut } = useAuth();
+  const { profile, displayName, initials, updateProfile, isLoading: profileLoading } = useProfile();
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  
+  // Profile editing state
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Initialize edit form when profile loads
+  const handleStartEditProfile = () => {
+    setEditDisplayName(profile?.display_name || '');
+    setIsEditingProfile(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editDisplayName.trim()) {
+      toast.error('Display name cannot be empty');
+      return;
+    }
+    
+    setIsSavingProfile(true);
+    const { error } = await updateProfile({ display_name: editDisplayName.trim() });
+    setIsSavingProfile(false);
+    
+    if (error) {
+      toast.error('Failed to update profile');
+    } else {
+      toast.success('Profile updated');
+      setIsEditingProfile(false);
+    }
+  };
 
   const handlePasswordChange = async () => {
     if (newPassword.length < 6) {
@@ -73,6 +105,69 @@ export function AccountSection() {
 
   return (
     <div className="space-y-6">
+      {/* Profile Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Profile
+          </CardTitle>
+          <CardDescription>Your public profile information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {profileLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading profile...
+            </div>
+          ) : isEditingProfile ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="display-name">Display Name</Label>
+                  <Input
+                    id="display-name"
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    placeholder="Your display name"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
+                  {isSavingProfile ? 'Saving...' : 'Save'}
+                </Button>
+                <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="font-medium">{displayName}</p>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleStartEditProfile}>
+                Edit
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Email Display */}
       <Card>
         <CardHeader>
