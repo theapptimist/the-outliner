@@ -13,11 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronDown, ChevronUp, Underline, Italic, Star, Pencil, Archive, Trash2 } from 'lucide-react';
+import { ChevronDown, Star, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { StyleManager } from './StyleManager';
+import { ManageStylesDialog } from './ManageStylesDialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -41,8 +39,7 @@ export function OutlineStylePicker({
   mixedConfig = STANDARD_MIXED_CONFIG,
   onMixedConfigChange 
 }: OutlineStylePickerProps) {
-  const [showStyleManager, setShowStyleManager] = useState(false);
-  const [showCustomize, setShowCustomize] = useState(false);
+  const [showManageStyles, setShowManageStyles] = useState(false);
   const [customStyles, setCustomStyles] = useState<CustomStyle[]>([]);
   const [defaultStyleId, setDefaultStyleIdState] = useState<string | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -77,58 +74,11 @@ export function OutlineStylePicker({
     setDefaultStyleIdState(id);
   };
 
-  const handleLevelChange = (levelIndex: number, format: FormatType) => {
-    if (!onMixedConfigChange) return;
-    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
-    newLevels[levelIndex] = { ...newLevels[levelIndex], format };
-    onMixedConfigChange({ levels: newLevels });
-  };
-
-  const handleUnderlineChange = (levelIndex: number, underline: boolean) => {
-    if (!onMixedConfigChange) return;
-    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
-    newLevels[levelIndex] = { ...newLevels[levelIndex], underline };
-    onMixedConfigChange({ levels: newLevels });
-  };
-
-  const handleItalicChange = (levelIndex: number, italic: boolean) => {
-    if (!onMixedConfigChange) return;
-    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
-    newLevels[levelIndex] = { ...newLevels[levelIndex], italic };
-    onMixedConfigChange({ levels: newLevels });
-  };
-
-  const handleSuffixChange = (levelIndex: number, suffix: string) => {
-    if (!onMixedConfigChange) return;
-    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
-    newLevels[levelIndex] = { ...newLevels[levelIndex], suffix };
-    onMixedConfigChange({ levels: newLevels });
-  };
-
-  const moveLevel = (index: number, direction: 'up' | 'down') => {
-    if (!onMixedConfigChange) return;
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= mixedConfig.levels.length) return;
-    
-    const newLevels = [...mixedConfig.levels] as MixedStyleConfig['levels'];
-    [newLevels[index], newLevels[targetIndex]] = [newLevels[targetIndex], newLevels[index]];
-    onMixedConfigChange({ levels: newLevels });
-  };
-
-  const handleEditStyle = (id: string) => {
-    // For now, just open the style manager with that style selected
-    setShowStyleManager(true);
-    setPopoverOpen(false);
-  };
-
-  const handleArchiveStyle = (id: string) => {
-    // Archive functionality - for now just a placeholder
-    console.log('Archive style:', id);
-  };
-
-  const handleDeleteStyle = (id: string) => {
-    // Delete functionality - for now just a placeholder for custom styles
-    console.log('Delete style:', id);
+  const getPreviewText = (config: MixedStyleConfig) => {
+    return config.levels.slice(0, 3).map((level) => {
+      const opt = FORMAT_OPTIONS.find(f => f.id === level.format);
+      return opt?.example || '?';
+    }).join(' → ');
   };
 
   const renderStyleItem = (
@@ -165,250 +115,89 @@ export function OutlineStylePicker({
           </div>
           <div className="text-xs text-muted-foreground">{description}</div>
           <div className="text-xs font-mono mt-1 text-muted-foreground">
-            {config.levels.slice(0, 3).map((level, i) => {
-              const opt = FORMAT_OPTIONS.find(f => f.id === level.format);
-              return opt?.example || '?';
-            }).join(' → ')}
+            {getPreviewText(config)}
           </div>
         </button>
-        <div className="flex flex-col gap-0.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-6 w-6 p-0",
-              isDefault && "text-amber-500"
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSetDefault(id);
-            }}
-            title={isDefault ? "Current default" : "Set as default"}
-          >
-            <Star className={cn("h-3 w-3", isDefault && "fill-current")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditStyle(id);
-            }}
-            title="Edit style"
-          >
-            <Pencil className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleArchiveStyle(id);
-            }}
-            title="Archive style"
-          >
-            <Archive className="h-3 w-3" />
-          </Button>
-          {!isPreset && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteStyle(id);
-              }}
-              title="Delete style"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "h-6 w-6 p-0",
+            isDefault && "text-amber-500"
           )}
-        </div>
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSetDefault(id);
+          }}
+          title={isDefault ? "Current default" : "Set as default"}
+        >
+          <Star className={cn("h-3 w-3", isDefault && "fill-current")} />
+        </Button>
       </div>
     );
   };
   
   return (
-    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-1.5 gap-0.5 text-xs font-mono"
-          title="Outline numbering style"
-        >
-          <span>{getDisplayText()}</span>
-          <ChevronDown className="h-3 w-3 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-2" align="start">
-        {!showCustomize ? (
-          <>
-            {/* Taller list so more presets (e.g. Roman) are visible without needing to notice scrolling */}
-            <ScrollArea className="h-[460px]">
-              {/* Presets */}
+    <>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 gap-0.5 text-xs font-mono"
+            title="Outline numbering style"
+          >
+            <span>{getDisplayText()}</span>
+            <ChevronDown className="h-3 w-3 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-2" align="start">
+          <ScrollArea className="h-[460px]">
+            {/* Presets */}
+            <div className="space-y-1.5 mb-3">
+              <div className="text-xs font-medium text-muted-foreground px-1">Presets</div>
+              {PRESET_STYLES.map((preset) => 
+                renderStyleItem(preset.id, preset.name, preset.description, preset.config, true)
+              )}
+            </div>
+            
+            {/* Custom Styles */}
+            {customStyles.length > 0 && (
               <div className="space-y-1.5 mb-3">
-                <div className="text-xs font-medium text-muted-foreground px-1">Presets</div>
-                {PRESET_STYLES.map((preset) => 
-                  renderStyleItem(preset.id, preset.name, preset.description, preset.config, true)
+                <Separator className="my-2" />
+                <div className="text-xs font-medium text-muted-foreground px-1">Custom Styles</div>
+                {customStyles.map((style) => 
+                  renderStyleItem(style.id, style.name, style.description, style.config, false)
                 )}
               </div>
-              
-              {/* Custom Styles */}
-              {customStyles.length > 0 && (
-                <div className="space-y-1.5 mb-3">
-                  <Separator className="my-2" />
-                  <div className="text-xs font-medium text-muted-foreground px-1">Custom Styles</div>
-                  {customStyles.map((style) => 
-                    renderStyleItem(style.id, style.name, style.description, style.config, false)
-                  )}
-                </div>
-              )}
-            </ScrollArea>
-            
-            <Separator className="my-2" />
-            
-            {/* Bottom actions */}
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 h-8 text-xs gap-1"
-                onClick={() => setShowCustomize(true)}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Customize Current
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs font-medium text-muted-foreground">
-                Customize Current Style
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => setShowCustomize(false)}
-              >
-                ← Back
-              </Button>
-            </div>
-            
-            <ScrollArea className="h-[280px]">
-              <div className="grid gap-1.5">
-                {mixedConfig.levels.map((level, index) => {
-                  return (
-                    <div key={index} className="flex items-center gap-1">
-                      {/* Reorder buttons */}
-                      <div className="flex flex-col">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-5 p-0"
-                          onClick={() => moveLevel(index, 'up')}
-                          disabled={index === 0}
-                        >
-                          <ChevronUp className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-5 p-0"
-                          onClick={() => moveLevel(index, 'down')}
-                          disabled={index === mixedConfig.levels.length - 1}
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      
-                      <span className="text-xs text-muted-foreground w-8">L{index + 1}</span>
-                      <Select
-                        value={level.format}
-                        onValueChange={(val) => handleLevelChange(index, val as FormatType)}
-                      >
-                        <SelectTrigger className="h-7 text-xs w-16">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FORMAT_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.id} value={opt.id} className="text-xs">
-                              <span className="font-mono mr-2">{opt.example}</span>
-                              <span className="text-muted-foreground">{opt.label}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="flex items-center gap-0.5">
-                        <Checkbox
-                          id={`underline-${index}`}
-                          checked={level.underline || false}
-                          onCheckedChange={(checked) => handleUnderlineChange(index, !!checked)}
-                          className="h-4 w-4"
-                        />
-                        <label htmlFor={`underline-${index}`} className="cursor-pointer" title="Auto-underline">
-                          <Underline className="h-3 w-3 text-muted-foreground" />
-                        </label>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <Checkbox
-                          id={`italic-${index}`}
-                          checked={level.italic || false}
-                          onCheckedChange={(checked) => handleItalicChange(index, !!checked)}
-                          className="h-4 w-4"
-                        />
-                        <label htmlFor={`italic-${index}`} className="cursor-pointer" title="Auto-italic">
-                          <Italic className="h-3 w-3 text-muted-foreground" />
-                        </label>
-                      </div>
-                      <Input
-                        value={level.suffix || ''}
-                        onChange={(e) => handleSuffixChange(index, e.target.value)}
-                        placeholder=""
-                        className="h-7 w-8 text-xs text-center px-0.5"
-                        maxLength={2}
-                        title="Suffix"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              
-              <div className="mt-3 pt-2 border-t border-border/50">
-                <div className="text-xs text-muted-foreground">
-                  Preview: {mixedConfig.levels.map((level, i) => {
-                    const opt = FORMAT_OPTIONS.find(o => o.id === level.format);
-                    let preview = opt?.example || '?';
-                    if (level.suffix) preview = `${preview}${level.suffix}`;
-                    return (
-                      <span 
-                        key={i}
-                        className={cn(
-                          level.underline && 'underline',
-                          level.italic && 'italic',
-                        )}
-                      >
-                        {preview}
-                        {i < mixedConfig.levels.length - 1 && ' → '}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            </ScrollArea>
-          </>
-        )}
-      </PopoverContent>
+            )}
+          </ScrollArea>
+          
+          <Separator className="my-2" />
+          
+          {/* Bottom actions */}
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-8 text-xs gap-1"
+              onClick={() => {
+                setShowManageStyles(true);
+                setPopoverOpen(false);
+              }}
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              Manage Styles
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
       
-      {/* Style Manager Dialog */}
-      <StyleManager
-        open={showStyleManager}
+      {/* Manage Styles Dialog */}
+      <ManageStylesDialog
+        open={showManageStyles}
         onOpenChange={(open) => {
-          setShowStyleManager(open);
+          setShowManageStyles(open);
           if (!open) {
             // Refresh custom styles when closing manager
             setCustomStyles(getCustomStyles());
@@ -416,8 +205,7 @@ export function OutlineStylePicker({
           }
         }}
         onSelectStyle={handleApplyStyle}
-        currentConfig={mixedConfig}
       />
-    </Popover>
+    </>
   );
 }
