@@ -14,12 +14,15 @@ import {
   X,
   Upload,
   CheckCircle,
+  FileText,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { useMasterEntities, MasterEntity, EntityType } from '@/hooks/useMasterEntities';
 import { useEntityPermissions } from '@/hooks/useEntityPermissions';
 import { usePublicEntities } from '@/hooks/usePublicEntities';
+import { useMasterLibraryDocuments } from '@/hooks/useMasterLibraryDocuments';
 import { useDocumentContext } from './context';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -150,9 +154,10 @@ interface LibraryTabContentProps {
   scope: MasterLibraryTab;
   searchQuery: string;
   entityTypeFilter?: EntityType;
+  selectedDocumentIds: Set<string>;
 }
 
-function LibraryTabContent({ scope, searchQuery, entityTypeFilter }: LibraryTabContentProps) {
+function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocumentIds }: LibraryTabContentProps) {
   const { document: currentDocument } = useDocumentContext();
   const documentId = currentDocument?.meta?.id || '';
   const { toast } = useToast();
@@ -196,17 +201,28 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter }: LibraryTabC
     : loadingPublic;
   
   const filteredEntities = useMemo(() => {
-    const entities = getEntities();
-    if (!searchQuery.trim()) return entities;
+    let entities = getEntities();
     
-    const q = searchQuery.toLowerCase();
-    return entities.filter(entity => {
-      const data = entity.data;
-      const name = data.name || data.term || data.rawText || '';
-      const subtitle = data.role || data.definition || data.description || data.significance || '';
-      return name.toLowerCase().includes(q) || subtitle.toLowerCase().includes(q);
-    });
-  }, [scope, ownedEntities, sharedEntities, publicEntities, searchQuery, entityTypeFilter]);
+    // Filter by selected documents (only for my-library)
+    if (scope === 'my-library' && selectedDocumentIds.size > 0) {
+      entities = entities.filter(e => 
+        e.source_document_id && selectedDocumentIds.has(e.source_document_id)
+      );
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      entities = entities.filter(entity => {
+        const data = entity.data;
+        const name = data.name || data.term || data.rawText || '';
+        const subtitle = data.role || data.definition || data.description || data.significance || '';
+        return name.toLowerCase().includes(q) || subtitle.toLowerCase().includes(q);
+      });
+    }
+    
+    return entities;
+  }, [scope, ownedEntities, sharedEntities, publicEntities, searchQuery, entityTypeFilter, selectedDocumentIds]);
   
   const handleImport = async (entity: MasterEntity) => {
     if (!documentId) {
@@ -290,6 +306,10 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const [searchQuery, setSearchQuery] = useState('');
   const [entityFilter, setEntityFilter] = useState<EntityType | undefined>(undefined);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(new Set());
+  
+  // Document explorer
+  const { documents: libraryDocuments, loading: loadingDocs, refresh: refreshDocs } = useMasterLibraryDocuments();
   
   // Migration state
   const { user } = useAuth();
@@ -336,6 +356,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
         setMigrationComplete(true);
         setMigrationInfo(null);
         refreshMaster();
+        refreshDocs();
       } else {
         toast({
           title: 'Migration failed',
@@ -444,6 +465,108 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
               ))}
             </div>
             
+            {/* Document Explorer Strip - Only show for My Library tab */}
+            {activeTab === 'my-library' && libraryDocuments.length > 0 && (
+              <div className="w-48 flex flex-col border-r border-border/30 bg-muted/10 shrink-0">
+                <div className="px-3 py-2 border-b border-border/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Documents
+                    </span>
+                    {selectedDocumentIds.size > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 px-1.5 text-[10px]"
+                        onClick={() => setSelectedDocumentIds(new Set())}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <ScrollArea className="flex-1">
+                  <div className="p-2 space-y-0.5">
+                    {/* Select All */}
+                    <button
+                      onClick={() => {
+                        if (selectedDocumentIds.size === libraryDocuments.length) {
+                          setSelectedDocumentIds(new Set());
+                        } else {
+                          setSelectedDocumentIds(new Set(libraryDocuments.map(d => d.id)));
+                        }
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors",
+                        selectedDocumentIds.size === libraryDocuments.length
+                          ? "bg-primary/10 text-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <div className={cn(
+                        "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                        selectedDocumentIds.size === libraryDocuments.length
+                          ? "bg-primary border-primary"
+                          : "border-border"
+                      )}>
+                        {selectedDocumentIds.size === libraryDocuments.length && (
+                          <Check className="h-3 w-3 text-primary-foreground" />
+                        )}
+                      </div>
+                      <span className="font-medium">All Documents</span>
+                    </button>
+                    
+                    <div className="h-px bg-border/50 my-1.5" />
+                    
+                    {loadingDocs ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      libraryDocuments.map(doc => (
+                        <button
+                          key={doc.id}
+                          onClick={() => {
+                            setSelectedDocumentIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(doc.id)) {
+                                next.delete(doc.id);
+                              } else {
+                                next.add(doc.id);
+                              }
+                              return next;
+                            });
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
+                            selectedDocumentIds.has(doc.id)
+                              ? "bg-primary/10 text-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          <div className={cn(
+                            "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                            selectedDocumentIds.has(doc.id)
+                              ? "bg-primary border-primary"
+                              : "border-border"
+                          )}>
+                            {selectedDocumentIds.has(doc.id) && (
+                              <Check className="h-3 w-3 text-primary-foreground" />
+                            )}
+                          </div>
+                          <FileText className="h-3 w-3 shrink-0 opacity-50" />
+                          <span className="truncate flex-1">{doc.title}</span>
+                          <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+                            {doc.entityCount}
+                          </Badge>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+            
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0">
               {/* Expandable Search Bar */}
@@ -523,6 +646,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     scope="my-library" 
                     searchQuery={searchQuery}
                     entityTypeFilter={entityFilter}
+                    selectedDocumentIds={selectedDocumentIds}
                   />
                 </TabsContent>
                 <TabsContent value="shared" className="mt-0 h-full">
@@ -530,6 +654,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     scope="shared" 
                     searchQuery={searchQuery}
                     entityTypeFilter={entityFilter}
+                    selectedDocumentIds={selectedDocumentIds}
                   />
                 </TabsContent>
                 <TabsContent value="public" className="mt-0 h-full">
@@ -537,6 +662,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     scope="public" 
                     searchQuery={searchQuery}
                     entityTypeFilter={entityFilter}
+                    selectedDocumentIds={selectedDocumentIds}
                   />
                 </TabsContent>
               </div>

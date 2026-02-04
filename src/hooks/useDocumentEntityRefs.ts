@@ -88,7 +88,8 @@ export function useDocumentEntityRefs(options: UseDocumentEntityRefsOptions) {
               entity_type: entity.entity_type as EntityType,
               visibility: entity.visibility as MasterEntity['visibility'],
               data: entity.data as MasterEntity['data'],
-            },
+              source_document_id: entity.source_document_id ?? null,
+            } as MasterEntity,
           };
         })
         .filter((item): item is DocumentEntityWithData => item !== null);
