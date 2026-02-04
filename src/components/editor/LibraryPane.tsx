@@ -892,23 +892,6 @@ export function LibraryPane({
           </TooltipContent>
         </Tooltip>
 
-        {/* Master Library */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              data-allow-pointer
-              variant="ghost"
-              size="sm"
-              onClick={() => setMasterLibraryOpen(true)}
-              className="h-7 w-7 p-0"
-            >
-              <Library className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="text-xs">
-            Master Library
-          </TooltipContent>
-        </Tooltip>
 
         {/* AI Scan */}
         {!shouldAggregate && (
@@ -1200,6 +1183,19 @@ export function LibraryPane({
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0">
+        {/* Master Library Bar */}
+        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border/30 bg-muted/10 shrink-0">
+          <Button
+            data-allow-pointer
+            variant="outline"
+            size="sm"
+            onClick={() => setMasterLibraryOpen(true)}
+            className="h-7 gap-1.5 text-xs"
+          >
+            <Library className="h-3.5 w-3.5" />
+            Master Library
+          </Button>
+        </div>
         {/* Show Usages Pane if an entity is being inspected */}
         {inspectedTerm && activeTab === 'terms' && (
           <EntityUsagesPane
