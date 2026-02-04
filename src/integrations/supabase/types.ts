@@ -263,6 +263,7 @@ export type Database = {
           page_width: string
           show_row_highlight: boolean
           show_slash_placeholder: boolean
+          start_with_outline: boolean
           theme: string
           updated_at: string
           user_id: string
@@ -276,6 +277,7 @@ export type Database = {
           page_width?: string
           show_row_highlight?: boolean
           show_slash_placeholder?: boolean
+          start_with_outline?: boolean
           theme?: string
           updated_at?: string
           user_id: string
@@ -289,6 +291,7 @@ export type Database = {
           page_width?: string
           show_row_highlight?: boolean
           show_slash_placeholder?: boolean
+          start_with_outline?: boolean
           theme?: string
           updated_at?: string
           user_id?: string

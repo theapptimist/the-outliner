@@ -3,7 +3,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { UserSettings } from '@/hooks/useUserSettings';
 import { DefaultStylePicker } from './DefaultStylePicker';
-import { Save, ChevronDown, Highlighter, Slash, ListOrdered } from 'lucide-react';
+import { Save, ChevronDown, Highlighter, Slash, ListOrdered, FileText } from 'lucide-react';
 
 interface EditorSectionProps {
   settings: UserSettings;
@@ -34,6 +34,26 @@ export function EditorSection({ settings, onUpdateSettings }: EditorSectionProps
           <CardDescription>Configure how the editor behaves</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+
+          {/* Start with outline */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <Label htmlFor="start-with-outline" className="text-sm font-medium">
+                  Start with outline
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  New documents begin with a starter outline structure
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="start-with-outline"
+              checked={settings.startWithOutline}
+              onCheckedChange={(checked) => onUpdateSettings({ startWithOutline: checked })}
+            />
+          </div>
 
           {/* Auto-save */}
           <div className="flex items-center justify-between">
