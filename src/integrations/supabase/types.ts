@@ -131,6 +131,7 @@ export type Database = {
           entity_type: string
           id: string
           owner_id: string
+          source_document_id: string | null
           updated_at: string
           visibility: Database["public"]["Enums"]["entity_visibility"]
         }
@@ -140,6 +141,7 @@ export type Database = {
           entity_type: string
           id?: string
           owner_id: string
+          source_document_id?: string | null
           updated_at?: string
           visibility?: Database["public"]["Enums"]["entity_visibility"]
         }
@@ -149,10 +151,19 @@ export type Database = {
           entity_type?: string
           id?: string
           owner_id?: string
+          source_document_id?: string | null
           updated_at?: string
           visibility?: Database["public"]["Enums"]["entity_visibility"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "entities_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entity_links: {
         Row: {

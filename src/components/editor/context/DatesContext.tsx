@@ -143,8 +143,8 @@ export function DatesProvider({ children, documentId, documentVersion }: DatesPr
     setDates(prev => [...prev, newDate]);
     
     // Sync to Master Library (fire and forget)
-    syncToMaster('dates', { date: date.toISOString(), rawText, description });
-  }, [setDates, syncToMaster]);
+    syncToMaster('dates', { date: date.toISOString(), rawText, description }, documentId);
+  }, [setDates, syncToMaster, documentId]);
 
   // Remove a date
   const removeDate = useCallback((id: string) => {

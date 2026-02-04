@@ -205,8 +205,8 @@ export function PeopleProvider({ children, documentId, documentVersion }: People
     setPeople(prev => [...prev, newPerson]);
     
     // Sync to Master Library (fire and forget)
-    syncToMaster('people', { name: normalizedName, role, description });
-  }, [setPeople, syncToMaster]);
+    syncToMaster('people', { name: normalizedName, role, description }, documentId);
+  }, [setPeople, syncToMaster, documentId]);
 
   const removePerson = useCallback((id: string) => {
     setPeople(prev => prev.filter(p => p.id !== id));

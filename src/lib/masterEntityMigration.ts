@@ -20,6 +20,13 @@ interface DocumentEntity {
   updated_at: string;
 }
 
+interface MigrationEntity {
+  entity_type: MasterEntityType;
+  data: Record<string, unknown>;
+  key: string;
+  source_document_id: string;
+}
+
 interface MigrationResult {
   success: boolean;
   migratedCount: number;
@@ -81,11 +88,7 @@ export async function migrateDocumentEntitiesToMaster(userId: string): Promise<M
     });
 
     // 3. Group and deduplicate document entities
-    const toMigrate: Array<{
-      entity_type: MasterEntityType;
-      data: Record<string, unknown>;
-      key: string;
-    }> = [];
+    const toMigrate: MigrationEntity[] = [];
     const seenKeys = new Set<string>();
 
     for (const docEntity of docEntities as DocumentEntity[]) {
@@ -110,7 +113,12 @@ export async function migrateDocumentEntitiesToMaster(userId: string): Promise<M
       }
 
       seenKeys.add(key);
-      toMigrate.push({ entity_type: masterType, data, key });
+      toMigrate.push({ 
+        entity_type: masterType, 
+        data, 
+        key, 
+        source_document_id: docEntity.document_id 
+      });
     }
 
     // 4. Insert new master entities
@@ -120,6 +128,7 @@ export async function migrateDocumentEntitiesToMaster(userId: string): Promise<M
         entity_type: item.entity_type,
         data: item.data as Json,
         visibility: 'private' as const,
+        source_document_id: item.source_document_id,
       }));
 
       const { error: insertError } = await supabase

@@ -203,8 +203,8 @@ export function PlacesProvider({ children, documentId, documentVersion }: Places
     setPlaces(prev => [...prev, newPlace]);
     
     // Sync to Master Library (fire and forget)
-    syncToMaster('places', { name: normalizedName, significance });
-  }, [setPlaces, syncToMaster]);
+    syncToMaster('places', { name: normalizedName, significance }, documentId);
+  }, [setPlaces, syncToMaster, documentId]);
 
   const removePlace = useCallback((id: string) => {
     setPlaces(prev => prev.filter(p => p.id !== id));

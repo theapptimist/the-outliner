@@ -118,8 +118,8 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
     setTerms(prev => [...prev, newTerm]);
     
     // Sync to Master Library (fire and forget)
-    syncToMaster('terms', { term, definition });
-  }, [setTerms, syncToMaster]);
+    syncToMaster('terms', { term, definition }, documentId);
+  }, [setTerms, syncToMaster, documentId]);
 
   // Add extracted terms from AI generation (built into context, no registration needed)
   const addExtractedTerms = useCallback((extractedTerms: Array<{ term: string; definition: string; sourceLabel: string }>) => {
@@ -138,12 +138,12 @@ export function TermsProvider({ children, documentId, documentVersion }: TermsPr
       
       // Sync new terms to Master Library
       toAdd.forEach(t => {
-        syncToMaster('terms', { term: t.term, definition: t.definition });
+        syncToMaster('terms', { term: t.term, definition: t.definition }, documentId);
       });
       
       return [...prev, ...toAdd];
     });
-  }, [setTerms, syncToMaster]);
+  }, [setTerms, syncToMaster, documentId]);
 
   // Recalculate usages for all terms by scanning hierarchy blocks
   const recalculateUsages = useCallback((

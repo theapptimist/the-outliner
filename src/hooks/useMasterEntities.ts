@@ -23,6 +23,7 @@ export interface MasterEntity {
     [key: string]: unknown;
   };
   visibility: EntityVisibility;
+  source_document_id?: string | null;
   created_at: string;
   updated_at: string;
 }

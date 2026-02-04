@@ -30,7 +30,8 @@ export function useMasterEntitySync() {
    */
   const syncToMaster = useCallback(async (
     entityType: MasterEntityType,
-    data: EntityData
+    data: EntityData,
+    sourceDocumentId?: string
   ): Promise<boolean> => {
     if (!user?.id) return false;
 
@@ -86,6 +87,7 @@ export function useMasterEntitySync() {
           entity_type: entityType,
           data: data as Json,
           visibility: 'private',
+          source_document_id: sourceDocumentId || null,
         });
 
       if (insertError) {
