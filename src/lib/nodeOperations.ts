@@ -301,9 +301,6 @@ export function createSampleTree(): HierarchyNode[] {
 
 // Create a minimal starter outline for new documents
 export function createStarterOutline(): HierarchyNode[] {
-  const section1 = createNode(null, 'default', '', 0);
-  const item1 = createNode(section1.id, 'default', '', 0);
-  section1.children = [item1];
-  
-  return [section1];
+  const node1 = createNode(null, 'default', '', 0);
+  return [node1];
 }
