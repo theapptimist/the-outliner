@@ -13,7 +13,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Settings, LogOut, User, Shield } from 'lucide-react';
+import { Settings, LogOut, Shield } from 'lucide-react';
 
 export function UserMenu() {
   const navigate = useNavigate();
@@ -57,10 +57,6 @@ export function UserMenu() {
             Admin
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={() => navigate('/settings')}>
-          <User className="mr-2 h-4 w-4" />
-          Profile
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/settings')}>
           <Settings className="mr-2 h-4 w-4" />
           Settings
