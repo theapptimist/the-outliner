@@ -310,117 +310,119 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Library className="h-5 w-5" />
-            Master Library
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="flex flex-1 min-h-0">
-          {/* Vertical Tool Strip */}
-          <div className="flex flex-col items-center gap-1 px-1.5 py-2 border-r border-border/30 bg-muted/20 shrink-0">
-            {/* Search Toggle */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setSearchOpen(!searchOpen)}
-                  className={cn(
-                    "h-8 w-8 rounded-md flex items-center justify-center transition-colors",
-                    searchOpen 
-                      ? "bg-primary/20 text-primary" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  <Search className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">Search</TooltipContent>
-            </Tooltip>
-            
-            {/* Divider */}
-            <div className="h-px w-5 bg-border/50 my-1" />
-            
-            {/* Entity Type Filters */}
-            {entityTypes.map(({ type, icon: Icon, label, color }) => (
-              <Tooltip key={label}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setEntityFilter(type)}
-                    className={cn(
-                      "h-8 w-8 rounded-md flex items-center justify-center transition-colors",
-                      entityFilter === type 
-                        ? "bg-accent/20 text-foreground" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                  >
-                    <Icon className={cn("h-4 w-4", entityFilter === type && color)} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">{label}</TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-          
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Expandable Search Bar */}
-            {searchOpen && (
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/10">
-                <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search entities..."
-                  className="h-8 text-sm"
-                  autoFocus
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 shrink-0"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchQuery('');
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            
-            {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MasterLibraryTab)} className="flex-1 flex flex-col min-h-0">
-              <TabsList className="grid w-full grid-cols-3 shrink-0 rounded-none border-b">
-                <TabsTrigger value="my-library" className="flex items-center gap-1.5 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
-                  <Library className="h-3.5 w-3.5" />
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MasterLibraryTab)} className="flex-1 flex flex-col min-h-0">
+          <DialogHeader className="px-4 py-3 border-b shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Library className="h-5 w-5" />
+                Master Library
+              </DialogTitle>
+              
+              <TabsList className="h-8 bg-muted/50">
+                <TabsTrigger value="my-library" className="h-7 px-3 text-xs flex items-center gap-1.5">
+                  <Library className="h-3 w-3" />
                   <span>My Library</span>
                   {masterEntities.length > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
                       {masterEntities.length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="shared" className="flex items-center gap-1.5 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
-                  <Users className="h-3.5 w-3.5" />
+                <TabsTrigger value="shared" className="h-7 px-3 text-xs flex items-center gap-1.5">
+                  <Users className="h-3 w-3" />
                   <span>Shared</span>
                   {sharedCount > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
                       {sharedCount}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="public" className="flex items-center gap-1.5 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
-                  <Globe className="h-3.5 w-3.5" />
+                <TabsTrigger value="public" className="h-7 px-3 text-xs flex items-center gap-1.5">
+                  <Globe className="h-3 w-3" />
                   <span>Public</span>
                   {publicEntities.length > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
                       {publicEntities.length}
                     </Badge>
                   )}
                 </TabsTrigger>
               </TabsList>
+            </div>
+          </DialogHeader>
+          
+          <div className="flex flex-1 min-h-0">
+            {/* Vertical Tool Strip */}
+            <div className="flex flex-col items-center gap-1 px-1.5 py-2 border-r border-border/30 bg-muted/20 shrink-0">
+              {/* Search Toggle */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setSearchOpen(!searchOpen)}
+                    className={cn(
+                      "h-8 w-8 rounded-md flex items-center justify-center transition-colors",
+                      searchOpen 
+                        ? "bg-primary/20 text-primary" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <Search className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">Search</TooltipContent>
+              </Tooltip>
               
+              {/* Divider */}
+              <div className="h-px w-5 bg-border/50 my-1" />
+              
+              {/* Entity Type Filters */}
+              {entityTypes.map(({ type, icon: Icon, label, color }) => (
+                <Tooltip key={label}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setEntityFilter(type)}
+                      className={cn(
+                        "h-8 w-8 rounded-md flex items-center justify-center transition-colors",
+                        entityFilter === type 
+                          ? "bg-accent/20 text-foreground" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4", entityFilter === type && color)} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">{label}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+            
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Expandable Search Bar */}
+              {searchOpen && (
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/10">
+                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search entities..."
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 shrink-0"
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSearchQuery('');
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              
+              {/* Tab Content */}
               <div className="flex-1 min-h-0">
                 <TabsContent value="my-library" className="mt-0 h-full">
                   <LibraryTabContent 
@@ -444,9 +446,9 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                   />
                 </TabsContent>
               </div>
-            </Tabs>
+            </div>
           </div>
-        </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
