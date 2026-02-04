@@ -15,9 +15,9 @@ interface EditorSectionProps {
 export function EditorSection({ settings, onUpdateSettings }: EditorSectionProps) {
   const { defaultStyleId, setDefaultStyle, customStyles, isLoading: stylesLoading } = useCloudStylePreferences();
 
-  // Combine preset styles with custom styles for the selector
+  // Combine preset styles with custom styles for the selector (exclude 'none' preset since we add it manually)
   const allStyles = [
-    ...OUTLINE_STYLES.map(s => ({ id: s.id, name: s.name, isCustom: false })),
+    ...OUTLINE_STYLES.filter(s => s.id !== 'none').map(s => ({ id: s.id, name: s.name, isCustom: false })),
     ...customStyles.map(s => ({ id: s.id, name: s.name, isCustom: true })),
   ];
 
