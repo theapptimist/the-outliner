@@ -52,6 +52,45 @@ export type Database = {
           },
         ]
       }
+      document_entity_refs: {
+        Row: {
+          created_at: string
+          document_id: string
+          entity_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          entity_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          entity_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_entity_refs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_entity_refs_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           content: Json | null
@@ -82,6 +121,36 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      entities: {
+        Row: {
+          created_at: string
+          data: Json
+          entity_type: string
+          id: string
+          owner_id: string
+          updated_at: string
+          visibility: Database["public"]["Enums"]["entity_visibility"]
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          entity_type: string
+          id?: string
+          owner_id: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["entity_visibility"]
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          entity_type?: string
+          id?: string
+          owner_id?: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["entity_visibility"]
         }
         Relationships: []
       }
@@ -120,6 +189,38 @@ export type Database = {
             columns: ["target_entity_id"]
             isOneToOne: false
             referencedRelation: "document_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entity_permissions: {
+        Row: {
+          created_at: string
+          entity_id: string
+          granted_by_user_id: string
+          granted_to_user_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          granted_by_user_id: string
+          granted_to_user_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          granted_by_user_id?: string
+          granted_to_user_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_permissions_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
         ]
@@ -232,6 +333,50 @@ export type Database = {
         }
         Relationships: []
       }
+      public_entities: {
+        Row: {
+          category: string | null
+          entity_id: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          status: Database["public"]["Enums"]["entity_status"]
+          submitted_at: string
+          submitted_by_user_id: string
+          tags: string[] | null
+        }
+        Insert: {
+          category?: string | null
+          entity_id: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          status?: Database["public"]["Enums"]["entity_status"]
+          submitted_at?: string
+          submitted_by_user_id: string
+          tags?: string[] | null
+        }
+        Update: {
+          category?: string | null
+          entity_id?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          status?: Database["public"]["Enums"]["entity_status"]
+          submitted_at?: string
+          submitted_by_user_id?: string
+          tags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_entities_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: true
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -328,11 +473,47 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_entities: {
+        Row: {
+          added_by_user_id: string
+          created_at: string
+          entity_id: string
+          id: string
+          workspace_id: string
+        }
+        Insert: {
+          added_by_user_id: string
+          created_at?: string
+          entity_id: string
+          id?: string
+          workspace_id: string
+        }
+        Update: {
+          added_by_user_id?: string
+          created_at?: string
+          entity_id?: string
+          id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_entities_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      can_access_entity: {
+        Args: { _entity_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -343,6 +524,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      entity_status: "draft" | "pending" | "approved" | "rejected"
+      entity_visibility: "private" | "workspace" | "public"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -471,6 +654,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      entity_status: ["draft", "pending", "approved", "rejected"],
+      entity_visibility: ["private", "workspace", "public"],
     },
   },
 } as const
