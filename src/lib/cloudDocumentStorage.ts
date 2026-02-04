@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DocumentState, createEmptyDocument, HierarchyBlockData, DocumentDisplayOptions } from '@/types/document';
 import { Json } from '@/integrations/supabase/types';
 import { withRetry } from './fetchWithRetry';
+import { createStarterOutline } from './nodeOperations';
 
 const DEFAULT_DISPLAY_OPTIONS: DocumentDisplayOptions = {
   showTableOfContents: false,
@@ -231,9 +232,29 @@ export async function createCloudDocument(userId: string, title: string = 'Untit
 }
 
 // Create a local-only document (NOT persisted until explicit save)
-export function createLocalDocument(title: string = 'Untitled'): DocumentState {
+export function createLocalDocument(title: string = 'Untitled', withStarterOutline: boolean = false): DocumentState {
   const doc = createEmptyDocument();
   doc.meta.title = title;
+  
+  if (withStarterOutline) {
+    // Add a starter outline block
+    const blockId = crypto.randomUUID();
+    doc.hierarchyBlocks[blockId] = {
+      id: blockId,
+      tree: createStarterOutline(),
+    };
+    // Update content to include the hierarchy block
+    doc.content = {
+      type: 'doc',
+      content: [
+        {
+          type: 'hierarchyBlock',
+          attrs: { blockId },
+        },
+      ],
+    };
+  }
+  
   return doc;
 }
 
