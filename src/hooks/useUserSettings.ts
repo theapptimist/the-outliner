@@ -11,6 +11,7 @@ export interface UserSettings {
   autoDescend: boolean;
   showRowHighlight: boolean;
   showSlashPlaceholder: boolean;
+  startWithOutline: boolean;
 }
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   autoDescend: false,
   showRowHighlight: false,
   showSlashPlaceholder: false,
+  startWithOutline: true,
 };
 
 const LOCAL_STORAGE_KEY = 'user-settings-fallback';
@@ -83,6 +85,7 @@ export function useUserSettings() {
             autoDescend: data.auto_descend,
             showRowHighlight: data.show_row_highlight,
             showSlashPlaceholder: data.show_slash_placeholder,
+            startWithOutline: data.start_with_outline ?? true,
           };
           setSettings(cloudSettings);
           saveLocalSettings(cloudSettings); // Cache locally
@@ -101,6 +104,7 @@ export function useUserSettings() {
             auto_descend: local.autoDescend,
             show_row_highlight: local.showRowHighlight,
             show_slash_placeholder: local.showSlashPlaceholder,
+            start_with_outline: local.startWithOutline,
           });
           hasLoadedFromCloud.current = true;
         }
@@ -142,6 +146,7 @@ export function useUserSettings() {
             auto_descend: newSettings.autoDescend,
             show_row_highlight: newSettings.showRowHighlight,
             show_slash_placeholder: newSettings.showSlashPlaceholder,
+            start_with_outline: newSettings.startWithOutline,
           })
           .eq('user_id', user.id);
       } catch (e) {
