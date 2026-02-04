@@ -22,6 +22,7 @@ import {
   Maximize2,
   Minimize2,
   Pencil,
+  Library,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,10 +64,7 @@ import { EditEntityDialog, EditableEntity } from './EditEntityDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 import { useDocumentContext } from './context';
 import { useEntityRelationshipCounts } from '@/hooks/useEntityRelationships';
-import { LibraryScopeSelector, MasterLibraryView, LibraryScope } from './MasterLibraryView';
-import { useMasterEntities } from '@/hooks/useMasterEntities';
-import { usePublicEntities } from '@/hooks/usePublicEntities';
-import { useEntityPermissions } from '@/hooks/useEntityPermissions';
+import { MasterLibraryDialog } from './MasterLibraryDialog';
 
 // EntityTab type is imported from NavigationContext
 
@@ -127,19 +125,8 @@ export function LibraryPane({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<EditableEntity | null>(null);
   
-  // Library scope state for master library feature
-  const [libraryScope, setLibraryScope] = useState<LibraryScope>('document');
-  
-  // Master library hooks for counts
-  const { entities: masterEntities, loading: loadingMaster } = useMasterEntities();
-  const { publicEntities, loading: loadingPublic } = usePublicEntities();
-  const { getSharedWithMe } = useEntityPermissions();
-  const [sharedCount, setSharedCount] = useState(0);
-  
-  // Load shared count
-  useEffect(() => {
-    getSharedWithMe().then(ids => setSharedCount(ids.length));
-  }, [getSharedWithMe]);
+  // Master library dialog state
+  const [masterLibraryOpen, setMasterLibraryOpen] = useState(false);
   
   // Debug logging for edit dialog state
   useEffect(() => {
@@ -905,6 +892,24 @@ export function LibraryPane({
           </TooltipContent>
         </Tooltip>
 
+        {/* Master Library */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              data-allow-pointer
+              variant="ghost"
+              size="sm"
+              onClick={() => setMasterLibraryOpen(true)}
+              className="h-7 w-7 p-0"
+            >
+              <Library className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">
+            Master Library
+          </TooltipContent>
+        </Tooltip>
+
         {/* AI Scan */}
         {!shouldAggregate && (
           <Tooltip>
@@ -1195,98 +1200,60 @@ export function LibraryPane({
 
       {/* Main Content */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Library Scope Selector - always visible */}
-        <LibraryScopeSelector
-          activeScope={libraryScope}
-          onScopeChange={setLibraryScope}
-          counts={{
-            document: people.length + places.length + dates.length + terms.length,
-            myLibrary: masterEntities.length,
-            shared: sharedCount,
-            public: publicEntities.length,
-          }}
-        />
-        
-        {/* Master Library Views */}
-        {libraryScope !== 'document' && (
-          <div className="flex-1 flex flex-col">
-            {/* Search bar for master library */}
-            <div className="px-2 py-1.5 border-b border-border/30">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={`Search ${libraryScope === 'my-library' ? 'your library' : libraryScope === 'shared' ? 'shared entities' : 'public templates'}...`}
-                  className="h-7 pl-7 text-xs"
-                />
-              </div>
-            </div>
-            <MasterLibraryView
-              scope={libraryScope as 'my-library' | 'shared' | 'public'}
-              entityTypeFilter={activeTab}
-              searchQuery={searchQuery}
-            />
-          </div>
+        {/* Show Usages Pane if an entity is being inspected */}
+        {inspectedTerm && activeTab === 'terms' && (
+          <EntityUsagesPane
+            type="term"
+            title={inspectedTerm.term}
+            subtitle={inspectedTerm.definition}
+            usages={inspectedTerm.usages}
+            onClose={() => setInspectedTerm(null)}
+          />
         )}
-        
-        {/* Document-scoped library (existing view) */}
-        {libraryScope === 'document' && (
-          <>
-            {/* Show Usages Pane if an entity is being inspected */}
-            {inspectedTerm && activeTab === 'terms' && (
-              <EntityUsagesPane
-                type="term"
-                title={inspectedTerm.term}
-                subtitle={inspectedTerm.definition}
-                usages={inspectedTerm.usages}
-                onClose={() => setInspectedTerm(null)}
-              />
-            )}
-            {inspectedDate && activeTab === 'dates' && (
-              <EntityUsagesPane
-                type="date"
-                title={formatDateForDisplay(inspectedDate.date)}
-                subtitle={inspectedDate.rawText}
-                description={inspectedDate.description}
-                usages={inspectedDate.usages}
-                onClose={() => setInspectedDate(null)}
-              />
-            )}
-            {inspectedPerson && activeTab === 'people' && (
-              <EntityUsagesPane
-                type="person"
-                title={inspectedPerson.name}
-                subtitle={inspectedPerson.role}
-                description={inspectedPerson.description}
-                usages={inspectedPerson.usages}
-                onClose={() => setInspectedPerson(null)}
-              />
-            )}
-            {inspectedPlace && activeTab === 'places' && (
-              <EntityUsagesPane
-                type="place"
-                title={inspectedPlace.name}
-                subtitle={inspectedPlace.significance}
-                usages={inspectedPlace.usages}
-                onClose={() => setInspectedPlace(null)}
-              />
-            )}
+        {inspectedDate && activeTab === 'dates' && (
+          <EntityUsagesPane
+            type="date"
+            title={formatDateForDisplay(inspectedDate.date)}
+            subtitle={inspectedDate.rawText}
+            description={inspectedDate.description}
+            usages={inspectedDate.usages}
+            onClose={() => setInspectedDate(null)}
+          />
+        )}
+        {inspectedPerson && activeTab === 'people' && (
+          <EntityUsagesPane
+            type="person"
+            title={inspectedPerson.name}
+            subtitle={inspectedPerson.role}
+            description={inspectedPerson.description}
+            usages={inspectedPerson.usages}
+            onClose={() => setInspectedPerson(null)}
+          />
+        )}
+        {inspectedPlace && activeTab === 'places' && (
+          <EntityUsagesPane
+            type="place"
+            title={inspectedPlace.name}
+            subtitle={inspectedPlace.significance}
+            usages={inspectedPlace.usages}
+            onClose={() => setInspectedPlace(null)}
+          />
+        )}
 
-            {/* Items List - hidden when inspecting */}
-            {!((inspectedTerm && activeTab === 'terms') ||
-               (inspectedDate && activeTab === 'dates') ||
-               (inspectedPerson && activeTab === 'people') ||
-               (inspectedPlace && activeTab === 'places')) && (
-              <ScrollArea className="flex-1 px-1">
-                <div className="space-y-1.5 py-2">
-                  {/* Aggregated view header when viewing master */}
-                  {shouldAggregate && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 mb-2 bg-muted/30 rounded text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3" />
-                      <span>Aggregated from sub-documents</span>
-                    </div>
-                  )}
+        {/* Items List - hidden when inspecting */}
+        {!((inspectedTerm && activeTab === 'terms') ||
+           (inspectedDate && activeTab === 'dates') ||
+           (inspectedPerson && activeTab === 'people') ||
+           (inspectedPlace && activeTab === 'places')) && (
+          <ScrollArea className="flex-1 px-1">
+            <div className="space-y-1.5 py-2">
+              {/* Aggregated view header when viewing master */}
+              {shouldAggregate && (
+                <div className="flex items-center gap-1.5 px-2 py-1 mb-2 bg-muted/30 rounded text-xs text-muted-foreground">
+                  <FileText className="h-3 w-3" />
+                  <span>Aggregated from sub-documents</span>
+                </div>
+              )}
 
               {filteredItems.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-xs">
@@ -1628,8 +1595,6 @@ export function LibraryPane({
             </div>
           </ScrollArea>
         )}
-          </>
-        )}
       </div>
 
       {/* Dialogs */}
@@ -1816,6 +1781,12 @@ export function LibraryPane({
         entity={editingEntity}
         onSave={handleEditSave}
         onRelationshipDeleted={refreshRelationshipCounts}
+      />
+
+      {/* Master Library Dialog */}
+      <MasterLibraryDialog
+        open={masterLibraryOpen}
+        onOpenChange={setMasterLibraryOpen}
       />
     </div>
   );
