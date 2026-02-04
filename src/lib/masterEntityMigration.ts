@@ -181,8 +181,10 @@ export async function checkMigrationNeeded(userId: string): Promise<{
   needed: boolean;
   documentEntityCount: number;
   masterEntityCount: number;
+  backfillNeeded: boolean;
+  backfillCount: number;
 }> {
-  const [docResult, masterResult] = await Promise.all([
+  const [docResult, masterResult, backfillResult] = await Promise.all([
     supabase
       .from('document_entities')
       .select('id', { count: 'exact', head: true })
@@ -191,11 +193,110 @@ export async function checkMigrationNeeded(userId: string): Promise<{
       .from('entities')
       .select('id', { count: 'exact', head: true })
       .eq('owner_id', userId),
+    supabase
+      .from('entities')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', userId)
+      .is('source_document_id', null),
   ]);
 
+  const masterCount = masterResult.count || 0;
+  const backfillCount = backfillResult.count || 0;
+
   return {
-    needed: (docResult.count || 0) > 0 && (masterResult.count || 0) === 0,
+    needed: (docResult.count || 0) > 0 && masterCount === 0,
     documentEntityCount: docResult.count || 0,
-    masterEntityCount: masterResult.count || 0,
+    masterEntityCount: masterCount,
+    backfillNeeded: masterCount > 0 && backfillCount > 0,
+    backfillCount,
   };
+}
+
+/**
+ * Backfill source_document_id for existing master entities by matching to document_entities
+ */
+export async function backfillSourceDocumentIds(userId: string): Promise<{
+  success: boolean;
+  updatedCount: number;
+  errors: string[];
+}> {
+  const result = { success: false, updatedCount: 0, errors: [] as string[] };
+
+  try {
+    // 1. Get master entities without source_document_id
+    const { data: masterEntities, error: masterError } = await supabase
+      .from('entities')
+      .select('id, entity_type, data')
+      .eq('owner_id', userId)
+      .is('source_document_id', null);
+
+    if (masterError) {
+      result.errors.push(`Failed to load master entities: ${masterError.message}`);
+      return result;
+    }
+
+    if (!masterEntities || masterEntities.length === 0) {
+      result.success = true;
+      return result;
+    }
+
+    // 2. Get all document entities to match against
+    const { data: docEntities, error: docError } = await supabase
+      .from('document_entities')
+      .select('id, document_id, entity_type, data')
+      .eq('user_id', userId);
+
+    if (docError) {
+      result.errors.push(`Failed to load document entities: ${docError.message}`);
+      return result;
+    }
+
+    if (!docEntities || docEntities.length === 0) {
+      result.success = true;
+      return result;
+    }
+
+    // 3. Build a map from entity key to document_id (use first match)
+    const keyToDocId = new Map<string, string>();
+    for (const de of docEntities) {
+      const masterType = ENTITY_TYPE_MAP[de.entity_type];
+      if (!masterType) continue;
+      const key = getEntityKey(masterType, de.data as Record<string, unknown>);
+      if (key && !keyToDocId.has(key)) {
+        keyToDocId.set(key, de.document_id);
+      }
+    }
+
+    // 4. Match master entities to their source documents
+    const updates: { id: string; source_document_id: string }[] = [];
+    for (const me of masterEntities) {
+      const key = getEntityKey(me.entity_type, me.data as Record<string, unknown>);
+      if (key) {
+        const docId = keyToDocId.get(key);
+        if (docId) {
+          updates.push({ id: me.id, source_document_id: docId });
+        }
+      }
+    }
+
+    // 5. Perform updates
+    for (const update of updates) {
+      const { error: updateError } = await supabase
+        .from('entities')
+        .update({ source_document_id: update.source_document_id })
+        .eq('id', update.id);
+
+      if (updateError) {
+        result.errors.push(`Failed to update entity ${update.id}: ${updateError.message}`);
+      } else {
+        result.updatedCount++;
+      }
+    }
+
+    result.success = result.errors.length === 0;
+    return result;
+  } catch (e) {
+    result.errors.push(`Unexpected error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    return result;
+  }
 }
