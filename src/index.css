@@ -42,6 +42,8 @@
     --input: 220 14% 88%;
     --ring: 200 100% 45%;
 
+    --brand: 32 98% 50%;
+
     --radius: 0.5rem;
 
     /* Node type colors */
@@ -114,6 +116,8 @@
     --border: 220 14% 18%;
     --input: 220 14% 18%;
     --ring: 200 100% 60%;
+
+    --brand: 32 98% 50%;
 
     /* Node type colors */
     --node-default: 220 10% 70%;
