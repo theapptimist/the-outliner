@@ -12,12 +12,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import { Settings, LogOut, User } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Settings, LogOut, User, Shield } from 'lucide-react';
 
 export function UserMenu() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { displayName, initials, profile } = useProfile();
+  const { isAdmin } = useUserRole();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -49,6 +51,12 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {isAdmin && (
+          <DropdownMenuItem onClick={() => navigate('/admin')}>
+            <Shield className="mr-2 h-4 w-4" />
+            Admin
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={() => navigate('/settings')}>
           <User className="mr-2 h-4 w-4" />
           Profile
