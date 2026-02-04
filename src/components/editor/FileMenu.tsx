@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, forwardRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Sheet,
   SheetContent,
@@ -25,6 +26,7 @@ import {
   LogOut,
   Cloud,
   Eraser,
+  Settings,
 } from 'lucide-react';
 import { getRecentCloudDocuments, CloudDocumentMetadata, purgeEmptyDocuments } from '@/lib/cloudDocumentStorage';
 import { formatDistanceToNow } from 'date-fns';
@@ -168,6 +170,7 @@ export function FileMenu({
   iconOnly = false,
   onOpenChange,
 }: FileMenuProps) {
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -499,16 +502,23 @@ export function FileMenu({
                 destructive
               />
 
+              <div className="h-px bg-border my-3" />
+
+              <MenuItem
+                icon={<Settings className="h-3.5 w-3.5" />}
+                label="Settings"
+                onClick={() => {
+                  setSheetOpen(false);
+                  navigate('/settings');
+                }}
+              />
+
               {onSignOut && (
-                <>
-                  <div className="h-px bg-border my-3" />
-                  
-                  <MenuItem
-                    icon={<LogOut className="h-3.5 w-3.5" />}
-                    label="Sign Out"
-                    onClick={() => handleAction(onSignOut)}
-                  />
-                </>
+                <MenuItem
+                  icon={<LogOut className="h-3.5 w-3.5" />}
+                  label="Sign Out"
+                  onClick={() => handleAction(onSignOut)}
+                />
               )}
 
               <div className="h-px bg-border my-3" />
