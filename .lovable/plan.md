@@ -1,84 +1,178 @@
 
-## Goal
-Make the top-left Document AI “Redo Footnotes” actually update the visible References list by correctly mapping the AI tool output to the document’s citation markers (e.g., `[6]`).
+# User Settings Implementation Plan
 
-Right now, the AI *is* calling the `update_citations` tool, but it returns keys like `"'[6]'收录于"` (contains `[6]` plus extra characters). The UI currently treats that whole string as the marker, so it writes a definition for a marker that doesn’t exist in your document. Result: the References list stays at “(Click to add reference)”.
+## Overview
+Add a comprehensive Settings page accessible from the editor, covering account management, editor preferences, and appearance options. The settings will be cloud-synced for authenticated users.
 
-## What I found (from your network log)
-The AI response includes a tool call like:
-- key: `"'[6]'收录于"`
-- value: a bibliography entry
+## Architecture
 
-Your References UI looks up definitions using exact markers extracted from the outline text (`[1]`, `[2]`, …). Since `"'[6]'收录于"` ≠ `[6]`, nothing shows.
+### New Files
+```text
+src/pages/Settings.tsx              - Main settings page with tabbed sections
+src/components/settings/AccountSection.tsx    - Profile & account management
+src/components/settings/EditorSection.tsx     - Editor preferences
+src/components/settings/AppearanceSection.tsx - Theme, font size, page width
+src/hooks/useUserSettings.ts        - Hook for cloud-synced user settings
+```
 
-## Implementation plan (no behavior guesswork; make it provably work)
+### Modified Files
+```text
+src/App.tsx                         - Add /settings route
+src/components/editor/FileMenu.tsx  - Add Settings menu item
+```
 
-### 1) Make citation marker normalization robust in `DocumentAIPanel`
-Update the `normalizeMarker()` logic so it can handle:
-- keys containing a bracketed marker anywhere inside the string, e.g. `"'[6]'收录于"` → `[6]`
-- quoted markers, e.g. `"'[6]'"` → `[6]`
-- plain numbers, e.g. `6` or `_6` → `[6]`
+### Database Changes
+- Extend `user_style_preferences` table with new columns for all settings OR create a new `user_settings` table
+- Recommended: Create new `user_settings` table for clean separation
 
-New approach:
-- Convert to string and trim
-- First try to **extract the first bracketed marker** anywhere: `const m = raw.match(/\[(\d+)\]/)`; if found → return `[${m[1]}]`
-- Else fall back to existing `_6` / `6` handling
-- Else, if it already looks like `[...]`, keep it
-- Else wrap it (last resort)
+## Detailed Design
 
-Why: Your extracted citations are numeric markers (`[1]`–`[6]`), and this guarantees the keys map.
+### 1. Database: `user_settings` Table
+```sql
+CREATE TABLE public.user_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  
+  -- Appearance
+  theme text DEFAULT 'system',           -- 'light' | 'dark' | 'system'
+  font_size text DEFAULT 'medium',       -- 'small' | 'medium' | 'large'
+  page_width text DEFAULT 'normal',      -- 'narrow' | 'normal' | 'wide' | 'full'
+  
+  -- Editor Preferences (persisted globally, not per-document)
+  auto_save boolean DEFAULT true,
+  auto_descend boolean DEFAULT false,
+  show_row_highlight boolean DEFAULT false,
+  show_slash_placeholder boolean DEFAULT false,
+  
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
 
-### 2) Only apply citations that actually exist in the document (optional but recommended)
-To avoid the AI writing definitions for junk keys, we can:
-- compute a `Set` of markers currently present in the document (you already have `citations` shown in References; we can derive this set inside the panel by scanning `documentContext` with a simple regex like `/\[(\d+)\]/g` and collecting `[n]`)
-- when applying tool output, **filter** to markers that are present
-- show a toast like:
-  - “Updated 6 citations: [1] [2] [3] [4] [5] [6]”
-  - or if 0 were applied: “No matching citations found to update (expected markers like [1], [2]…)”
+-- RLS policies (same pattern as existing tables)
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
-This makes it obvious when the tool output didn’t match the document.
+CREATE POLICY "Users can view own settings" ON public.user_settings
+  FOR SELECT USING (auth.uid() = user_id);
+  
+CREATE POLICY "Users can create own settings" ON public.user_settings
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  
+CREATE POLICY "Users can update own settings" ON public.user_settings
+  FOR UPDATE USING (auth.uid() = user_id);
+```
 
-### 3) Improve the backend function prompt to prevent malformed keys
-In `supabase/functions/document-ai-chat/index.ts`, tighten the tool instruction so the model is much less likely to invent extra text in keys:
-- Explicitly: “The `citations` object keys MUST be exactly one of: `[1]`, `[2]`, … (no quotes, no extra words, no other characters).”
-- Add: “Do not use any language other than the marker for keys.”
-- Add: “If you see markers in the document, only output those.”
+### 2. Settings Page Structure
 
-This reduces reliance on normalization, but we’ll still keep normalization as a safety net.
+```text
+/settings
+├── Account Tab
+│   ├── Email (display only, linked to auth)
+│   ├── Change Password form
+│   ├── Delete Account button (with confirmation)
+│   └── Sign Out button
+│
+├── Editor Tab
+│   ├── Auto-save toggle
+│   ├── Auto-descend toggle
+│   ├── Row highlight toggle
+│   ├── Slash placeholder toggle
+│   └── Default outline style picker (links to existing style preferences)
+│
+└── Appearance Tab
+    ├── Theme selector (Light / Dark / System)
+    ├── Font size selector (Small / Medium / Large)
+    └── Page width selector (Narrow / Normal / Wide / Full)
+```
 
-### 4) Add lightweight UI feedback for trust
-In `DocumentAIPanel.tsx`:
-- After applying, append a small “Applied: [1]–[6]” line to the assistant message (or include it in the “Citations updated” header).
-- If parsing succeeds but 0 citations match, show an error toast and display a message explaining what keys were received vs what markers exist (briefly).
+### 3. Theme Implementation
+Currently, theme is managed via local state in `EditorSidebar.tsx` with a manual `isDark` toggle. This will be refactored:
 
-This addresses the “it says it did it but nothing changed” experience.
+- Install and configure `next-themes` ThemeProvider in `App.tsx`
+- Replace manual dark class toggling with `useTheme()` hook
+- Theme preference persists to `user_settings.theme` in cloud
+- Add "System" option to respect OS preference
 
-### 5) Verify end-to-end (the important part)
-After implementation:
-1. Open the document
-2. Ensure the outline contains `[1] … [6]` (your screenshot shows it does)
-3. Click the top-left sparkle icon → “Redo Footnotes”
-4. Confirm:
-   - Toast says “Updated 6 citation(s)” (or similar)
-   - References list shows actual bibliography text next to `[1] … [6]`
-5. Refresh the page and confirm they still persist (since citationDefinitions are persisted in document state already)
+### 4. Hook: `useUserSettings`
+```typescript
+interface UserSettings {
+  theme: 'light' | 'dark' | 'system';
+  fontSize: 'small' | 'medium' | 'large';
+  pageWidth: 'narrow' | 'normal' | 'wide' | 'full';
+  autoSave: boolean;
+  autoDescend: boolean;
+  showRowHighlight: boolean;
+  showSlashPlaceholder: boolean;
+}
 
-## Edge cases handled
-- Tool keys include extra characters (your current failure mode) → fixed by extracting bracketed marker
-- Tool keys are `6` / `_6` → already supported, will remain supported
-- Tool returns citations for markers not present in document → filtered out (if we implement step 2), and user gets a clear message
-- Model responds with plain text and no tool call → UI should show “No citations updated” (we can detect tool call absence and prompt retry)
+function useUserSettings() {
+  // Load from cloud on mount
+  // Debounced save on changes
+  // Fallback to localStorage for offline
+  return { settings, updateSettings, isLoading };
+}
+```
 
-## Files to change
-- `src/components/editor/DocumentAIPanel.tsx`
-  - strengthen `normalizeMarker()`
-  - (optional) filter to markers present in the doc
-  - improve user feedback/toasts
-- `supabase/functions/document-ai-chat/index.ts`
-  - tighten system prompt instructions for tool output keys
+### 5. Entry Point: FileMenu
+Add a "Settings" menu item in `FileMenu.tsx` that navigates to `/settings`:
+```tsx
+<MenuItem
+  icon={<Settings className="h-3.5 w-3.5" />}
+  label="Settings"
+  onClick={() => navigate('/settings')}
+/>
+```
 
-## Next feature suggestions (optional)
-- Add a “Preview changes” step: show the proposed references before applying them.
-- Add a “Redo only missing references” action (fill only ones still showing “Click to add reference”).
-- Add a “Citation style” selector (Chicago / MLA / APA) for AI-generated references.
-- Add an “Audit citations” action: find unused references and missing markers.
+### 6. Appearance Controls
+
+**Font Size**: Applied via CSS variable on `<body>`:
+```css
+body[data-font-size="small"] { font-size: 14px; }
+body[data-font-size="medium"] { font-size: 16px; }
+body[data-font-size="large"] { font-size: 18px; }
+```
+
+**Page Width**: Applied to editor container:
+```css
+.page-narrow { max-width: 640px; }
+.page-normal { max-width: 800px; }
+.page-wide { max-width: 1024px; }
+.page-full { max-width: 100%; }
+```
+
+### 7. Account Section Features
+
+**Change Password**:
+- Uses existing `supabase.auth.updateUser({ password })` 
+- Same flow as password reset but without email link
+
+**Delete Account**:
+- Confirmation modal with email re-entry
+- Cascade deletes all user data (documents, entities, settings)
+- Calls `supabase.auth.admin.deleteUser()` via edge function (or user-initiated `signOut` + backend cleanup)
+
+Note: Account deletion typically requires a backend function with service role key. Alternative: mark account for deletion and process async.
+
+## Implementation Order
+
+1. **Database migration**: Create `user_settings` table with RLS
+2. **Hook**: Build `useUserSettings` with cloud sync
+3. **ThemeProvider**: Wrap app with `next-themes` provider
+4. **Settings page**: Build tabbed UI with all three sections
+5. **FileMenu integration**: Add Settings navigation
+6. **Migrate existing preferences**: Move `showRowHighlight`, `showSlashPlaceholder`, `isDark` from localStorage to cloud settings
+7. **Account deletion edge function**: Create secure delete endpoint
+
+## Technical Considerations
+
+- **Backwards compatibility**: Existing localStorage preferences are migrated to cloud on first load
+- **Offline support**: Settings fall back to localStorage when offline
+- **Real-time sync**: Not required for settings (low-frequency updates)
+- **Security**: Password changes require current session; account deletion requires confirmation
+
+## UI/UX
+
+- Clean card-based layout similar to Auth page
+- Tabs for section navigation
+- Inline validation and success feedback via toasts
+- "Back to Editor" button in header
+- Responsive design for mobile
