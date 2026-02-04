@@ -80,6 +80,7 @@ export default {
           action: "hsl(var(--node-action))",
           reference: "hsl(var(--node-reference))",
         },
+        brand: "hsl(var(--brand))",
       },
       borderRadius: {
         lg: "var(--radius)",

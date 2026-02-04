@@ -179,7 +179,7 @@ export function EditorSidebar({
           {!collapsed && (
             <>
               <UserMenu />
-              <span className="text-xs font-semibold text-primary tracking-wide uppercase">The Outliner</span>
+              <span className="text-xs font-semibold text-brand tracking-wide uppercase">The Outliner</span>
             </>
           )}
           {collapsed && <UserMenu />}

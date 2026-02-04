@@ -76,7 +76,7 @@ export function ToolsPane({
       <div className="relative flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin">
         {/* Outline - NOW AT TOP */}
         {!collapsed && (
-          <span className="text-[10px] font-medium text-warning uppercase tracking-wider px-1">
+          <span className="text-[10px] font-medium text-brand uppercase tracking-wider px-1">
             Outline
           </span>
         )}
@@ -91,10 +91,10 @@ export function ToolsPane({
                 disabled={!editor}
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-warning/15 hover:text-warning transition-colors"
+                  "hover:bg-brand/15 hover:text-brand transition-colors"
                 )}
               >
-                <GitBranch className="h-4 w-4 text-warning" />
+                <GitBranch className="h-4 w-4 text-brand" />
                 {!collapsed && <span className="ml-2 text-xs">Insert Outline</span>}
               </Button>
             </TooltipTrigger>
