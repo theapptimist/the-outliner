@@ -20,6 +20,7 @@ import { ToolsPane } from './ToolsPane';
 import { MasterOutlinePane } from './MasterOutlinePane';
 import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
+import { UserMenu } from './UserMenu';
 import { cn } from '@/lib/utils';
 
 // Lazy load the AI toolbar since it's rarely used immediately
@@ -173,25 +174,39 @@ export function EditorSidebar({
         
         <div className={cn(
           "flex items-center px-2 py-2.5 pt-3 relative",
-          collapsed ? "justify-center" : "justify-center"
+          collapsed ? "justify-center" : "justify-between"
         )}>
           {!collapsed && (
-            <span className="text-xs font-semibold text-primary tracking-wide uppercase">The Outliner</span>
+            <>
+              <UserMenu />
+              <span className="text-xs font-semibold text-primary tracking-wide uppercase">The Outliner</span>
+            </>
           )}
+          {collapsed && <UserMenu />}
           {/* Collapse button positioned absolutely to not affect centering */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 hover:bg-primary/15 hover:text-primary transition-colors absolute right-2"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" />
-            ) : (
+          {!collapsed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 hover:bg-primary/15 hover:text-primary transition-colors"
+              onClick={() => setCollapsed(!collapsed)}
+            >
               <ChevronLeft className="h-3.5 w-3.5" />
-            )}
-          </Button>
+            </Button>
+          )}
         </div>
+        {collapsed && (
+          <div className="flex justify-center pb-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 hover:bg-primary/15 hover:text-primary transition-colors"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
         
         {/* Bottom sci-fi accent line above nav buttons */}
         <div className="mx-2 mb-1 h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent" />
