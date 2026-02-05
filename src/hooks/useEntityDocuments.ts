@@ -118,21 +118,27 @@ export function useEntityDocuments() {
 
     try {
       const t0 = performance.now();
+      console.log('[snippets] Starting fetch for', documentId, input.text);
       
       // Wrap the entire operation in a timeout
       const snippets = await withTimeout(
         (async (): Promise<DocumentSnippet[]> => {
           // 1) Fetch hierarchy blocks first (usually smaller/faster)
           const t1 = performance.now();
-          const { data: hier, error: hierError } = await supabase
-            .from('documents')
-            .select('hierarchy_blocks')
-            .eq('id', documentId)
-            .single();
-          console.log(`[snippets] hierarchy fetch: ${Math.round(performance.now() - t1)}ms`);
-
-          if (hierError) {
-            console.error('[useEntityDocuments] Error fetching hierarchy blocks:', hierError);
+          let hier: { hierarchy_blocks: any } | null = null;
+          try {
+            const { data, error: hierError } = await supabase
+              .from('documents')
+              .select('hierarchy_blocks')
+              .eq('id', documentId)
+              .single();
+            hier = data;
+            console.log(`[snippets] hierarchy fetch: ${Math.round(performance.now() - t1)}ms`);
+            if (hierError) {
+              console.error('[useEntityDocuments] Error fetching hierarchy blocks:', hierError);
+            }
+          } catch (fetchError) {
+            console.error('[snippets] hierarchy fetch failed:', fetchError);
           }
 
           const result: DocumentSnippet[] = [];
@@ -149,30 +155,40 @@ export function useEntityDocuments() {
             }
           }
 
+          // If we got at least 1 snippet from hierarchy, return early (skip content fetch)
+          if (result.length > 0) {
+            console.log(`[snippets] returning early with ${result.length} hierarchy snippets`);
+            return result;
+          }
+
           // 2) Only fetch + scan full editor content if we still need more
           if (result.length < 10) {
             const t3 = performance.now();
-            const { data: body, error: bodyError } = await supabase
-              .from('documents')
-              .select('content')
-              .eq('id', documentId)
-              .single();
-            console.log(`[snippets] content fetch: ${Math.round(performance.now() - t3)}ms`);
+            try {
+              const { data: body, error: bodyError } = await supabase
+                .from('documents')
+                .select('content')
+                .eq('id', documentId)
+                .single();
+              console.log(`[snippets] content fetch: ${Math.round(performance.now() - t3)}ms`);
 
-            if (bodyError) {
-              console.error('[useEntityDocuments] Error fetching document content:', bodyError);
-              return result;
-            }
-
-            if (body?.content) {
-              const t4 = performance.now();
-              try {
-                const contentSnippets = findSnippetsInContent(body.content, input, result.length);
-                result.push(...contentSnippets);
-                console.log(`[snippets] content scan: ${Math.round(performance.now() - t4)}ms, found ${contentSnippets.length}`);
-              } catch (e) {
-                console.error('[useEntityDocuments] Error scanning content:', e);
+              if (bodyError) {
+                console.error('[useEntityDocuments] Error fetching document content:', bodyError);
+                return result;
               }
+
+              if (body?.content) {
+                const t4 = performance.now();
+                try {
+                  const contentSnippets = findSnippetsInContent(body.content, input, result.length);
+                  result.push(...contentSnippets);
+                  console.log(`[snippets] content scan: ${Math.round(performance.now() - t4)}ms, found ${contentSnippets.length}`);
+                } catch (e) {
+                  console.error('[useEntityDocuments] Error scanning content:', e);
+                }
+              }
+            } catch (contentFetchError) {
+              console.error('[snippets] content fetch failed:', contentFetchError);
             }
           }
 
