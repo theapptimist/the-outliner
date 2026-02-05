@@ -21,6 +21,7 @@ import { MasterOutlinePane } from './MasterOutlinePane';
 import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
 import { UserMenu } from './UserMenu';
+import { DashboardView } from './DashboardView';
 import { cn } from '@/lib/utils';
 
 // Lazy load the AI toolbar since it's rarely used immediately
@@ -72,6 +73,7 @@ export function EditorSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [libraryFullPage, setLibraryFullPage] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
@@ -179,7 +181,12 @@ export function EditorSidebar({
           {!collapsed && (
             <>
               <UserMenu />
-              <span className="text-xs font-semibold text-brand tracking-wide uppercase">The Outliner</span>
+              <button
+                onClick={() => setShowDashboard(true)}
+                className="text-xs font-semibold text-brand tracking-wide uppercase hover:text-brand/80 transition-colors cursor-pointer"
+              >
+                The Outliner
+              </button>
             </>
           )}
           {collapsed && <UserMenu />}
@@ -320,8 +327,21 @@ export function EditorSidebar({
         </div>
       </div>
 
+      {/* Dashboard View */}
+      {showDashboard && (
+        <DashboardView 
+          onSelectTile={(id) => {
+            setShowDashboard(false);
+            if (id !== 'editor') {
+              setActiveTab(id);
+            }
+            // 'editor' just closes the dashboard to show the editor
+          }}
+        />
+      )}
+
       {/* Conditional Content - now properly conditional rendering */}
-      {activeTab === 'library' && (
+      {!showDashboard && activeTab === 'library' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           {libraryFullPage ? (
             <LinkingWorkspace
@@ -339,7 +359,7 @@ export function EditorSidebar({
         </div>
       )}
       
-      {activeTab === 'ai' && (
+      {!showDashboard && activeTab === 'ai' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           <Suspense fallback={
             <div className="flex items-center justify-center h-32">
@@ -358,7 +378,7 @@ export function EditorSidebar({
         </div>
       )}
       
-      {activeTab === 'master' && (
+      {!showDashboard && activeTab === 'master' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           <MasterOutlinePane
             collapsed={collapsed}
@@ -367,7 +387,7 @@ export function EditorSidebar({
         </div>
       )}
       
-      {activeTab === 'timeline' && (
+      {!showDashboard && activeTab === 'timeline' && (
         <div className="relative flex-1 overflow-y-auto scrollbar-thin">
           <TimelinePane
             collapsed={collapsed}
@@ -376,7 +396,7 @@ export function EditorSidebar({
         </div>
       )}
       
-      {activeTab === 'tools' && (
+      {!showDashboard && activeTab === 'tools' && (
         <ToolsPane
           collapsed={collapsed}
           editor={editor}
