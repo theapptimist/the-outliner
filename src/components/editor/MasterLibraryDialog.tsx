@@ -732,7 +732,10 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
           )}
         </div>
         <FileText className="h-3 w-3 shrink-0 opacity-50" />
-        <span className="flex-1 break-words leading-tight truncate">{doc.title}</span>
+        <span className={cn(
+          "flex-1 leading-tight",
+          doc.title.length > 15 ? "break-words whitespace-normal" : "truncate"
+        )}>{doc.title}</span>
       </button>
       <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
         {doc.entityCount}
