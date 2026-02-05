@@ -292,15 +292,22 @@ export function useEntityDocuments() {
 
     try {
       const t0 = performance.now();
-      
-      // SINGLE batch query for all documents
-      const { data: docs, error } = await supabase
+
+      // SINGLE batch query for all documents (with a timeout so the UI can't spin forever)
+      const query = supabase
         .from('documents')
         .select('id, hierarchy_blocks')
         .in('id', documentIds);
-      
+
+      // supabase-js returns a Promise-like builder; cast so it works with our Promise-based timeout helper
+      const { data: docs, error } = await withTimeout(
+        query as unknown as Promise<{ data: any; error: any }>,
+        SNIPPET_FETCH_TIMEOUT_MS,
+        'Snippet precache timed out'
+      );
+
       console.log(`[snippets] precache batch fetch: ${Math.round(performance.now() - t0)}ms for ${documentIds.length} docs`);
-      
+
       if (error) {
         console.error('[snippets] precache batch fetch error:', error);
         return;
@@ -319,25 +326,25 @@ export function useEntityDocuments() {
       for (const item of itemsToFetch) {
         const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
         const hierarchyBlocks = docMap.get(item.documentId);
-        
+
         let snippets: DocumentSnippet[] = [];
         if (hierarchyBlocks) {
           snippets = findSnippetsInHierarchy(hierarchyBlocks, item.input);
         }
-        
+
         setSnippetCache(prev => new Map(prev).set(cacheKey, snippets));
         precacheInProgress.current.delete(cacheKey);
       }
       console.log(`[snippets] precache scan: ${Math.round(performance.now() - t1)}ms for ${itemsToFetch.length} items`);
-      
+
     } catch (error) {
       console.error('[snippets] precache failed:', error);
-      // Clear in-progress flags
+    } finally {
+      // Always clear in-progress flags + UI state so the indicator can't get stuck
       itemsToFetch.forEach(item => {
         const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
         precacheInProgress.current.delete(cacheKey);
       });
-    } finally {
       setPrecaching(false);
     }
   }, [snippetCache]);
