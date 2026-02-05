@@ -61,6 +61,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkMigrationNeeded, migrateDocumentEntitiesToMaster, backfillSourceDocumentIds } from '@/lib/masterEntityMigration';
 import { FullScreenModalHeader } from './FullScreenModalHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 // MasterLibraryDialog - Full-page modal for managing the Master Library
 type MasterLibraryTab = 'my-library' | 'shared' | 'public';
@@ -748,8 +749,9 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   }, []);
 
   // Handler for jumping to a document from entity cards
-  // Uses navigateToDocument from DocumentContext if available (canonical navigation pipe)
+  // Prefer onJumpToDocument (direct editor callback) over navigateToDocument (context pipeline)
   const { navigateToDocument, document: currentDoc } = useDocumentContext();
+  const { pushDocument } = useNavigation();
   
   const [isNavigating, setIsNavigating] = useState(false);
   
@@ -757,8 +759,8 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     console.log('[MasterLibrary] handleJumpToDocument called', { 
       docId, 
       currentDocId: currentDoc?.meta?.id,
-      hasNavigateToDocument: !!navigateToDocument,
-      hasOnJumpToDocument: !!onJumpToDocument
+      hasOnJumpToDocument: !!onJumpToDocument,
+      hasNavigateToDocument: !!navigateToDocument
     });
     
     // Don't navigate if already on this document
@@ -770,23 +772,29 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     setIsNavigating(true);
     
-    // Navigate IMMEDIATELY while context is valid (before dialog closes)
-    console.log('[MasterLibrary] Executing navigation BEFORE closing dialog');
+    // Push current document to navigation stack for Back button support
+    if (currentDoc?.meta?.id) {
+      console.log('[MasterLibrary] Pushing current doc to nav stack:', currentDoc.meta.id);
+      pushDocument(currentDoc.meta.id, currentDoc.meta.title || 'Untitled');
+    }
     
-    if (navigateToDocument) {
-      console.log('[MasterLibrary] Using navigateToDocument from context');
-      navigateToDocument(docId, ''); // Title will be fetched by the handler
-    } else if (onJumpToDocument) {
-      console.log('[MasterLibrary] Using onJumpToDocument prop fallback');
+    // Navigate using the DIRECT prop callback first (more reliable than context pipeline)
+    if (onJumpToDocument) {
+      console.log('[MasterLibrary] Using onJumpToDocument (direct callback)');
       onJumpToDocument(docId);
+    } else if (navigateToDocument) {
+      console.log('[MasterLibrary] Fallback to navigateToDocument from context');
+      navigateToDocument(docId, '');
     } else {
       console.error('[MasterLibrary] No navigation handler available!');
+      setIsNavigating(false);
+      return;
     }
     
     // Close dialog AFTER navigation is triggered
     onOpenChange(false);
     setIsNavigating(false);
-  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);
+  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, currentDoc?.meta?.title, pushDocument]);
   
   // Migration state
   const { user } = useAuth();
