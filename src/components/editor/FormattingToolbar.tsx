@@ -92,7 +92,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
 
       {/* Alignment - horizontal row */}
       {!collapsed && (
-         <span className="text-[10px] font-medium text-green uppercase tracking-wider px-1">
+         <span className="text-[10px] font-medium text-blue uppercase tracking-wider px-1">
           Alignment
         </span>
       )}
@@ -101,41 +101,41 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().setTextAlign('left').run()}
           isActive={editor?.isActive({ textAlign: 'left' })}
           disabled={!editor}
-           icon={<AlignLeft className="h-4 w-4 text-green" />}
+           icon={<AlignLeft className="h-4 w-4 text-blue" />}
           label="Left"
           tooltip="Align Left"
           collapsed={true}
-           color="green"
+           color="blue"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('center').run()}
           isActive={editor?.isActive({ textAlign: 'center' })}
           disabled={!editor}
-           icon={<AlignCenter className="h-4 w-4 text-green" />}
+           icon={<AlignCenter className="h-4 w-4 text-blue" />}
           label="Center"
           tooltip="Align Center"
           collapsed={true}
-           color="green"
+           color="blue"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('right').run()}
           isActive={editor?.isActive({ textAlign: 'right' })}
           disabled={!editor}
-           icon={<AlignRight className="h-4 w-4 text-green" />}
+           icon={<AlignRight className="h-4 w-4 text-blue" />}
           label="Right"
           tooltip="Align Right"
           collapsed={true}
-           color="green"
+           color="blue"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
           isActive={editor?.isActive({ textAlign: 'justify' })}
           disabled={!editor}
-           icon={<AlignJustify className="h-4 w-4 text-green" />}
+           icon={<AlignJustify className="h-4 w-4 text-blue" />}
           label="Justify"
           tooltip="Justify"
           collapsed={true}
-           color="green"
+           color="blue"
         />
       </div>
 
