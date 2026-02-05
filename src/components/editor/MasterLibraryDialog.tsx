@@ -20,7 +20,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { FolderPlus } from 'lucide-react';
+import { FolderPlus, MoreHorizontal, FolderInput } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,6 +34,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useMasterEntities, MasterEntity, EntityType } from '@/hooks/useMasterEntities';
 import { useEntityPermissions } from '@/hooks/useEntityPermissions';
@@ -317,7 +327,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   // Document and folder data
   const { documents: libraryDocuments, loading: loadingDocs, refresh: refreshDocs } = useMasterLibraryDocuments();
   const { folders, buildFolderTree, loading: loadingFolders } = useDocumentFolders();
-  const { createFolder } = useDocumentFolders();
+  const { createFolder, moveDocumentToFolder } = useDocumentFolders();
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   
@@ -389,8 +399,6 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
     const folderDocs = documentsByFolder.get(folder.id) || [];
     const hasContent = folderDocs.length > 0 || folder.children.length > 0;
     
-    if (!hasContent) return null;
-    
     return (
       <div key={folder.id}>
         <button
@@ -410,51 +418,13 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
           </Badge>
         </button>
         
-        {isExpanded && (
+        {isExpanded && hasContent && (
           <div>
             {/* Child folders */}
             {folder.children.map(child => renderFolderWithDocs(child, depth + 1))}
             
             {/* Documents in this folder */}
-            {folderDocs.map(doc => (
-              <button
-                key={doc.id}
-                onClick={() => {
-                  setSelectedDocumentIds(prev => {
-                    const next = new Set(prev);
-                    if (next.has(doc.id)) {
-                      next.delete(doc.id);
-                    } else {
-                      next.add(doc.id);
-                    }
-                    return next;
-                  });
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
-                  selectedDocumentIds.has(doc.id)
-                    ? "bg-primary/10 text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-                style={{ paddingLeft: `${20 + depth * 12}px` }}
-              >
-                <div className={cn(
-                  "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                  selectedDocumentIds.has(doc.id)
-                    ? "bg-primary border-primary"
-                    : "border-border"
-                )}>
-                  {selectedDocumentIds.has(doc.id) && (
-                    <Check className="h-3 w-3 text-primary-foreground" />
-                  )}
-                </div>
-                <FileText className="h-3 w-3 shrink-0 opacity-50" />
-                <span className="flex-1 break-words leading-tight">{doc.title}</span>
-                <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
-                  {doc.entityCount}
-                </Badge>
-              </button>
-            ))}
+            {folderDocs.map(doc => renderDocItem(doc, depth + 1))}
           </div>
         )}
       </div>
@@ -463,6 +433,104 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
 
   // Documents without a folder
   const unfolderedDocs = documentsByFolder.get(null) || [];
+  
+  // Handle moving document to folder
+  const handleMoveToFolder = async (docId: string, folderId: string | null) => {
+    const success = await moveDocumentToFolder(docId, folderId);
+    if (success) {
+      toast({
+        title: "Document moved",
+        description: folderId ? "Document moved to folder" : "Document moved to root",
+      });
+      refreshDocs();
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to move document",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Render a document item with move-to-folder dropdown
+  const renderDocItem = (doc: { id: string; title: string; entityCount: number; folder_id: string | null }, depth: number = 0) => (
+    <div
+      key={doc.id}
+      className={cn(
+        "flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors group",
+        selectedDocumentIds.has(doc.id)
+          ? "bg-primary/10 text-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+      style={{ paddingLeft: `${8 + depth * 12}px` }}
+    >
+      <button
+        onClick={() => {
+          setSelectedDocumentIds(prev => {
+            const next = new Set(prev);
+            if (next.has(doc.id)) {
+              next.delete(doc.id);
+            } else {
+              next.add(doc.id);
+            }
+            return next;
+          });
+        }}
+        className="flex items-center gap-2 flex-1 min-w-0 text-left"
+      >
+        <div className={cn(
+          "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+          selectedDocumentIds.has(doc.id)
+            ? "bg-primary border-primary"
+            : "border-border"
+        )}>
+          {selectedDocumentIds.has(doc.id) && (
+            <Check className="h-3 w-3 text-primary-foreground" />
+          )}
+        </div>
+        <FileText className="h-3 w-3 shrink-0 opacity-50" />
+        <span className="flex-1 break-words leading-tight truncate">{doc.title}</span>
+      </button>
+      <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+        {doc.entityCount}
+      </Badge>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <button className="h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-muted-foreground/20">
+            <MoreHorizontal className="h-3 w-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <FolderInput className="h-3.5 w-3.5 mr-2" />
+              Move to Folder
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-40">
+              <DropdownMenuItem 
+                onClick={() => handleMoveToFolder(doc.id, null)}
+                disabled={doc.folder_id === null}
+              >
+                <FileText className="h-3.5 w-3.5 mr-2" />
+                No Folder
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {folderTree.map(folder => (
+                <DropdownMenuItem 
+                  key={folder.id}
+                  onClick={() => handleMoveToFolder(doc.id, folder.id)}
+                  disabled={doc.folder_id === folder.id}
+                >
+                  <Folder className="h-3.5 w-3.5 mr-2" />
+                  {folder.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
   
   const handleMigration = async () => {
     if (!user?.id) return;
@@ -741,44 +809,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                             {folderTree.map(folder => renderFolderWithDocs(folder, 0))}
                             
                             {/* Documents without folder */}
-                            {unfolderedDocs.map(doc => (
-                              <button
-                                key={doc.id}
-                                onClick={() => {
-                                  setSelectedDocumentIds(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(doc.id)) {
-                                      next.delete(doc.id);
-                                    } else {
-                                      next.add(doc.id);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                className={cn(
-                                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
-                                  selectedDocumentIds.has(doc.id)
-                                    ? "bg-primary/10 text-foreground"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                )}
-                              >
-                                <div className={cn(
-                                  "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                                  selectedDocumentIds.has(doc.id)
-                                    ? "bg-primary border-primary"
-                                    : "border-border"
-                                )}>
-                                  {selectedDocumentIds.has(doc.id) && (
-                                    <Check className="h-3 w-3 text-primary-foreground" />
-                                  )}
-                                </div>
-                                <FileText className="h-3 w-3 shrink-0 opacity-50" />
-                                <span className="flex-1 break-words leading-tight">{doc.title}</span>
-                                <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
-                                  {doc.entityCount}
-                                </Badge>
-                              </button>
-                            ))}
+                            {unfolderedDocs.map(doc => renderDocItem(doc))}
                           </>
                         )}
                       </>
