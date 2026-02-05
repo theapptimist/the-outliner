@@ -700,7 +700,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
     <div
       key={doc.id}
       className={cn(
-        "flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors group",
+        "flex items-start gap-2 px-2 py-1.5 rounded text-xs transition-colors group",
         selectedDocumentIds.has(doc.id)
           ? "bg-primary/10 text-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -719,10 +719,10 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
             return next;
           });
         }}
-        className="flex items-center gap-2 flex-1 min-w-0 text-left"
+        className="flex items-start gap-2 flex-1 min-w-0 text-left"
       >
         <div className={cn(
-          "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+          "h-4 w-4 rounded border flex items-center justify-center shrink-0 mt-0.5",
           selectedDocumentIds.has(doc.id)
             ? "bg-primary border-primary"
             : "border-border"
@@ -731,10 +731,10 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
             <Check className="h-3 w-3 text-primary-foreground" />
           )}
         </div>
-        <FileText className="h-3 w-3 shrink-0 opacity-50" />
+        <FileText className="h-3 w-3 shrink-0 opacity-50 mt-0.5" />
         <span className={cn(
           "flex-1 leading-tight",
-          doc.title.length > 15 ? "break-words whitespace-normal" : "truncate"
+          doc.title.length > 15 ? "break-all" : "truncate"
         )}>{doc.title}</span>
       </button>
       <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
