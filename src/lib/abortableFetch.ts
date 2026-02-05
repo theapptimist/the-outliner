@@ -1,16 +1,54 @@
 /**
  * Abortable fetch helper for Supabase REST API requests.
  * Uses native fetch with AbortController so requests can be truly cancelled.
+ * 
+ * IMPORTANT: Session retrieval happens BEFORE the timeout timer starts,
+ * so if getSession() hangs, we fail fast (2s) instead of waiting 15s.
  */
 import { supabase } from '@/integrations/supabase/client';
 
 // Error types for better UI messaging
-export type FetchErrorType = 'timeout' | 'aborted' | 'network' | 'not_found' | 'unauthorized' | 'unknown';
+export type FetchErrorType = 'timeout' | 'aborted' | 'network' | 'not_found' | 'unauthorized' | 'auth_timeout' | 'unknown';
 
 export interface AbortableFetchResult<T> {
   data: T | null;
   error: FetchErrorType | null;
   errorMessage?: string;
+}
+
+// Auth timeout - if getSession takes longer than this, something is wrong
+const AUTH_TIMEOUT_MS = 2000;
+
+/**
+ * Get session with a timeout wrapper.
+ * getSession() can hang indefinitely in certain network conditions.
+ */
+async function getSessionWithTimeout(): Promise<{ accessToken: string | null; error: FetchErrorType | null }> {
+  const t0 = performance.now();
+  console.log('[abortableFetch] Getting session...');
+  
+  try {
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('AUTH_TIMEOUT')), AUTH_TIMEOUT_MS)
+      )
+    ]);
+    
+    const elapsed = Math.round(performance.now() - t0);
+    const accessToken = result.data?.session?.access_token || null;
+    console.log(`[abortableFetch] Session retrieved in ${elapsed}ms, hasToken=${!!accessToken}`);
+    
+    return { accessToken, error: null };
+  } catch (err) {
+    const elapsed = Math.round(performance.now() - t0);
+    if (err instanceof Error && err.message === 'AUTH_TIMEOUT') {
+      console.error(`[abortableFetch] getSession timed out after ${elapsed}ms`);
+      return { accessToken: null, error: 'auth_timeout' };
+    }
+    console.error(`[abortableFetch] getSession error after ${elapsed}ms:`, err);
+    return { accessToken: null, error: 'unknown' };
+  }
 }
 
 /**
@@ -27,6 +65,22 @@ export async function abortableFetchRow<T>(
   }
 ): Promise<AbortableFetchResult<T>> {
   const { timeoutMs, signal: externalSignal } = options;
+  
+  // STEP 1: Get session BEFORE starting the fetch timeout
+  // This prevents getSession() hangs from eating into our fetch timeout
+  const { accessToken, error: authError } = await getSessionWithTimeout();
+  
+  if (authError) {
+    return { 
+      data: null, 
+      error: authError, 
+      errorMessage: authError === 'auth_timeout' 
+        ? 'Authentication timed out. Please refresh and try again.' 
+        : 'Authentication error'
+    };
+  }
+
+  // STEP 2: Now start the actual fetch with timeout
   const controller = new AbortController();
   
   // Combine external signal with our timeout signal
@@ -42,14 +96,6 @@ export async function abortableFetchRow<T>(
   const t0 = performance.now();
 
   try {
-    // Get auth session for authorization header
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData?.session?.access_token;
-    
-    if (!accessToken) {
-      console.warn('[abortableFetch] No auth session, request may fail RLS');
-    }
-
     // Build REST API URL
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -151,6 +197,21 @@ export async function abortableFetchRows<T>(
   }
 ): Promise<AbortableFetchResult<T[]>> {
   const { timeoutMs, signal: externalSignal } = options;
+  
+  // STEP 1: Get session BEFORE starting the fetch timeout
+  const { accessToken, error: authError } = await getSessionWithTimeout();
+  
+  if (authError) {
+    return { 
+      data: null, 
+      error: authError, 
+      errorMessage: authError === 'auth_timeout' 
+        ? 'Authentication timed out. Please refresh and try again.' 
+        : 'Authentication error'
+    };
+  }
+
+  // STEP 2: Now start the actual fetch with timeout
   const controller = new AbortController();
   
   const combinedSignal = externalSignal
@@ -165,9 +226,6 @@ export async function abortableFetchRows<T>(
   const t0 = performance.now();
 
   try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData?.session?.access_token;
-
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     

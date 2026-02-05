@@ -41,6 +41,10 @@ const UNAUTHORIZED_SNIPPET: DocumentSnippet = {
   text: '🔒 Access denied. You may not have permission to view this document.',
 };
 
+const AUTH_TIMEOUT_SNIPPET: DocumentSnippet = {
+  text: '🔐 Authentication timed out. Please refresh and try again.',
+};
+
 const GENERIC_ERROR_SNIPPET: DocumentSnippet = {
   text: '⚠️ Could not load snippets. Click to retry.',
 };
@@ -56,6 +60,8 @@ function getErrorSnippet(errorType: FetchErrorType): DocumentSnippet {
       return NOT_FOUND_SNIPPET;
     case 'unauthorized':
       return UNAUTHORIZED_SNIPPET;
+    case 'auth_timeout':
+      return AUTH_TIMEOUT_SNIPPET;
     case 'aborted':
       return TIMEOUT_SNIPPET; // Treat cancelled as timeout for UI
     default:
