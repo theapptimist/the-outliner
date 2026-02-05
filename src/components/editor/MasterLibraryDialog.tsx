@@ -331,6 +331,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const { createFolder, moveDocumentToFolder } = useDocumentFolders();
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [isBulkMoving, setIsBulkMoving] = useState(false);
   
   // Migration state
   const { user } = useAuth();
@@ -489,6 +490,33 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
         description: "Failed to move document",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleMoveSelectedToFolder = async (folderId: string | null) => {
+    if (selectedDocumentIds.size === 0) return;
+    setIsBulkMoving(true);
+    try {
+      const ids = Array.from(selectedDocumentIds);
+      const results = await Promise.all(ids.map(id => moveDocumentToFolder(id, folderId)));
+      const okCount = results.filter(Boolean).length;
+
+      // Update local state in one pass for snappy UI
+      setAllDocuments(prev => prev.map(doc => (
+        selectedDocumentIds.has(doc.id) ? { ...doc, folder_id: folderId } : doc
+      )));
+
+      toast({
+        title: okCount === ids.length ? 'Documents moved' : 'Some documents could not be moved',
+        description: folderId ? `Moved ${okCount}/${ids.length} into folder` : `Moved ${okCount}/${ids.length} to root`,
+        variant: okCount === ids.length ? 'default' : 'destructive',
+      });
+
+      // Keep selection, but most users expect it cleared after an action
+      setSelectedDocumentIds(new Set());
+      refreshDocs();
+    } finally {
+      setIsBulkMoving(false);
     }
   };
   
@@ -800,6 +828,41 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     )}
                     
                     <div className="h-px bg-border/50 my-1.5" />
+
+                    {/* Bulk move for selected documents */}
+                    {selectedDocumentIds.size > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-left text-xs text-foreground bg-muted/40 hover:bg-muted transition-colors"
+                            disabled={isBulkMoving}
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              {isBulkMoving ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                              ) : (
+                                <FolderInput className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                              <span className="truncate">Move selected ({selectedDocumentIds.size})</span>
+                            </span>
+                            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          <DropdownMenuItem onClick={() => handleMoveSelectedToFolder(null)}>
+                            <FileText className="h-3.5 w-3.5 mr-2" />
+                            No Folder (Root)
+                          </DropdownMenuItem>
+                          {folderTree.length > 0 && <DropdownMenuSeparator />}
+                          {folderTree.map(folder => (
+                            <DropdownMenuItem key={folder.id} onClick={() => handleMoveSelectedToFolder(folder.id)}>
+                              <Folder className="h-3.5 w-3.5 mr-2" />
+                              {folder.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                     
                     {allDocuments.length === 0 && folderTree.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
