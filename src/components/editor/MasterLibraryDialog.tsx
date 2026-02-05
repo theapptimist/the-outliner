@@ -389,6 +389,16 @@ function MasterEntityCard({
       // Fetch documents when expanding
       const docs = await entityDocuments.fetchDocumentsForEntity(entity.id, entity.source_document_id);
       setDocuments(docs);
+      
+      // Pre-cache snippets for all documents in the background
+      if (docs.length > 0 && entityName) {
+        const precacheItems = docs.map(doc => ({
+          documentId: doc.id,
+          input: { entityType: entity.entity_type, text: entityName },
+        }));
+        // Fire and forget - don't await
+        entityDocuments.precacheSnippets?.(precacheItems);
+      }
     }
     setIsExpanded(!isExpanded);
   };

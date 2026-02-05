@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   DocumentSnippet,
@@ -20,6 +20,9 @@ export interface EntityDocumentInfo {
 // Timeout for snippet fetching (15 seconds - gives more room for network latency)
 const SNIPPET_FETCH_TIMEOUT_MS = 15000;
 
+// Shorter timeout for background pre-caching (don't block too long)
+const PRECACHE_TIMEOUT_MS = 8000;
+
 // Sentinel snippet for timeout/error states
 const TIMEOUT_SNIPPET: DocumentSnippet = {
   text: '⏱️ Snippet extraction timed out. Click to retry.',
@@ -28,6 +31,12 @@ const TIMEOUT_SNIPPET: DocumentSnippet = {
 const ERROR_SNIPPET: DocumentSnippet = {
   text: '⚠️ Could not extract snippets from this document.',
 };
+
+// Item for pre-cache queue
+export interface PrecacheItem {
+  documentId: string;
+  input: SnippetSearchInput;
+}
 
 /**
  * Hook to fetch documents that contain references to entities from the Master Library
@@ -38,6 +47,9 @@ export function useEntityDocuments() {
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const [snippetCache, setSnippetCache] = useState<Map<string, DocumentSnippet[]>>(new Map());
   const [snippetLoading, setSnippetLoading] = useState<Set<string>>(new Set());
+  
+  // Track what we're pre-caching to avoid duplicates
+  const precacheInProgress = useRef<Set<string>>(new Set());
 
   const fetchDocumentsForEntity = useCallback(async (
     entityId: string,
@@ -252,6 +264,74 @@ export function useEntityDocuments() {
     });
   }, []);
 
+  /**
+   * Pre-cache snippets for multiple documents in the background.
+   * Called when Master Library opens to warm the cache for instant clicks.
+   * Uses a shorter timeout and doesn't block the UI.
+   */
+  const precacheSnippets = useCallback(async (items: PrecacheItem[]) => {
+    // Filter out items already cached or in-progress
+    const itemsToFetch = items.filter(item => {
+      const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
+      const alreadyCached = snippetCache.has(cacheKey);
+      const alreadyInProgress = precacheInProgress.current.has(cacheKey);
+      return !alreadyCached && !alreadyInProgress;
+    });
+
+    if (itemsToFetch.length === 0) {
+      console.log('[snippets] precache: all items already cached or in-progress');
+      return;
+    }
+
+    console.log(`[snippets] precache: starting ${itemsToFetch.length} items`);
+
+    // Mark all as in-progress
+    itemsToFetch.forEach(item => {
+      const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
+      precacheInProgress.current.add(cacheKey);
+    });
+
+    // Fetch in parallel with shorter timeout (don't block UI)
+    const results = await Promise.allSettled(
+      itemsToFetch.map(async (item) => {
+        const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
+        
+        try {
+          const snippets = await withTimeout(
+            (async (): Promise<DocumentSnippet[]> => {
+              // Only fetch hierarchy blocks for pre-cache (faster)
+              const { data: hier } = await supabase
+                .from('documents')
+                .select('hierarchy_blocks')
+                .eq('id', item.documentId)
+                .single();
+
+              if (!hier?.hierarchy_blocks) return [];
+              
+              const hierarchyBlocks = hier.hierarchy_blocks as Record<string, any>;
+              return findSnippetsInHierarchy(hierarchyBlocks, item.input);
+            })(),
+            PRECACHE_TIMEOUT_MS,
+            'Precache timed out'
+          );
+
+          // Update cache
+          setSnippetCache(prev => new Map(prev).set(cacheKey, snippets));
+          return { cacheKey, snippets };
+        } catch (error) {
+          // Silently fail for precache - don't pollute cache with error sentinels
+          console.log(`[snippets] precache failed for ${item.documentId}:`, error);
+          return { cacheKey, snippets: [] };
+        } finally {
+          precacheInProgress.current.delete(cacheKey);
+        }
+      })
+    );
+
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    console.log(`[snippets] precache: completed ${successCount}/${itemsToFetch.length}`);
+  }, [snippetCache]);
+
   return {
     fetchDocumentsForEntity,
     fetchSnippetsForDocument,
@@ -260,5 +340,6 @@ export function useEntityDocuments() {
     isSnippetLoading,
     getSnippetsFromCache,
     clearSnippetCache,
+    precacheSnippets,
   };
 }
