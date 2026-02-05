@@ -1,51 +1,61 @@
 
-## Add Branded Header to Full-Screen Modals
+## Fix: Document Thumbnail Click Not Working
 
-Add a consistent navigation header bar to the Master Library dialog (and other full-screen modals) featuring the user avatar, "THE OUTLINER" branding, and a back button.
+### Problem
+When clicking on a document thumbnail in the Master Library's expanded entity section, nothing happens. The `isSelected` state isn't toggling.
 
-### Design
-The header will match the reference image:
-- **Left**: User avatar (clickable, opens user menu dropdown)
-- **Center**: "THE OUTLINER" text in brand orange color (uppercase)
-- **Right**: Back chevron (`<`) that closes the modal
+### Root Cause
+The `handleClick` function in `DocumentThumbnail` awaits `fetchSnippetsForDocument` **before** calling `setIsSelected(!isSelected)`:
 
-### Implementation
-
-**1. Create a Reusable FullScreenModalHeader Component**
-
-A new component at `src/components/editor/FullScreenModalHeader.tsx`:
-- Accepts an `onBack` callback prop for the chevron click
-- Uses `UserMenu` for the avatar dropdown
-- Displays "THE OUTLINER" in brand color, centered
-- ChevronLeft icon on the right side for back navigation
-- Light background with subtle bottom border for visual separation
-
-**2. Update MasterLibraryDialog**
-
-In `src/components/editor/MasterLibraryDialog.tsx`:
-- Import and add `FullScreenModalHeader` above the existing `DialogHeader`
-- Pass `onOpenChange(false)` as the `onBack` handler
-- The existing dialog header with tabs remains below the branded header
-
-### Technical Details
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  [Avatar]         THE OUTLINER              [<]              │  ← New branded header
-├──────────────────────────────────────────────────────────────┤
-│  📚 Master Library                 [My Library][Shared][Public]│  ← Existing dialog header
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│                    (Dialog content)                          │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+```typescript
+const handleClick = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+  
+  if (!isSelected) {
+    // This await blocks the UI toggle
+    const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, entityName);
+    setSnippets(fetchedSnippets);
+    setCurrentSnippetIndex(0);
+  }
+  setIsSelected(!isSelected);  // Only runs after fetch completes
+};
 ```
 
-### Files to Create/Modify
+If the fetch fails or takes time, the selection toggle is delayed or never happens.
+
+### Solution
+Toggle `isSelected` immediately on click, then fetch snippets asynchronously. This provides instant feedback to the user:
+
+```typescript
+const handleClick = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+  
+  const newIsSelected = !isSelected;
+  setIsSelected(newIsSelected);  // Toggle immediately
+  
+  if (newIsSelected) {
+    // Fetch snippets asynchronously (don't block the toggle)
+    const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, entityName);
+    setSnippets(fetchedSnippets);
+    setCurrentSnippetIndex(0);
+  }
+};
+```
+
+### Additional Fix
+Also add `onMouseDown` handler with `e.stopPropagation()` to prevent any mousedown capture at parent levels from interfering:
+
+```typescript
+<div 
+  className={cn(...)}
+  onClick={handleClick}
+  onMouseDown={(e) => e.stopPropagation()}
+  data-allow-pointer
+>
+```
+
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/editor/FullScreenModalHeader.tsx` | **Create** - Reusable header component |
-| `src/components/editor/MasterLibraryDialog.tsx` | Add header at top of DialogContent |
-
-This reusable component can then be added to any other full-screen modals in the application.
+| `src/components/editor/MasterLibraryDialog.tsx` | Fix `handleClick` to toggle state immediately, add `onMouseDown` handler |
