@@ -221,9 +221,16 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
     
     // Filter by selected documents (only for my-library)
     if (scope === 'my-library' && selectedDocumentIds.size > 0) {
+     console.log('[LibraryTabContent] Filtering by documents:', {
+       selectedCount: selectedDocumentIds.size,
+       selectedIds: Array.from(selectedDocumentIds),
+       totalEntities: entities.length,
+       entitiesWithSourceDoc: entities.filter(e => e.source_document_id).length,
+     });
       entities = entities.filter(e => 
         e.source_document_id && selectedDocumentIds.has(e.source_document_id)
       );
+     console.log('[LibraryTabContent] After filter:', entities.length, 'entities');
     }
     
     // Filter by search query
@@ -460,6 +467,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
          onClick={() => {
            // Clicking folder selects all its docs (and deselects others)
            if (allFolderDocIds.length > 0) {
+            console.log('[renderFolderWithDocs] Folder clicked:', folder.name, 'docs:', allFolderDocIds);
              if (allSelected) {
                // Deselect all docs in this folder
                setSelectedDocumentIds(new Set());
