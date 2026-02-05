@@ -138,7 +138,7 @@ export function ToolsPane({
 
         {/* Options */}
         {!collapsed && (
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1 mt-2 block">
+           <span className="text-[10px] font-medium text-brand uppercase tracking-wider px-1 mt-2 block">
             Options
           </span>
         )}
@@ -151,12 +151,12 @@ export function ToolsPane({
                 size="sm"
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-success/15 transition-colors",
-                  autoDescend && "bg-success/15 text-success hover:bg-success/25 border border-success/30"
+                   "hover:bg-brand/15 transition-colors",
+                   autoDescend && "bg-brand/15 text-brand hover:bg-brand/25 border border-brand/30"
                 )}
                 onClick={() => onAutoDescendChange(!autoDescend)}
               >
-                <ArrowDownRight className={cn("h-4 w-4", autoDescend && "text-success")} />
+                 <ArrowDownRight className={cn("h-4 w-4 text-brand")} />
                 {!collapsed && <span className="ml-2 text-xs">Auto-Descend</span>}
               </Button>
             </TooltipTrigger>
@@ -173,12 +173,12 @@ export function ToolsPane({
                 size="sm"
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-accent/15 transition-colors",
-                  showRevealCodes && "bg-accent/15 text-accent hover:bg-accent/25 border border-accent/30"
+                   "hover:bg-brand/15 transition-colors",
+                   showRevealCodes && "bg-brand/15 text-brand hover:bg-brand/25 border border-brand/30"
                 )}
                 onClick={() => onShowRevealCodesChange(!showRevealCodes)}
               >
-                <Code2 className={cn("h-4 w-4", showRevealCodes && "text-accent")} />
+                 <Code2 className={cn("h-4 w-4 text-brand")} />
                 {!collapsed && <span className="ml-2 text-xs">Reveal Codes</span>}
               </Button>
             </TooltipTrigger>
@@ -195,12 +195,12 @@ export function ToolsPane({
                 size="sm"
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-primary/15 transition-colors",
-                  showRowHighlight && "bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30"
+                   "hover:bg-brand/15 transition-colors",
+                   showRowHighlight && "bg-brand/15 text-brand hover:bg-brand/25 border border-brand/30"
                 )}
                 onClick={() => onShowRowHighlightChange(!showRowHighlight)}
               >
-                <Rows3 className={cn("h-4 w-4", showRowHighlight && "text-primary")} />
+                 <Rows3 className={cn("h-4 w-4 text-brand")} />
                 {!collapsed && <span className="ml-2 text-xs">Row Highlight</span>}
               </Button>
             </TooltipTrigger>
@@ -217,12 +217,12 @@ export function ToolsPane({
                 size="sm"
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-muted/50 transition-colors",
-                  showSlashPlaceholder && "bg-muted text-foreground hover:bg-muted/80 border border-border/50"
+                   "hover:bg-brand/15 transition-colors",
+                   showSlashPlaceholder && "bg-brand/15 text-brand hover:bg-brand/25 border border-brand/30"
                 )}
                 onClick={() => onShowSlashPlaceholderChange(!showSlashPlaceholder)}
               >
-                <Type className={cn("h-4 w-4", showSlashPlaceholder && "text-foreground")} />
+                 <Type className={cn("h-4 w-4 text-brand")} />
                 {!collapsed && <span className="ml-2 text-xs">Slash Hint</span>}
               </Button>
             </TooltipTrigger>
@@ -239,11 +239,11 @@ export function ToolsPane({
                 size="sm"
                 className={cn(
                   collapsed ? "h-8 w-8 p-0" : "w-full justify-start h-8 px-2",
-                  "hover:bg-warning/15 transition-colors"
+                   "hover:bg-brand/15 transition-colors"
                 )}
                 onClick={onToggleTheme}
               >
-                {isDark ? <Sun className="h-4 w-4 text-warning" /> : <Moon className="h-4 w-4 text-primary" />}
+                 {isDark ? <Sun className="h-4 w-4 text-brand" /> : <Moon className="h-4 w-4 text-brand" />}
                 {!collapsed && <span className="ml-2 text-xs">{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
               </Button>
             </TooltipTrigger>
