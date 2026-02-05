@@ -301,21 +301,5 @@ export function findSnippetsInContent(
   return ctx.snippets.slice(0, remaining);
 }
 
-/**
- * Timeout wrapper for async operations
- */
-export function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  timeoutError: string = 'Operation timed out'
-): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(timeoutError)), timeoutMs)
-    ),
-  ]);
-}
-
 // Re-export types for backwards compatibility
 export { MAX_SNIPPETS_PER_DOCUMENT };
