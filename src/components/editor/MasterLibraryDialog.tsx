@@ -56,6 +56,7 @@ import { useDocumentContext } from './context';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkMigrationNeeded, migrateDocumentEntitiesToMaster, backfillSourceDocumentIds } from '@/lib/masterEntityMigration';
+import { FullScreenModalHeader } from './FullScreenModalHeader';
 
 // MasterLibraryDialog - Full-page modal for managing the Master Library
 type MasterLibraryTab = 'my-library' | 'shared' | 'public';
@@ -905,6 +906,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] flex flex-col p-0 gap-0 overflow-hidden z-[60]">
+        <FullScreenModalHeader onBack={() => onOpenChange(false)} />
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MasterLibraryTab)} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b shrink-0">
             <div className="flex items-center justify-between pr-8">
