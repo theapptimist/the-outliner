@@ -20,7 +20,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { FolderPlus, MoreHorizontal, FolderInput } from 'lucide-react';
+import { FolderPlus, MoreHorizontal, FolderInput, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -377,6 +377,8 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [isBulkMoving, setIsBulkMoving] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Resizable explorer pane
   const [explorerWidth, setExplorerWidth] = useState(192); // 12rem = 192px (w-48)
@@ -654,6 +656,41 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
       refreshDocs();
     } finally {
       setIsBulkMoving(false);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedDocumentIds.size === 0) return;
+    
+    setIsBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedDocumentIds);
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .in('id', ids);
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Documents deleted',
+        description: `${ids.length} document${ids.length > 1 ? 's' : ''} removed`,
+      });
+      
+      // Clear selection and update state
+      setSelectedDocumentIds(new Set());
+      setShowDeleteConfirm(false);
+      setAllDocuments(prev => prev.filter(d => !ids.includes(d.id)));
+      refreshDocs();
+    } catch (err) {
+      console.error('[MasterLibrary] Delete error:', err);
+      toast({
+        title: 'Delete failed',
+        description: 'Could not delete documents',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
   
@@ -971,6 +1008,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
 
                     {/* Bulk move for selected documents */}
                     {selectedDocumentIds.size > 0 && (
+                      <>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -1002,6 +1040,46 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
+
+                      {/* Delete selected with confirmation */}
+                      {!showDeleteConfirm ? (
+                        <button
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">Delete selected ({selectedDocumentIds.size})</span>
+                        </button>
+                      ) : (
+                        <div className="flex flex-col gap-1.5 px-2 py-1.5 rounded bg-destructive/10 border border-destructive/30">
+                          <span className="text-xs text-destructive font-medium">Delete {selectedDocumentIds.size} doc{selectedDocumentIds.size > 1 ? 's' : ''}?</span>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-6 px-2 text-xs flex-1"
+                              onClick={handleDeleteSelected}
+                              disabled={isBulkDeleting}
+                            >
+                              {isBulkDeleting ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                'Delete'
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => setShowDeleteConfirm(false)}
+                              disabled={isBulkDeleting}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      </>
                     )}
                     
                     {allDocuments.length === 0 && folderTree.length === 0 ? (
