@@ -1,123 +1,82 @@
 
-# Fix: Jump to Document Navigates to Empty Document
+# Add "Back to Snippets" Navigation from Master Library
 
-## Root Cause Identified
-
-The `useEffect` that loads the initial document (lines 270-301 in `Editor.tsx`) has `userSettings.startWithOutline` as a dependency:
-
-```javascript
-useEffect(() => {
-  async function loadInitialDocument() {
-    // ... loads from localStorage or creates empty doc
-  }
-  if (user) {
-    loadInitialDocument();
-  }
-}, [user, userSettings.startWithOutline]);  // <-- Problem!
-```
-
-When `userSettings` loads or changes (which happens asynchronously), this effect **re-runs** and either:
-1. Loads an old document from localStorage (overwriting the navigated document)
-2. Creates a new empty "Untitled" document
-
-This creates a race condition:
-1. User clicks "Jump to document" → `handleNavigateToDocument(targetId)` starts
-2. Meanwhile, `userSettings` finishes loading from the cloud
-3. The initial load effect re-fires and calls `setDocument(localDoc)` 
-4. This overwrites the pending navigation result with an empty document
+## Problem
+When using "Jump to document" from the Master Library, there's no way to return to the snippet view. Currently:
+- The system tries to push the current document to the navigation stack
+- If that document is unsaved ("Untitled"), clicking "Back" leads to a broken state
+- Even if it works, it goes back to a document, not back to the Master Library
 
 ## Solution
+Add a special navigation entry type that represents "came from Master Library" so the Back button can return the user to the snippet view.
 
-Add a guard to prevent the initial document loading effect from running when a navigation is in progress, OR remove the `userSettings.startWithOutline` dependency from the effect since it should only affect NEW document creation, not document loading.
+## Implementation
 
-### Option A: Remove the problematic dependency (Recommended)
+### 1. Extend Navigation Entry Type
+Modify `NavigationContext.tsx` to support a special "master-library" origin type:
 
-The `startWithOutline` setting only matters when creating a *new* document. The initial load effect should only run once per user login, not re-run when settings change.
-
-**Change:** Extract `startWithOutline` value at effect execution time rather than as a dependency.
-
-```javascript
-// Before
-}, [user, userSettings.startWithOutline]);
-
-// After  
-}, [user]); // Only re-run on user change
+```typescript
+export interface NavigationEntry {
+  id: string;
+  title: string;
+  type?: 'document' | 'master-library';  // New field
+  entityId?: string;     // Which entity was expanded (for restoration)
+  entityType?: EntityType;  // Type of entity
+}
 ```
 
-And capture the setting value inside the effect at the time it executes using a ref or checking `userSettings` directly when creating the local document.
+### 2. Track Master Library State
+When jumping from Master Library, push a special entry:
 
-### Option B: Add navigation-in-progress guard
-
-Track whether navigation is in progress and skip initial load re-runs.
-
-```javascript
-const [isNavigating, setIsNavigating] = useState(false);
-
-useEffect(() => {
-  if (isNavigating) return; // Skip if navigation is happening
-  // ... existing initial load logic
-}, [user, userSettings.startWithOutline, isNavigating]);
+```typescript
+// In MasterLibraryDialog handleJumpToDocument:
+pushDocument('master-library', 'Snippets', {
+  type: 'master-library',
+  entityId: currentEntityId,
+  entityType: currentEntityType,
+});
 ```
+
+### 3. Update NavigationBackBar
+Modify `NavigationBackBar.tsx` to:
+- Detect when origin is `type: 'master-library'`
+- Show "Back to Snippets" instead of "Back to [document title]"
+- Call a different handler that re-opens the Master Library dialog
+
+### 4. Re-open Master Library on Back
+Add a callback prop to `NavigationBackBar` for opening the Master Library:
+
+```typescript
+interface NavigationBackBarProps {
+  onNavigateBack: (documentId: string) => void;
+  onOpenMasterLibrary?: () => void;  // New prop
+}
+```
+
+When the origin type is `master-library`, call `onOpenMasterLibrary()` instead of `onNavigateBack()`.
 
 ## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/pages/Editor.tsx` | Remove `userSettings.startWithOutline` from the initial load effect dependencies, or add a navigation guard |
+| `src/contexts/NavigationContext.tsx` | Add `type` and optional entity tracking fields to `NavigationEntry` |
+| `src/components/editor/MasterLibraryDialog.tsx` | Push `master-library` type entry instead of document entry |
+| `src/components/editor/NavigationBackBar.tsx` | Handle `master-library` origin type, show "Back to Snippets" |
+| `src/pages/Editor.tsx` | Pass `onOpenMasterLibrary` callback to NavigationBackBar |
 
-## Implementation Details
+## User Experience
 
-**Option A (preferred)** - The effect should only determine WHICH document to load (from localStorage or create new), not re-run when unrelated settings change:
+**Before:**
+1. Click "Jump to document" from Master Library
+2. See "Back to Untitled" bar (or broken navigation)
+3. Click Back → document disappears, broken state
 
-```javascript
-// Load document on mount (only runs once per user session)
-useEffect(() => {
-  async function loadInitialDocument() {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      const currentId = localStorage.getItem(CURRENT_DOC_KEY);
-      if (currentId) {
-        const doc = await loadCloudDocument(currentId);
-        if (doc) {
-          setDocument(doc);
-          setIsLoading(false);
-          return;
-        }
-      }
-      
-      // Access settings at execution time, not as dependency
-      const withOutline = userSettings?.startWithOutline ?? false;
-      const localDoc = createLocalDocument('Untitled', withOutline);
-      setDocument(localDoc);
-    } catch (e) {
-      console.error('Failed to load document:', e);
-      const withOutline = userSettings?.startWithOutline ?? false;
-      const localDoc = createLocalDocument('Untitled', withOutline);
-      setDocument(localDoc);
-    }
-    setIsLoading(false);
-  }
-  
-  loadInitialDocument();
-}, [user]); // Only user dependency - runs once per login
-```
+**After:**
+1. Click "Jump to document" from Master Library
+2. See "Back to Snippets" bar
+3. Click Back → Master Library re-opens to the same entity view
 
-## Why This Fixes It
-
-- The initial document load effect will only run once when the user logs in
-- When `userSettings` changes/loads, it won't re-run and create a race condition
-- Navigation via `handleNavigateToDocument` will complete without being overwritten
-- New document creation still respects `startWithOutline` by reading the current value
-
-## Test Plan
-
-1. Open Master Library
-2. Expand an entity with documents
-3. Click on a document thumbnail → "Jump to document"
-4. Verify:
-   - The correct document loads (with its title and content)
-   - No empty "Untitled" document appears
-   - Console shows successful load logs
-5. Repeat 5+ times to confirm reliability
+## Technical Notes
+- The entity ID and type are tracked so we can potentially restore the exact expanded state when returning (future enhancement)
+- This approach cleanly separates "go back to a document" from "go back to a UI view"
+- The existing document-to-document navigation continues to work unchanged
