@@ -55,6 +55,8 @@ async function getSessionWithTimeout(): Promise<{ accessToken: string | null; er
 /**
  * Fetch a single row from a Supabase table with abort capability.
  * Returns { data, error, errorMessage } where error is a classified type.
+ * 
+ * @param accessToken - Optional pre-fetched access token. If provided, skips getSession() call entirely.
  */
 export async function abortableFetchRow<T>(
   table: string,
@@ -63,22 +65,30 @@ export async function abortableFetchRow<T>(
   options: {
     timeoutMs: number;
     signal?: AbortSignal; // Optional external signal for batch abort
+    accessToken?: string | null; // Optional pre-fetched token to skip getSession
   }
 ): Promise<AbortableFetchResult<T>> {
-  const { timeoutMs, signal: externalSignal } = options;
+  const { timeoutMs, signal: externalSignal, accessToken: providedToken } = options;
   
-  // STEP 1: Get session BEFORE starting the fetch timeout
-  // This prevents getSession() hangs from eating into our fetch timeout
-  const { accessToken, error: authError } = await getSessionWithTimeout();
+  // STEP 1: Use provided token OR get session
+  // If a token is provided, skip getSession entirely (avoids potential hangs)
+  let accessToken: string | null = providedToken ?? null;
   
-  if (authError) {
-    return { 
-      data: null, 
-      error: authError, 
-      errorMessage: authError === 'auth_timeout' 
-        ? 'Authentication timed out. Please refresh and try again.' 
-        : 'Authentication error'
-    };
+  if (!providedToken) {
+    const { accessToken: fetchedToken, error: authError } = await getSessionWithTimeout();
+    
+    if (authError) {
+      return { 
+        data: null, 
+        error: authError, 
+        errorMessage: authError === 'auth_timeout' 
+          ? 'Authentication timed out. Please refresh and try again.' 
+          : 'Authentication error'
+      };
+    }
+    accessToken = fetchedToken;
+  } else {
+    console.log('[abortableFetch] Using provided access token, skipping getSession');
   }
 
   // STEP 2: Now start the actual fetch with timeout
@@ -187,6 +197,8 @@ export async function abortableFetchRow<T>(
 /**
  * Fetch multiple rows from a Supabase table with abort capability.
  * Used for batch pre-caching.
+ * 
+ * @param accessToken - Optional pre-fetched access token. If provided, skips getSession() call entirely.
  */
 export async function abortableFetchRows<T>(
   table: string,
@@ -195,21 +207,29 @@ export async function abortableFetchRows<T>(
   options: {
     timeoutMs: number;
     signal?: AbortSignal;
+    accessToken?: string | null; // Optional pre-fetched token to skip getSession
   }
 ): Promise<AbortableFetchResult<T[]>> {
-  const { timeoutMs, signal: externalSignal } = options;
+  const { timeoutMs, signal: externalSignal, accessToken: providedToken } = options;
   
-  // STEP 1: Get session BEFORE starting the fetch timeout
-  const { accessToken, error: authError } = await getSessionWithTimeout();
+  // STEP 1: Use provided token OR get session
+  let accessToken: string | null = providedToken ?? null;
   
-  if (authError) {
-    return { 
-      data: null, 
-      error: authError, 
-      errorMessage: authError === 'auth_timeout' 
-        ? 'Authentication timed out. Please refresh and try again.' 
-        : 'Authentication error'
-    };
+  if (!providedToken) {
+    const { accessToken: fetchedToken, error: authError } = await getSessionWithTimeout();
+    
+    if (authError) {
+      return { 
+        data: null, 
+        error: authError, 
+        errorMessage: authError === 'auth_timeout' 
+          ? 'Authentication timed out. Please refresh and try again.' 
+          : 'Authentication error'
+      };
+    }
+    accessToken = fetchedToken;
+  } else {
+    console.log('[abortableFetch] Using provided access token for batch, skipping getSession');
   }
 
   // STEP 2: Now start the actual fetch with timeout
