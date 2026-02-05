@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DocumentSnippet,
   EntityType,
@@ -80,6 +81,9 @@ export interface PrecacheItem {
  * Uses the document_entity_refs junction table and source_document_id
  */
 export function useEntityDocuments() {
+  const { session } = useAuth();
+  const accessToken = session?.access_token ?? null;
+  
   const [cache, setCache] = useState<Map<string, EntityDocumentInfo[]>>(new Map());
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const [snippetCache, setSnippetCache] = useState<Map<string, DocumentSnippet[]>>(new Map());
@@ -191,7 +195,7 @@ export function useEntityDocuments() {
         'documents',
         'hierarchy_blocks',
         { id: `eq.${documentId}` },
-        { timeoutMs: SNIPPET_FETCH_TIMEOUT_MS, signal: controller.signal }
+        { timeoutMs: SNIPPET_FETCH_TIMEOUT_MS, signal: controller.signal, accessToken }
       );
 
       console.log(`[snippets] hierarchy fetch: ${Math.round(performance.now() - t1)}ms, error=${hierResult.error}`);
@@ -233,7 +237,7 @@ export function useEntityDocuments() {
           'documents',
           'content',
           { id: `eq.${documentId}` },
-          { timeoutMs: SNIPPET_FETCH_TIMEOUT_MS, signal: controller.signal }
+          { timeoutMs: SNIPPET_FETCH_TIMEOUT_MS, signal: controller.signal, accessToken }
         );
         
         console.log(`[snippets] content fetch: ${Math.round(performance.now() - t3)}ms, error=${contentResult.error}`);
@@ -284,7 +288,7 @@ export function useEntityDocuments() {
         return next;
       });
     }
-  }, [snippetCache]);
+  }, [snippetCache, accessToken]);
 
   const isLoading = useCallback((entityId: string) => loading.has(entityId), [loading]);
   const getFromCache = useCallback((entityId: string) => cache.get(entityId), [cache]);
@@ -358,7 +362,7 @@ export function useEntityDocuments() {
         'documents',
         'id,hierarchy_blocks',
         { column: 'id', values: documentIds },
-        { timeoutMs: SNIPPET_FETCH_TIMEOUT_MS }
+        { timeoutMs: SNIPPET_FETCH_TIMEOUT_MS, accessToken }
       );
 
       console.log(`[snippets] precache batch fetch: ${Math.round(performance.now() - t0)}ms for ${documentIds.length} docs`);
@@ -421,7 +425,7 @@ export function useEntityDocuments() {
       });
       setPrecaching(false);
     }
-  }, [snippetCache]);
+  }, [snippetCache, accessToken]);
 
   return {
     fetchDocumentsForEntity,
