@@ -101,7 +101,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().setTextAlign('left').run()}
           isActive={editor?.isActive({ textAlign: 'left' })}
           disabled={!editor}
-           icon={<AlignLeft className="h-4 w-4 text-blue" />}
+          icon={<AlignLeft className="h-4 w-4 text-white" />}
           label="Left"
           tooltip="Align Left"
           collapsed={true}
@@ -111,7 +111,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().setTextAlign('center').run()}
           isActive={editor?.isActive({ textAlign: 'center' })}
           disabled={!editor}
-           icon={<AlignCenter className="h-4 w-4 text-blue" />}
+          icon={<AlignCenter className="h-4 w-4 text-white" />}
           label="Center"
           tooltip="Align Center"
           collapsed={true}
@@ -121,7 +121,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().setTextAlign('right').run()}
           isActive={editor?.isActive({ textAlign: 'right' })}
           disabled={!editor}
-           icon={<AlignRight className="h-4 w-4 text-blue" />}
+          icon={<AlignRight className="h-4 w-4 text-white" />}
           label="Right"
           tooltip="Align Right"
           collapsed={true}
@@ -131,7 +131,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
           isActive={editor?.isActive({ textAlign: 'justify' })}
           disabled={!editor}
-           icon={<AlignJustify className="h-4 w-4 text-blue" />}
+          icon={<AlignJustify className="h-4 w-4 text-white" />}
           label="Justify"
           tooltip="Justify"
           collapsed={true}
@@ -193,7 +193,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
           isActive={editor?.isActive('bulletList')}
           disabled={!editor}
-           icon={<List className="h-4 w-4 text-green" />}
+          icon={<List className="h-4 w-4 text-white" />}
           label="Bullets"
           tooltip="Bullet List"
           collapsed={true}
@@ -203,7 +203,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
           isActive={editor?.isActive('orderedList')}
           disabled={!editor}
-           icon={<ListOrdered className="h-4 w-4 text-green" />}
+          icon={<ListOrdered className="h-4 w-4 text-white" />}
           label="Numbers"
           tooltip="Numbered List"
           collapsed={true}
@@ -213,7 +213,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleBlockquote().run()}
           isActive={editor?.isActive('blockquote')}
           disabled={!editor}
-           icon={<Quote className="h-4 w-4 text-green" />}
+          icon={<Quote className="h-4 w-4 text-white" />}
           label="Quote"
           tooltip="Block Quote"
           collapsed={true}
@@ -222,7 +222,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
         <ToolButton
           onClick={() => editor?.chain().focus().setHorizontalRule().run()}
           disabled={!editor}
-           icon={<Minus className="h-4 w-4 text-green" />}
+          icon={<Minus className="h-4 w-4 text-white" />}
           label="Divider"
           tooltip="Horizontal Rule"
           collapsed={true}
