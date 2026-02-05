@@ -64,9 +64,6 @@ export function EditEntityDialog({
   onSave,
   onRelationshipDeleted,
 }: EditEntityDialogProps) {
-  // Debug logging
-  console.log('[EditEntityDialog] render - open:', open, 'entity:', entity?.id);
-  
   const { toast } = useToast();
   const { user } = useAuth();
   
