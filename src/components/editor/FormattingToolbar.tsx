@@ -101,41 +101,41 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().setTextAlign('left').run()}
           isActive={editor?.isActive({ textAlign: 'left' })}
           disabled={!editor}
-          icon={<AlignLeft className="h-4 w-4 text-white" />}
+          icon={<AlignLeft className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Left"
           tooltip="Align Left"
           collapsed={true}
-           color="blue"
+          color="blue"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('center').run()}
           isActive={editor?.isActive({ textAlign: 'center' })}
           disabled={!editor}
-          icon={<AlignCenter className="h-4 w-4 text-white" />}
+          icon={<AlignCenter className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Center"
           tooltip="Align Center"
           collapsed={true}
-           color="blue"
+          color="blue"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('right').run()}
           isActive={editor?.isActive({ textAlign: 'right' })}
           disabled={!editor}
-          icon={<AlignRight className="h-4 w-4 text-white" />}
+          icon={<AlignRight className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Right"
           tooltip="Align Right"
           collapsed={true}
-           color="blue"
+          color="blue"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
           isActive={editor?.isActive({ textAlign: 'justify' })}
           disabled={!editor}
-          icon={<AlignJustify className="h-4 w-4 text-white" />}
+          icon={<AlignJustify className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Justify"
           tooltip="Justify"
           collapsed={true}
-           color="blue"
+          color="blue"
         />
       </div>
 
@@ -152,7 +152,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
           isActive={editor?.isActive('heading', { level: 1 })}
           disabled={!editor}
-          icon={<Heading1 className="h-4 w-4 text-white" />}
+          icon={<Heading1 className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="H1"
           tooltip="Heading 1"
           collapsed={true}
@@ -162,7 +162,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
           isActive={editor?.isActive('heading', { level: 2 })}
           disabled={!editor}
-          icon={<Heading2 className="h-4 w-4 text-white" />}
+          icon={<Heading2 className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="H2"
           tooltip="Heading 2"
           collapsed={true}
@@ -172,7 +172,7 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
           isActive={editor?.isActive('heading', { level: 3 })}
           disabled={!editor}
-          icon={<Heading3 className="h-4 w-4 text-white" />}
+          icon={<Heading3 className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="H3"
           tooltip="Heading 3"
           collapsed={true}
@@ -193,40 +193,40 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
           isActive={editor?.isActive('bulletList')}
           disabled={!editor}
-          icon={<List className="h-4 w-4 text-white" />}
+          icon={<List className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Bullets"
           tooltip="Bullet List"
           collapsed={true}
-           color="green"
+          color="green"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().toggleOrderedList().run()}
           isActive={editor?.isActive('orderedList')}
           disabled={!editor}
-          icon={<ListOrdered className="h-4 w-4 text-white" />}
+          icon={<ListOrdered className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Numbers"
           tooltip="Numbered List"
           collapsed={true}
-           color="green"
+          color="green"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().toggleBlockquote().run()}
           isActive={editor?.isActive('blockquote')}
           disabled={!editor}
-          icon={<Quote className="h-4 w-4 text-white" />}
+          icon={<Quote className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Quote"
           tooltip="Block Quote"
           collapsed={true}
-           color="green"
+          color="green"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().setHorizontalRule().run()}
           disabled={!editor}
-          icon={<Minus className="h-4 w-4 text-white" />}
+          icon={<Minus className="h-4 w-4 text-gray-700 dark:text-gray-300" />}
           label="Divider"
           tooltip="Horizontal Rule"
           collapsed={true}
-           color="green"
+          color="green"
         />
       </div>
     </>
