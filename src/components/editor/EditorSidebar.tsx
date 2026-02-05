@@ -330,6 +330,7 @@ export function EditorSidebar({
       {/* Dashboard View */}
       {showDashboard && (
         <DashboardView 
+          onClose={() => setShowDashboard(false)}
           onSelectTile={(id) => {
             setShowDashboard(false);
             if (id !== 'editor') {
