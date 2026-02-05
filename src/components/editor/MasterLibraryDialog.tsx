@@ -16,6 +16,9 @@ import {
   CheckCircle,
   FileText,
   Check,
+  Folder,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +38,7 @@ import { useMasterEntities, MasterEntity, EntityType } from '@/hooks/useMasterEn
 import { useEntityPermissions } from '@/hooks/useEntityPermissions';
 import { usePublicEntities } from '@/hooks/usePublicEntities';
 import { useMasterLibraryDocuments } from '@/hooks/useMasterLibraryDocuments';
+import { useDocumentFolders, FolderWithChildren } from '@/hooks/useDocumentFolders';
 import { useDocumentContext } from './context';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -307,9 +311,11 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const [entityFilter, setEntityFilter] = useState<EntityType | undefined>(undefined);
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(new Set());
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   
-  // Document explorer
+  // Document and folder data
   const { documents: libraryDocuments, loading: loadingDocs, refresh: refreshDocs } = useMasterLibraryDocuments();
+  const { folders, buildFolderTree, loading: loadingFolders } = useDocumentFolders();
   
   // Migration state
   const { user } = useAuth();
@@ -344,6 +350,115 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
       getSharedWithMe().then(ids => setSharedCount(ids.length));
     }
   }, [open, getSharedWithMe]);
+
+  // Build folder tree with documents
+  const folderTree = useMemo(() => buildFolderTree(null), [buildFolderTree]);
+  
+  // Get documents grouped by folder
+  const documentsByFolder = useMemo(() => {
+    const map = new Map<string | null, typeof libraryDocuments>();
+    libraryDocuments.forEach(doc => {
+      const folderId = doc.folder_id || null;
+      if (!map.has(folderId)) {
+        map.set(folderId, []);
+      }
+      map.get(folderId)!.push(doc);
+    });
+    return map;
+  }, [libraryDocuments]);
+
+  const toggleFolderExpanded = (folderId: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
+
+  // Render folder with its documents recursively
+  const renderFolderWithDocs = (folder: FolderWithChildren, depth: number = 0) => {
+    const isExpanded = expandedFolders.has(folder.id);
+    const folderDocs = documentsByFolder.get(folder.id) || [];
+    const hasContent = folderDocs.length > 0 || folder.children.length > 0;
+    
+    if (!hasContent) return null;
+    
+    return (
+      <div key={folder.id}>
+        <button
+          onClick={() => toggleFolderExpanded(folder.id)}
+          className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          style={{ paddingLeft: `${8 + depth * 12}px` }}
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-3 w-3 shrink-0" />
+          ) : (
+            <ChevronRight className="h-3 w-3 shrink-0" />
+          )}
+          <Folder className={cn("h-3 w-3 shrink-0", isExpanded ? "text-warning" : "")} />
+          <span className="flex-1 truncate font-medium">{folder.name}</span>
+          <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+            {folderDocs.reduce((sum, d) => sum + d.entityCount, 0)}
+          </Badge>
+        </button>
+        
+        {isExpanded && (
+          <div>
+            {/* Child folders */}
+            {folder.children.map(child => renderFolderWithDocs(child, depth + 1))}
+            
+            {/* Documents in this folder */}
+            {folderDocs.map(doc => (
+              <button
+                key={doc.id}
+                onClick={() => {
+                  setSelectedDocumentIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(doc.id)) {
+                      next.delete(doc.id);
+                    } else {
+                      next.add(doc.id);
+                    }
+                    return next;
+                  });
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
+                  selectedDocumentIds.has(doc.id)
+                    ? "bg-primary/10 text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+                style={{ paddingLeft: `${20 + depth * 12}px` }}
+              >
+                <div className={cn(
+                  "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                  selectedDocumentIds.has(doc.id)
+                    ? "bg-primary border-primary"
+                    : "border-border"
+                )}>
+                  {selectedDocumentIds.has(doc.id) && (
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  )}
+                </div>
+                <FileText className="h-3 w-3 shrink-0 opacity-50" />
+                <span className="flex-1 break-words leading-tight">{doc.title}</span>
+                <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+                  {doc.entityCount}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Documents without a folder
+  const unfolderedDocs = documentsByFolder.get(null) || [];
   
   const handleMigration = async () => {
     if (!user?.id) return;
@@ -553,49 +668,55 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                         
                         <div className="h-px bg-border/50 my-1.5" />
                         
-                        {loadingDocs ? (
+                        {loadingDocs || loadingFolders ? (
                           <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                           </div>
                         ) : (
-                          libraryDocuments.map(doc => (
-                            <button
-                              key={doc.id}
-                              onClick={() => {
-                                setSelectedDocumentIds(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(doc.id)) {
-                                    next.delete(doc.id);
-                                  } else {
-                                    next.add(doc.id);
-                                  }
-                                  return next;
-                                });
-                              }}
-                              className={cn(
-                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
-                                selectedDocumentIds.has(doc.id)
-                                  ? "bg-primary/10 text-foreground"
-                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                              )}
-                            >
-                              <div className={cn(
-                                "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                                selectedDocumentIds.has(doc.id)
-                                  ? "bg-primary border-primary"
-                                  : "border-border"
-                              )}>
-                                {selectedDocumentIds.has(doc.id) && (
-                                  <Check className="h-3 w-3 text-primary-foreground" />
+                          <>
+                            {/* Folders with their documents */}
+                            {folderTree.map(folder => renderFolderWithDocs(folder, 0))}
+                            
+                            {/* Documents without folder */}
+                            {unfolderedDocs.map(doc => (
+                              <button
+                                key={doc.id}
+                                onClick={() => {
+                                  setSelectedDocumentIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(doc.id)) {
+                                      next.delete(doc.id);
+                                    } else {
+                                      next.add(doc.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className={cn(
+                                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors group",
+                                  selectedDocumentIds.has(doc.id)
+                                    ? "bg-primary/10 text-foreground"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                 )}
-                              </div>
-                              <FileText className="h-3 w-3 shrink-0 opacity-50" />
-                           <span className="flex-1 break-words leading-tight">{doc.title}</span>
-                              <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
-                                {doc.entityCount}
-                              </Badge>
-                            </button>
-                          ))
+                              >
+                                <div className={cn(
+                                  "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                                  selectedDocumentIds.has(doc.id)
+                                    ? "bg-primary border-primary"
+                                    : "border-border"
+                                )}>
+                                  {selectedDocumentIds.has(doc.id) && (
+                                    <Check className="h-3 w-3 text-primary-foreground" />
+                                  )}
+                                </div>
+                                <FileText className="h-3 w-3 shrink-0 opacity-50" />
+                                <span className="flex-1 break-words leading-tight">{doc.title}</span>
+                                <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+                                  {doc.entityCount}
+                                </Badge>
+                              </button>
+                            ))}
+                          </>
                         )}
                       </>
                     )}

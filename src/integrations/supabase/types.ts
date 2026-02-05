@@ -91,10 +91,46 @@ export type Database = {
           },
         ]
       }
+      document_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           content: Json | null
           created_at: string
+          folder_id: string | null
           hierarchy_blocks: Json | null
           id: string
           is_master: boolean | null
@@ -105,6 +141,7 @@ export type Database = {
         Insert: {
           content?: Json | null
           created_at?: string
+          folder_id?: string | null
           hierarchy_blocks?: Json | null
           id?: string
           is_master?: boolean | null
@@ -115,6 +152,7 @@ export type Database = {
         Update: {
           content?: Json | null
           created_at?: string
+          folder_id?: string | null
           hierarchy_blocks?: Json | null
           id?: string
           is_master?: boolean | null
@@ -122,7 +160,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entities: {
         Row: {
