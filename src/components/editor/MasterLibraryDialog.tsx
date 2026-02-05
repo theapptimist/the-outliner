@@ -49,6 +49,7 @@ import { useMasterEntities, MasterEntity, EntityType } from '@/hooks/useMasterEn
 import { useEntityPermissions } from '@/hooks/useEntityPermissions';
 import { usePublicEntities } from '@/hooks/usePublicEntities';
 import { useMasterLibraryDocuments } from '@/hooks/useMasterLibraryDocuments';
+import { supabase } from '@/integrations/supabase/client';
 import { useDocumentFolders, FolderWithChildren } from '@/hooks/useDocumentFolders';
 import { useDocumentContext } from './context';
 import { useToast } from '@/hooks/use-toast';
@@ -345,6 +346,41 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const { getSharedWithMe } = useEntityPermissions();
   const [sharedCount, setSharedCount] = useState(0);
   
+  // All documents state (not just library docs)
+  const [allDocuments, setAllDocuments] = useState<Array<{id: string; title: string; folder_id: string | null; entityCount: number}>>([]);
+  const [loadingAllDocs, setLoadingAllDocs] = useState(false);
+  
+  // Fetch all user documents when dialog opens
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    
+    setLoadingAllDocs(true);
+    supabase
+      .from('documents')
+      .select('id, title, folder_id')
+      .eq('user_id', user.id)
+      .order('title')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[MasterLibrary] Error fetching documents:', error);
+          setAllDocuments([]);
+        } else {
+          // Merge with library docs to get entity counts
+          const docsWithCounts = (data || []).map(doc => {
+            const libraryDoc = libraryDocuments.find(ld => ld.id === doc.id);
+            return {
+              id: doc.id,
+              title: doc.title,
+              folder_id: doc.folder_id,
+              entityCount: libraryDoc?.entityCount || 0,
+            };
+          });
+          setAllDocuments(docsWithCounts);
+        }
+        setLoadingAllDocs(false);
+      });
+  }, [open, user?.id, libraryDocuments]);
+  
   // Check if migration is needed when dialog opens
   useEffect(() => {
     if (open && user?.id && !migrationComplete) {
@@ -368,10 +404,10 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   // Build folder tree with documents
   const folderTree = useMemo(() => buildFolderTree(null), [buildFolderTree]);
   
-  // Get documents grouped by folder
+  // Get ALL documents grouped by folder (not just library docs)
   const documentsByFolder = useMemo(() => {
-    const map = new Map<string | null, typeof libraryDocuments>();
-    libraryDocuments.forEach(doc => {
+    const map = new Map<string | null, typeof allDocuments>();
+    allDocuments.forEach(doc => {
       const folderId = doc.folder_id || null;
       if (!map.has(folderId)) {
         map.set(folderId, []);
@@ -379,7 +415,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
       map.get(folderId)!.push(doc);
     });
     return map;
-  }, [libraryDocuments]);
+  }, [allDocuments]);
 
   const toggleFolderExpanded = (folderId: string) => {
     setExpandedFolders(prev => {
@@ -443,6 +479,10 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
         description: folderId ? "Document moved to folder" : "Document moved to root",
       });
       refreshDocs();
+      // Also update allDocuments state directly
+      setAllDocuments(prev => prev.map(doc => 
+        doc.id === docId ? { ...doc, folder_id: folderId } : doc
+      ));
     } else {
       toast({
         title: "Error",
@@ -495,38 +535,38 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
         {doc.entityCount}
       </Badge>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <button className="h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-muted-foreground/20">
-            <MoreHorizontal className="h-3 w-3" />
+        <DropdownMenuTrigger asChild>
+          <button 
+            onClick={(e) => e.stopPropagation()}
+            className="h-5 w-5 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity rounded hover:bg-muted-foreground/20"
+            title="Move to folder"
+          >
+            <FolderInput className="h-3 w-3" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <FolderInput className="h-3.5 w-3.5 mr-2" />
-              Move to Folder
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-40">
-              <DropdownMenuItem 
-                onClick={() => handleMoveToFolder(doc.id, null)}
-                disabled={doc.folder_id === null}
-              >
-                <FileText className="h-3.5 w-3.5 mr-2" />
-                No Folder
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {folderTree.map(folder => (
-                <DropdownMenuItem 
-                  key={folder.id}
-                  onClick={() => handleMoveToFolder(doc.id, folder.id)}
-                  disabled={doc.folder_id === folder.id}
-                >
-                  <Folder className="h-3.5 w-3.5 mr-2" />
-                  {folder.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          <DropdownMenuItem 
+            onClick={() => handleMoveToFolder(doc.id, null)}
+            disabled={doc.folder_id === null}
+          >
+            <FileText className="h-3.5 w-3.5 mr-2" />
+            No Folder (Root)
+          </DropdownMenuItem>
+          {folderTree.length > 0 && <DropdownMenuSeparator />}
+          {folderTree.map(folder => (
+            <DropdownMenuItem 
+              key={folder.id}
+              onClick={() => handleMoveToFolder(doc.id, folder.id)}
+              disabled={doc.folder_id === folder.id}
+              className={doc.folder_id === folder.id ? "bg-muted" : ""}
+            >
+              <Folder className="h-3.5 w-3.5 mr-2" />
+              {folder.name}
+              {doc.folder_id === folder.id && (
+                <Check className="h-3 w-3 ml-auto text-primary" />
+              )}
+            </DropdownMenuItem>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -761,7 +801,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     
                     <div className="h-px bg-border/50 my-1.5" />
                     
-                    {libraryDocuments.length === 0 && folderTree.length === 0 ? (
+                    {allDocuments.length === 0 && folderTree.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
                         <FileText className="h-8 w-8 mb-2 opacity-30" />
                         <p className="text-xs text-center">No documents or folders yet</p>
@@ -771,26 +811,26 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                         {/* Select All */}
                         <button
                           onClick={() => {
-                            if (selectedDocumentIds.size === libraryDocuments.length) {
+                            if (selectedDocumentIds.size === allDocuments.length) {
                               setSelectedDocumentIds(new Set());
                             } else {
-                              setSelectedDocumentIds(new Set(libraryDocuments.map(d => d.id)));
+                              setSelectedDocumentIds(new Set(allDocuments.map(d => d.id)));
                             }
                           }}
                           className={cn(
                             "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors",
-                            selectedDocumentIds.size === libraryDocuments.length
+                            selectedDocumentIds.size === allDocuments.length
                               ? "bg-primary/10 text-foreground"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                         >
                           <div className={cn(
                             "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                            selectedDocumentIds.size === libraryDocuments.length
+                            selectedDocumentIds.size === allDocuments.length
                               ? "bg-primary border-primary"
                               : "border-border"
                           )}>
-                            {selectedDocumentIds.size === libraryDocuments.length && (
+                            {selectedDocumentIds.size === allDocuments.length && (
                               <Check className="h-3 w-3 text-primary-foreground" />
                             )}
                           </div>
@@ -799,7 +839,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                         
                         <div className="h-px bg-border/50 my-1.5" />
                         
-                        {loadingDocs || loadingFolders ? (
+                        {loadingDocs || loadingFolders || loadingAllDocs ? (
                           <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                           </div>
