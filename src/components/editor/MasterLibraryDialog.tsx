@@ -380,6 +380,8 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const [isBulkMoving, setIsBulkMoving] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   
   // Resizable explorer pane
   const [explorerWidth, setExplorerWidth] = useState(192); // 12rem = 192px (w-48)
@@ -494,6 +496,30 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
 
   // Build folder tree with documents
   const folderTree = useMemo(() => buildFolderTree(null), [buildFolderTree]);
+  
+  // Handle document rename
+  const handleRenameDocument = async (docId: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed || !user?.id) {
+      setRenamingDocId(null);
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('documents')
+      .update({ title: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', docId)
+      .eq('user_id', user.id);
+    
+    if (error) {
+      toast({ title: 'Failed to rename document', variant: 'destructive' });
+    } else {
+      // Update local state
+      setAllDocuments(prev => prev.map(d => d.id === docId ? { ...d, title: trimmed } : d));
+      refreshDocs();
+    }
+    setRenamingDocId(null);
+  };
   
   // Get ALL documents grouped by folder (not just library docs)
   const documentsByFolder = useMemo(() => {
@@ -696,89 +722,125 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   };
   
   // Render a document item with move-to-folder dropdown
-  const renderDocItem = (doc: { id: string; title: string; entityCount: number; folder_id: string | null }, depth: number = 0) => (
-    <div
-      key={doc.id}
-      className={cn(
-        "flex items-start gap-2 px-2 py-1.5 rounded text-xs transition-colors group",
-        selectedDocumentIds.has(doc.id)
-          ? "bg-primary/10 text-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      )}
-      style={{ paddingLeft: `${8 + depth * 12}px` }}
-    >
-      <button
-        onClick={() => {
-          setSelectedDocumentIds(prev => {
-            const next = new Set(prev);
-            if (next.has(doc.id)) {
-              next.delete(doc.id);
-            } else {
-              next.add(doc.id);
-            }
-            return next;
-          });
-        }}
-        className="flex items-start gap-2 flex-1 min-w-0 text-left"
-      >
-        <div className={cn(
-          "h-4 w-4 rounded border flex items-center justify-center shrink-0 mt-0.5",
+  const renderDocItem = (doc: { id: string; title: string; entityCount: number; folder_id: string | null }, depth: number = 0) => {
+    const isRenaming = renamingDocId === doc.id;
+    
+    return (
+      <div
+        key={doc.id}
+        className={cn(
+          "flex items-start gap-2 px-2 py-1.5 rounded text-xs transition-colors group",
           selectedDocumentIds.has(doc.id)
-            ? "bg-primary border-primary"
-            : "border-border"
-        )}>
-          {selectedDocumentIds.has(doc.id) && (
-            <Check className="h-3 w-3 text-primary-foreground" />
-          )}
-        </div>
-        <FileText className="h-3 w-3 shrink-0 opacity-50 mt-0.5" />
-        <span
-          className="flex-1 leading-tight whitespace-normal break-words"
-          style={{ maxWidth: '15ch' }}
+            ? "bg-primary/10 text-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+        style={{ paddingLeft: `${8 + depth * 12}px` }}
+      >
+        {/* Checkbox for selection */}
+        <button
+          onClick={() => {
+            setSelectedDocumentIds(prev => {
+              const next = new Set(prev);
+              if (next.has(doc.id)) {
+                next.delete(doc.id);
+              } else {
+                next.add(doc.id);
+              }
+              return next;
+            });
+          }}
+          className="shrink-0 mt-0.5"
         >
-          {doc.title}
-        </span>
-      </button>
-      <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
-        {doc.entityCount}
-      </Badge>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button 
-            onClick={(e) => e.stopPropagation()}
-            className="h-5 w-5 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity rounded hover:bg-muted-foreground/20"
-            title="Move to folder"
+          <div className={cn(
+            "h-4 w-4 rounded border flex items-center justify-center",
+            selectedDocumentIds.has(doc.id)
+              ? "bg-primary border-primary"
+              : "border-border"
+          )}>
+            {selectedDocumentIds.has(doc.id) && (
+              <Check className="h-3 w-3 text-primary-foreground" />
+            )}
+          </div>
+        </button>
+        
+        <FileText className="h-3 w-3 shrink-0 opacity-50 mt-0.5" />
+        
+        {/* Title - click to rename */}
+        {isRenaming ? (
+          <input
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onBlur={() => handleRenameDocument(doc.id, renameValue)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleRenameDocument(doc.id, renameValue);
+              } else if (e.key === 'Escape') {
+                setRenamingDocId(null);
+              }
+            }}
+            autoFocus
+            className="flex-1 min-w-0 bg-transparent border-b border-primary outline-none text-xs leading-tight"
+            style={{ maxWidth: '15ch' }}
+          />
+        ) : (
+          <button
+            onClick={() => {
+              setRenamingDocId(doc.id);
+              setRenameValue(doc.title);
+            }}
+            className="flex-1 min-w-0 text-left cursor-text hover:underline"
           >
-            <FolderInput className="h-3 w-3" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem 
-            onClick={() => handleMoveToFolder(doc.id, null)}
-            disabled={doc.folder_id === null}
-          >
-            <FileText className="h-3.5 w-3.5 mr-2" />
-            No Folder (Root)
-          </DropdownMenuItem>
-          {folderTree.length > 0 && <DropdownMenuSeparator />}
-          {folderTree.map(folder => (
-            <DropdownMenuItem 
-              key={folder.id}
-              onClick={() => handleMoveToFolder(doc.id, folder.id)}
-              disabled={doc.folder_id === folder.id}
-              className={doc.folder_id === folder.id ? "bg-muted" : ""}
+            <span
+              className="leading-tight whitespace-normal break-words"
+              style={{ maxWidth: '15ch' }}
             >
-              <Folder className="h-3.5 w-3.5 mr-2" />
-              {folder.name}
-              {doc.folder_id === folder.id && (
-                <Check className="h-3 w-3 ml-auto text-primary" />
-              )}
+              {doc.title}
+            </span>
+          </button>
+        )}
+        
+        <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+          {doc.entityCount}
+        </Badge>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button 
+              onClick={(e) => e.stopPropagation()}
+              className="h-5 w-5 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity rounded hover:bg-muted-foreground/20"
+              title="Move to folder"
+            >
+              <FolderInput className="h-3 w-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem 
+              onClick={() => handleMoveToFolder(doc.id, null)}
+              disabled={doc.folder_id === null}
+            >
+              <FileText className="h-3.5 w-3.5 mr-2" />
+              No Folder (Root)
             </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
+            {folderTree.length > 0 && <DropdownMenuSeparator />}
+            {folderTree.map(folder => (
+              <DropdownMenuItem 
+                key={folder.id}
+                onClick={() => handleMoveToFolder(doc.id, folder.id)}
+                disabled={doc.folder_id === folder.id}
+                className={doc.folder_id === folder.id ? "bg-muted" : ""}
+              >
+                <Folder className="h-3.5 w-3.5 mr-2" />
+                {folder.name}
+                {doc.folder_id === folder.id && (
+                  <Check className="h-3 w-3 ml-auto text-primary" />
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  };
   
   const handleMigration = async () => {
     if (!user?.id) return;
