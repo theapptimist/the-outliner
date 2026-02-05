@@ -170,7 +170,7 @@ function DocumentThumbnail({
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col" data-allow-pointer>
       {/* Thumbnail */}
       <div 
         className={cn(
@@ -178,11 +178,12 @@ function DocumentThumbnail({
           isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
         )}
         onClick={handleClick}
+        data-allow-pointer
       >
-        <div className="w-12 h-14 bg-background border border-border/50 rounded flex items-center justify-center">
+        <div className="w-12 h-14 bg-background border border-border/50 rounded flex items-center justify-center pointer-events-none">
           <File className="h-6 w-6 text-muted-foreground/50" />
         </div>
-        <span className="text-[10px] text-muted-foreground text-center line-clamp-2 leading-tight">
+        <span className="text-[10px] text-muted-foreground text-center line-clamp-2 leading-tight pointer-events-none">
           {doc.title}
         </span>
       </div>
@@ -408,7 +409,11 @@ function MasterEntityCard({
       
       {/* Expanded document thumbnails section */}
       {isExpanded && (
-        <div className="border border-t-0 border-border rounded-b-md bg-muted/30 p-3">
+        <div 
+          className="border border-t-0 border-border rounded-b-md bg-muted/30 p-3"
+          onClick={(e) => e.stopPropagation()}
+          data-allow-pointer
+        >
           {isLoadingDocs ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
