@@ -266,7 +266,9 @@ export default function Editor() {
     }
   }, [user, authLoading, navigate]);
 
-  // Load document on mount
+  // Load document on mount (only runs once per user session)
+  // NOTE: userSettings.startWithOutline is accessed at execution time, NOT as a dependency,
+  // to prevent race conditions where settings loading overwrites navigated documents
   useEffect(() => {
     async function loadInitialDocument() {
       if (!user) return;
@@ -284,12 +286,15 @@ export default function Editor() {
         }
         
         // No existing document - create LOCAL-ONLY document (not persisted until save)
-        const localDoc = createLocalDocument('Untitled', userSettings.startWithOutline);
+        // Access startWithOutline at execution time to get current value
+        const withOutline = userSettings?.startWithOutline ?? true;
+        const localDoc = createLocalDocument('Untitled', withOutline);
         setDocument(localDoc);
       } catch (e) {
         console.error('Failed to load document:', e);
         // Fallback to local-only empty document
-        const localDoc = createLocalDocument('Untitled', userSettings.startWithOutline);
+        const withOutline = userSettings?.startWithOutline ?? true;
+        const localDoc = createLocalDocument('Untitled', withOutline);
         setDocument(localDoc);
       }
       setIsLoading(false);
@@ -298,7 +303,8 @@ export default function Editor() {
     if (user) {
       loadInitialDocument();
     }
-  }, [user, userSettings.startWithOutline]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // Only re-run on user change, not settings changes
 
   const handleUndoRedoChange = useCallback((
     undo: () => void,
