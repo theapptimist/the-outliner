@@ -441,7 +441,9 @@ export default function Editor() {
         setDocumentVersion(v => v + 1);
         setHasUnsavedChanges(false);
       } else {
-        toast.error('Document not found');
+        // Document not found - likely an unsaved local document that was in the nav stack
+        console.warn('[nav] Document not found in cloud, may have been unsaved:', id);
+        toast.error('Document not found (may not have been saved)');
       }
     } catch (e) {
       console.error('[nav] loadCloudDocument failed:', e);
