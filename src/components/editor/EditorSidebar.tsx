@@ -227,11 +227,11 @@ export function EditorSidebar({
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
                   !fileMenuOpen && activeTab === 'tools'
-                    ? "bg-primary/15 text-primary"
+                    ? "bg-purple/15 text-purple"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
-                <Pen className="h-4 w-4" />
+                <Pen className="h-4 w-4 text-purple" />
               </button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>Tools</TooltipContent>
@@ -244,11 +244,11 @@ export function EditorSidebar({
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
                   !fileMenuOpen && activeTab === 'library'
-                    ? "bg-accent/15 text-accent"
+                    ? "bg-blue/15 text-blue"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
-                <BookOpen className="h-4 w-4" />
+                <BookOpen className="h-4 w-4 text-blue" />
               </button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>Library</TooltipContent>
@@ -261,11 +261,11 @@ export function EditorSidebar({
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
                   !fileMenuOpen && activeTab === 'ai'
-                    ? "bg-success/15 text-success"
+                    ? "bg-green/15 text-green"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4 text-green" />
               </button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>AI Generate</TooltipContent>
@@ -280,11 +280,11 @@ export function EditorSidebar({
                 className={cn(
                   "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
                   !fileMenuOpen && activeTab === 'timeline'
-                    ? "bg-info/15 text-info"
+                    ? "bg-gray-500/15 text-gray-500"
                     : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
-                <Clock className="h-4 w-4" />
+                <Clock className="h-4 w-4 text-gray-500" />
               </button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? "right" : "bottom"}>Timeline</TooltipContent>
