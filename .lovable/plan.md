@@ -1,61 +1,81 @@
 
-## Fix: Document Thumbnail Click Not Working
+## Fix: Snippets Not Showing & Document Jump Not Loading
 
-### Problem
-When clicking on a document thumbnail in the Master Library's expanded entity section, nothing happens. The `isSelected` state isn't toggling.
+### Problem 1: Snippets Not Showing
+The `findSnippetsInHierarchy` function has several issues:
 
-### Root Cause
-The `handleClick` function in `DocumentThumbnail` awaits `fetchSnippetsForDocument` **before** calling `setIsSelected(!isSelected)`:
+1. **Regex state issue**: Using `regex.test()` followed by `regex.match()` on a global regex (`/gi`) causes the `lastIndex` to advance after `test()`, making the subsequent `match()` unreliable.
 
-```typescript
-const handleClick = async (e: React.MouseEvent) => {
-  e.stopPropagation();
-  
-  if (!isSelected) {
-    // This await blocks the UI toggle
-    const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, entityName);
-    setSnippets(fetchedSnippets);
-    setCurrentSnippetIndex(0);
-  }
-  setIsSelected(!isSelected);  // Only runs after fetch completes
-};
-```
+2. **escapeRegex defined inside loop scope**: The `escapeRegex` function is defined inside `findSnippetsInHierarchy` but after the regex is created on line 35, meaning it's undefined when first called.
 
-If the fetch fails or takes time, the selection toggle is delayed or never happens.
+3. **Debug logging missing**: No way to see what's happening during snippet search.
+
+### Problem 2: Jump to Document Not Loading
+The navigation flow closes the dialog first, but the `handleJumpToDocument` callback might be getting garbage-collected or the timing is off. Additionally, `onJumpToDocument` is optional (`onJumpToDocument?.(docId)`) so if the prop isn't correctly wired, nothing happens.
 
 ### Solution
-Toggle `isSelected` immediately on click, then fetch snippets asynchronously. This provides instant feedback to the user:
+
+#### Fix 1: Reorder `escapeRegex` and fix regex usage
+Move `escapeRegex` function definition before it's used, and reset regex lastIndex or use a simpler matching approach:
 
 ```typescript
-const handleClick = async (e: React.MouseEvent) => {
-  e.stopPropagation();
+function findSnippetsInHierarchy(
+  hierarchyBlocks: Record<string, any>,
+  searchTerm: string
+): DocumentSnippet[] {
+  const snippets: DocumentSnippet[] = [];
+  const termLower = searchTerm.toLowerCase();
   
-  const newIsSelected = !isSelected;
-  setIsSelected(newIsSelected);  // Toggle immediately
-  
-  if (newIsSelected) {
-    // Fetch snippets asynchronously (don't block the toggle)
-    const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, entityName);
-    setSnippets(fetchedSnippets);
-    setCurrentSnippetIndex(0);
+  // Move escapeRegex BEFORE it's used
+  function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
-};
+  
+  // Create regex after escapeRegex is defined
+  const escapedTerm = escapeRegex(searchTerm);
+  
+  function scanNode(node: any, blockId: string) {
+    // Check label - use simple includes() check first, then extract snippet
+    if (node.label) {
+      const labelLower = node.label.toLowerCase();
+      const idx = labelLower.indexOf(termLower);
+      if (idx !== -1) {
+        const start = Math.max(0, idx - 40);
+        const end = Math.min(node.label.length, idx + searchTerm.length + 40);
+        let snippet = node.label.substring(start, end);
+        if (start > 0) snippet = '...' + snippet;
+        if (end < node.label.length) snippet = snippet + '...';
+        
+        snippets.push({
+          text: snippet,
+          nodeLabel: node.label.substring(0, 50),
+          blockId,
+          nodeId: node.id,
+        });
+      }
+    }
+    // ... similar fix for content
+  }
+  // ...
+}
 ```
 
-### Additional Fix
-Also add `onMouseDown` handler with `e.stopPropagation()` to prevent any mousedown capture at parent levels from interfering:
+#### Fix 2: Ensure navigation happens after dialog closes
+Use `setTimeout` to defer navigation until after dialog close animation:
 
 ```typescript
-<div 
-  className={cn(...)}
-  onClick={handleClick}
-  onMouseDown={(e) => e.stopPropagation()}
-  data-allow-pointer
->
+const handleJumpToDocument = useCallback((docId: string) => {
+  onOpenChange(false); // Close the dialog
+  // Defer navigation to ensure dialog fully closes
+  setTimeout(() => {
+    onJumpToDocument?.(docId);
+  }, 100);
+}, [onOpenChange, onJumpToDocument]);
 ```
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/editor/MasterLibraryDialog.tsx` | Fix `handleClick` to toggle state immediately, add `onMouseDown` handler |
+| `src/hooks/useEntityDocuments.ts` | Fix `escapeRegex` ordering, simplify matching logic to use `indexOf` instead of global regex |
+| `src/components/editor/MasterLibraryDialog.tsx` | Add `setTimeout` delay in `handleJumpToDocument` to ensure dialog closes before navigation |
