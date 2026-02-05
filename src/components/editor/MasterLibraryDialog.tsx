@@ -590,7 +590,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                                 )}
                               </div>
                               <FileText className="h-3 w-3 shrink-0 opacity-50" />
-                              <span className="truncate flex-1">{doc.title}</span>
+                           <span className="flex-1 break-words leading-tight">{doc.title}</span>
                               <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
                                 {doc.entityCount}
                               </Badge>
