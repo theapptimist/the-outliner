@@ -19,9 +19,11 @@ import {
   Folder,
   ChevronRight,
   ChevronDown,
+  ChevronLeft,
   File,
+  ArrowRight,
 } from 'lucide-react';
-import { useEntityDocuments, EntityDocumentInfo } from '@/hooks/useEntityDocuments';
+import { useEntityDocuments, EntityDocumentInfo, DocumentSnippet } from '@/hooks/useEntityDocuments';
 import { FolderPlus, MoreHorizontal, FolderInput, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +68,7 @@ type MasterLibraryTab = 'my-library' | 'shared' | 'public';
 interface MasterLibraryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onJumpToDocument?: (docId: string) => void;
 }
 
 const ENTITY_ICONS = {
@@ -119,6 +122,160 @@ function isDocumentEmpty(content: Json | null, hierarchyBlocks: Json | null): bo
   return !hasRealContent;
 }
 
+// Document thumbnail with expandable snippet viewer
+interface DocumentThumbnailProps {
+  doc: EntityDocumentInfo;
+  entityName: string;
+  entityDocuments: ReturnType<typeof useEntityDocuments>;
+  onJumpToDocument: (docId: string) => void;
+}
+
+function DocumentThumbnail({ 
+  doc, 
+  entityName, 
+  entityDocuments, 
+  onJumpToDocument 
+}: DocumentThumbnailProps) {
+  const [isSelected, setIsSelected] = useState(false);
+  const [snippets, setSnippets] = useState<DocumentSnippet[]>([]);
+  const [currentSnippetIndex, setCurrentSnippetIndex] = useState(0);
+  
+  const isLoadingSnippets = entityDocuments.isSnippetLoading(doc.id, entityName);
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isSelected) {
+      // Fetch snippets when selecting
+      const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, entityName);
+      setSnippets(fetchedSnippets);
+      setCurrentSnippetIndex(0);
+    }
+    setIsSelected(!isSelected);
+  };
+
+  const handlePrevSnippet = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSnippetIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNextSnippet = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSnippetIndex(prev => Math.min(snippets.length - 1, prev + 1));
+  };
+
+  const handleJump = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onJumpToDocument(doc.id);
+  };
+
+  return (
+    <div className="flex flex-col">
+      {/* Thumbnail */}
+      <div 
+        className={cn(
+          "flex flex-col items-center gap-1 p-2 rounded-md bg-card border transition-colors cursor-pointer min-w-[80px] max-w-[100px]",
+          isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+        )}
+        onClick={handleClick}
+      >
+        <div className="w-12 h-14 bg-background border border-border/50 rounded flex items-center justify-center">
+          <File className="h-6 w-6 text-muted-foreground/50" />
+        </div>
+        <span className="text-[10px] text-muted-foreground text-center line-clamp-2 leading-tight">
+          {doc.title}
+        </span>
+      </div>
+      
+      {/* Expanded section below thumbnail */}
+      {isSelected && (
+        <div className="mt-1 p-2 rounded-md bg-card border border-primary/30 min-w-[200px] max-w-[280px]">
+          {/* Jump to document button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start h-7 px-2 mb-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+            onClick={handleJump}
+          >
+            <ArrowRight className="h-3 w-3 mr-1.5" />
+            Jump to document
+          </Button>
+          
+          {/* Snippet section */}
+          {isLoadingSnippets ? (
+            <div className="flex items-center justify-center py-3">
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            </div>
+          ) : snippets.length === 0 ? (
+            <div className="text-[10px] text-muted-foreground italic py-2 px-1">
+              No text snippets found
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {/* Snippet navigation header */}
+              {snippets.length > 1 && (
+                <div className="flex items-center justify-between px-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0"
+                    onClick={handlePrevSnippet}
+                    disabled={currentSnippetIndex === 0}
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground">
+                    {currentSnippetIndex + 1} of {snippets.length}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0"
+                    onClick={handleNextSnippet}
+                    disabled={currentSnippetIndex === snippets.length - 1}
+                  >
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              
+              {/* Current snippet */}
+              <div className="bg-muted/50 rounded px-2 py-1.5 text-[11px] leading-relaxed">
+                <HighlightedSnippet 
+                  text={snippets[currentSnippetIndex]?.text || ''} 
+                  highlight={entityName} 
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Component to highlight the entity name within snippet text
+function HighlightedSnippet({ text, highlight }: { text: string; highlight: string }) {
+  if (!highlight || !text) return <span>{text}</span>;
+  
+  const regex = new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <span>
+      {parts.map((part, i) => 
+        regex.test(part) ? (
+          <mark key={i} className="bg-primary/30 text-foreground px-0.5 rounded">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </span>
+  );
+}
+
 // Entity card for master library view
 interface MasterEntityCardProps {
   entity: MasterEntity;
@@ -127,6 +284,7 @@ interface MasterEntityCardProps {
   showSource?: boolean;
   sourceLabel?: string;
   entityDocuments: ReturnType<typeof useEntityDocuments>;
+  onJumpToDocument?: (docId: string) => void;
 }
 
 function MasterEntityCard({ 
@@ -136,6 +294,7 @@ function MasterEntityCard({
   showSource, 
   sourceLabel,
   entityDocuments,
+  onJumpToDocument,
 }: MasterEntityCardProps) {
   const Icon = ENTITY_ICONS[entity.entity_type];
   const iconColor = ENTITY_COLORS[entity.entity_type];
@@ -177,6 +336,8 @@ function MasterEntityCard({
     setIsExpanded(!isExpanded);
   };
 
+  const entityName = getName() || '';
+
   return (
     <div className="space-y-0">
       <div 
@@ -195,7 +356,7 @@ function MasterEntityCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium truncate">{getName()}</span>
+                <span className="text-sm font-medium truncate">{entityName}</span>
                 {docCount !== undefined ? (
                   <span className="text-xs text-muted-foreground">({docCount})</span>
                 ) : (
@@ -257,23 +418,15 @@ function MasterEntityCard({
               No documents found
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3 items-start">
               {documents.map(doc => (
-                <Tooltip key={doc.id}>
-                  <TooltipTrigger asChild>
-                    <div className="flex flex-col items-center gap-1 p-2 rounded-md bg-card border border-border hover:bg-muted/50 transition-colors cursor-pointer min-w-[80px] max-w-[100px]">
-                      <div className="w-12 h-14 bg-background border border-border/50 rounded flex items-center justify-center">
-                        <File className="h-6 w-6 text-muted-foreground/50" />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground text-center line-clamp-2 leading-tight">
-                        {doc.title}
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {doc.title}
-                  </TooltipContent>
-                </Tooltip>
+                <DocumentThumbnail
+                  key={doc.id}
+                  doc={doc}
+                  entityName={entityName}
+                  entityDocuments={entityDocuments}
+                  onJumpToDocument={onJumpToDocument || (() => {})}
+                />
               ))}
             </div>
           )}
@@ -289,9 +442,10 @@ interface LibraryTabContentProps {
   searchQuery: string;
   entityTypeFilter?: EntityType;
   selectedDocumentIds: Set<string>;
+  onJumpToDocument: (docId: string) => void;
 }
 
-function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocumentIds }: LibraryTabContentProps) {
+function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocumentIds, onJumpToDocument }: LibraryTabContentProps) {
   const { document: currentDocument } = useDocumentContext();
   const documentId = currentDocument?.meta?.id || '';
   const { toast } = useToast();
@@ -446,6 +600,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
             showSource={scope === 'public'}
             sourceLabel={scope === 'public' ? 'Community' : undefined}
             entityDocuments={entityDocuments}
+            onJumpToDocument={onJumpToDocument}
           />
         ))}
       </div>
@@ -453,7 +608,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
   );
 }
 
-export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogProps) {
+export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: MasterLibraryDialogProps) {
   const [activeTab, setActiveTab] = useState<MasterLibraryTab>('my-library');
   const [searchQuery, setSearchQuery] = useState('');
   const [entityFilter, setEntityFilter] = useState<EntityType | undefined>(undefined);
@@ -510,6 +665,12 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
+
+  // Handler for jumping to a document from entity cards
+  const handleJumpToDocument = useCallback((docId: string) => {
+    onOpenChange(false); // Close the dialog
+    onJumpToDocument?.(docId); // Navigate to the document
+  }, [onOpenChange, onJumpToDocument]);
   
   // Migration state
   const { user } = useAuth();
@@ -1420,6 +1581,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                   searchQuery={searchQuery}
                   entityTypeFilter={entityFilter}
                   selectedDocumentIds={selectedDocumentIds}
+                  onJumpToDocument={handleJumpToDocument}
                 />
               </TabsContent>
               <TabsContent value="shared" className="mt-0 flex-1 min-h-0 overflow-hidden">
@@ -1428,6 +1590,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                   searchQuery={searchQuery}
                   entityTypeFilter={entityFilter}
                   selectedDocumentIds={selectedDocumentIds}
+                  onJumpToDocument={handleJumpToDocument}
                 />
               </TabsContent>
               <TabsContent value="public" className="mt-0 flex-1 min-h-0 overflow-hidden">
@@ -1436,6 +1599,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                   searchQuery={searchQuery}
                   entityTypeFilter={entityFilter}
                   selectedDocumentIds={selectedDocumentIds}
+                  onJumpToDocument={handleJumpToDocument}
                 />
               </TabsContent>
             </div>

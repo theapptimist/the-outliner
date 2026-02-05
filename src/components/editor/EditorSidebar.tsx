@@ -348,6 +348,7 @@ export function EditorSidebar({
       <MasterLibraryDialog
         open={masterLibraryOpen}
         onOpenChange={setMasterLibraryOpen}
+        onJumpToDocument={onNavigateToDocument}
       />
 
       {/* Conditional Content - now properly conditional rendering */}
@@ -364,6 +365,7 @@ export function EditorSidebar({
               selectedText={selectedText} 
               fullPage={libraryFullPage}
               onToggleFullPage={() => setLibraryFullPage(prev => !prev)}
+              onNavigateToDocument={onNavigateToDocument}
             />
           )}
         </div>

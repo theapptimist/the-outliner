@@ -86,6 +86,8 @@ interface LibraryPaneProps {
   linkingMode?: boolean;
   selectedSource?: EntityRef | null;
   onSelectSource?: (entity: EntityRef) => void;
+  // Navigation to document
+  onNavigateToDocument?: (docId: string) => void;
 }
 
 export function LibraryPane({ 
@@ -96,6 +98,7 @@ export function LibraryPane({
   linkingMode,
   selectedSource,
   onSelectSource,
+  onNavigateToDocument,
 }: LibraryPaneProps) {
   const { isInMasterMode, activeEntityTab, setActiveEntityTab, activeSubOutlineId } = useNavigation();
   
@@ -1781,6 +1784,7 @@ export function LibraryPane({
       <MasterLibraryDialog
         open={masterLibraryOpen}
         onOpenChange={setMasterLibraryOpen}
+        onJumpToDocument={onNavigateToDocument}
       />
       </div>
     </div>
