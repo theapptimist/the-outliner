@@ -44,6 +44,7 @@ export function useEntityDocuments() {
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const [snippetCache, setSnippetCache] = useState<Map<string, DocumentSnippet[]>>(new Map());
   const [snippetLoading, setSnippetLoading] = useState<Set<string>>(new Set());
+  const [precaching, setPrecaching] = useState(false);
   
   // Track what we're pre-caching to avoid duplicates
   const precacheInProgress = useRef<Set<string>>(new Set());
@@ -282,7 +283,8 @@ export function useEntityDocuments() {
     const documentIds = [...new Set(itemsToFetch.map(item => item.documentId))];
     console.log(`[snippets] precache: batch fetching ${documentIds.length} documents for ${itemsToFetch.length} items`);
 
-    // Mark all as in-progress
+    // Mark all as in-progress and set precaching state
+    setPrecaching(true);
     itemsToFetch.forEach(item => {
       const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
       precacheInProgress.current.add(cacheKey);
@@ -335,6 +337,8 @@ export function useEntityDocuments() {
         const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
         precacheInProgress.current.delete(cacheKey);
       });
+    } finally {
+      setPrecaching(false);
     }
   }, [snippetCache]);
 
@@ -347,5 +351,6 @@ export function useEntityDocuments() {
     getSnippetsFromCache,
     clearSnippetCache,
     precacheSnippets,
+    isPrecaching: precaching,
   };
 }

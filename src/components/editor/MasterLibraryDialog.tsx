@@ -489,17 +489,26 @@ function MasterEntityCard({
               No documents found
             </div>
           ) : (
-            <div className="flex flex-wrap gap-3 items-start">
-              {documents.map(doc => (
-                <DocumentThumbnail
-                  key={doc.id}
-                  doc={doc}
-                  entityName={entityName}
-                  entityType={entity.entity_type}
-                  entityDocuments={entityDocuments}
-                  onJumpToDocument={onJumpToDocument || (() => {})}
-                />
-              ))}
+            <div className="space-y-2">
+              {/* Pre-caching indicator */}
+              {entityDocuments.isPrecaching && (
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Loading snippets...</span>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-3 items-start">
+                {documents.map(doc => (
+                  <DocumentThumbnail
+                    key={doc.id}
+                    doc={doc}
+                    entityName={entityName}
+                    entityType={entity.entity_type}
+                    entityDocuments={entityDocuments}
+                    onJumpToDocument={onJumpToDocument || (() => {})}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
