@@ -1,78 +1,123 @@
 
-## What’s happening (confirmed from your logs)
-- The click handler runs and calls `navigateToDocument(docId, '')` from `DocumentContext`:
-  - Logs show:
-    - `[MasterLibrary] handleJumpToDocument called ... hasNavigateToDocument: true hasOnJumpToDocument: true`
-    - `[MasterLibrary] Using navigateToDocument from context`
-- But there are **no subsequent network requests** for loading the target document, which strongly suggests the `navigateToDocument` context pipeline is the part intermittently failing.
-- Important discovery from code: `MasterLibraryDialog` currently **prefers `navigateToDocument` even when `onJumpToDocument` is provided**, and both `EditorSidebar` and `LibraryPane` already pass `onJumpToDocument={onNavigateToDocument}`.
+# Fix: Jump to Document Navigates to Empty Document
 
-So we already have a simpler, more reliable navigation path available, but the dialog is not using it first.
+## Root Cause Identified
 
-## Goal
-Make “Jump to document” reliable by:
-1) Using the direct `onJumpToDocument` path (which calls the editor’s `handleNavigateToDocument(..., true)`), and  
-2) Preserving “Back” behavior by pushing the current document onto the navigation stack when jumping.
+The `useEffect` that loads the initial document (lines 270-301 in `Editor.tsx`) has `userSettings.startWithOutline` as a dependency:
 
-## Implementation plan (code changes)
+```javascript
+useEffect(() => {
+  async function loadInitialDocument() {
+    // ... loads from localStorage or creates empty doc
+  }
+  if (user) {
+    loadInitialDocument();
+  }
+}, [user, userSettings.startWithOutline]);  // <-- Problem!
+```
 
-### 1) Change Jump priority in `MasterLibraryDialog.tsx`
-**File:** `src/components/editor/MasterLibraryDialog.tsx`  
-**Change:** In `handleJumpToDocument`, prefer the prop `onJumpToDocument` first, and only use `navigateToDocument` as a fallback.
+When `userSettings` loads or changes (which happens asynchronously), this effect **re-runs** and either:
+1. Loads an old document from localStorage (overwriting the navigated document)
+2. Creates a new empty "Untitled" document
 
-Why:
-- `onJumpToDocument` is already wired from `Editor.tsx → EditorSidebar/LibraryPane → MasterLibraryDialog`.
-- It bypasses the more complex “link navigation pipeline” (and its edge cases), which is desirable for Master Library research jumps.
+This creates a race condition:
+1. User clicks "Jump to document" → `handleNavigateToDocument(targetId)` starts
+2. Meanwhile, `userSettings` finishes loading from the cloud
+3. The initial load effect re-fires and calls `setDocument(localDoc)` 
+4. This overwrites the pending navigation result with an empty document
 
-Proposed logic:
-- If `onJumpToDocument` exists: call it.
-- Else if `navigateToDocument` exists: call that.
-- Else: show an error/toast + log.
+## Solution
 
-### 2) Preserve Back navigation by pushing the current doc onto the navigation stack
-**File:** `src/components/editor/MasterLibraryDialog.tsx`  
-**Change:** Import and use `useNavigation()` and call `pushDocument(currentDoc.id, currentDoc.title)` right before the jump (only if the target doc is different).
+Add a guard to prevent the initial document loading effect from running when a navigation is in progress, OR remove the `userSettings.startWithOutline` dependency from the effect since it should only affect NEW document creation, not document loading.
 
-Why:
-- If we switch to `onJumpToDocument`, we otherwise lose the stack behavior because the stack is currently pushed inside the `navigateToDocument` handler registered in `Editor.tsx`.
-- This keeps `NavigationBackBar` working after a library jump.
+### Option A: Remove the problematic dependency (Recommended)
 
-Edge cases handled:
-- If `currentDoc` is missing, skip pushing.
-- If user jumps to the same doc, do nothing besides closing.
-- If `pushDocument` would duplicate entries, we can optionally dedupe later (not required for reliability).
+The `startWithOutline` setting only matters when creating a *new* document. The initial load effect should only run once per user login, not re-run when settings change.
 
-### 3) Keep the dialog-close ordering that avoids race conditions
-**File:** `src/components/editor/MasterLibraryDialog.tsx`  
-**Change:** Continue to:
-- trigger navigation first
-- close dialog second
-- avoid `requestAnimationFrame`
+**Change:** Extract `startWithOutline` value at effect execution time rather than as a dependency.
 
-Additionally:
-- Keep `isNavigating` true slightly longer (optional polish): set it false in a microtask or `setTimeout(0)` so the button can visually show “Opening…” even if the dialog closes quickly. This won’t affect correctness, just perceived responsiveness.
+```javascript
+// Before
+}, [user, userSettings.startWithOutline]);
 
-### 4) (Optional cleanup) Reduce noisy instrumentation after it’s fixed
-**Files:**
-- `src/pages/Editor.tsx`
-- `src/lib/cloudDocumentStorage.ts`
+// After  
+}, [user]); // Only re-run on user change
+```
 
-Once the jump is stable, remove/trim the extra console logs to keep the console clean. (Not required to fix the bug.)
+And capture the setting value inside the effect at the time it executes using a ref or checking `userSettings` directly when creating the local document.
 
-## Test plan (end-to-end)
-1. Open Master Library.
-2. Expand an entity, open a document thumbnail, click “Jump to document”.
-3. Verify:
-   - The editor loads the target document.
-   - A document load request happens (you should see the document load logs / requests).
-   - The Back bar returns you to the previous document (stack behavior preserved).
-4. Repeat 5–10 times across different docs to confirm the “intermittent” failure is gone.
+### Option B: Add navigation-in-progress guard
 
-## Why this should fix it
-- Right now, the code is choosing the more complex context pipeline even though a direct, editor-owned navigation callback is available.
-- Switching to `onJumpToDocument` makes the jump use the same path as normal document opening in the editor (which is already known to work), while we manually preserve stack behavior for Back navigation.
+Track whether navigation is in progress and skip initial load re-runs.
 
-## Files involved
-- `src/components/editor/MasterLibraryDialog.tsx` (primary fix)
-- (Optional later cleanup) `src/pages/Editor.tsx`, `src/lib/cloudDocumentStorage.ts`
+```javascript
+const [isNavigating, setIsNavigating] = useState(false);
 
+useEffect(() => {
+  if (isNavigating) return; // Skip if navigation is happening
+  // ... existing initial load logic
+}, [user, userSettings.startWithOutline, isNavigating]);
+```
+
+## Files to Change
+
+| File | Change |
+|------|--------|
+| `src/pages/Editor.tsx` | Remove `userSettings.startWithOutline` from the initial load effect dependencies, or add a navigation guard |
+
+## Implementation Details
+
+**Option A (preferred)** - The effect should only determine WHICH document to load (from localStorage or create new), not re-run when unrelated settings change:
+
+```javascript
+// Load document on mount (only runs once per user session)
+useEffect(() => {
+  async function loadInitialDocument() {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const currentId = localStorage.getItem(CURRENT_DOC_KEY);
+      if (currentId) {
+        const doc = await loadCloudDocument(currentId);
+        if (doc) {
+          setDocument(doc);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Access settings at execution time, not as dependency
+      const withOutline = userSettings?.startWithOutline ?? false;
+      const localDoc = createLocalDocument('Untitled', withOutline);
+      setDocument(localDoc);
+    } catch (e) {
+      console.error('Failed to load document:', e);
+      const withOutline = userSettings?.startWithOutline ?? false;
+      const localDoc = createLocalDocument('Untitled', withOutline);
+      setDocument(localDoc);
+    }
+    setIsLoading(false);
+  }
+  
+  loadInitialDocument();
+}, [user]); // Only user dependency - runs once per login
+```
+
+## Why This Fixes It
+
+- The initial document load effect will only run once when the user logs in
+- When `userSettings` changes/loads, it won't re-run and create a race condition
+- Navigation via `handleNavigateToDocument` will complete without being overwritten
+- New document creation still respects `startWithOutline` by reading the current value
+
+## Test Plan
+
+1. Open Master Library
+2. Expand an entity with documents
+3. Click on a document thumbnail → "Jump to document"
+4. Verify:
+   - The correct document loads (with its title and content)
+   - No empty "Untitled" document appears
+   - Console shows successful load logs
+5. Repeat 5+ times to confirm reliability
