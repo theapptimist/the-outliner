@@ -24,7 +24,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useEntityDocuments, EntityDocumentInfo, DocumentSnippet } from '@/hooks/useEntityDocuments';
-import { FolderPlus, MoreHorizontal, FolderInput, Trash2 } from 'lucide-react';
+import { FolderPlus, MoreHorizontal, FolderInput, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -148,6 +148,18 @@ const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProp
   
   const isLoadingSnippets = entityDocuments.isSnippetLoading(doc.id, { entityType, text: entityName });
 
+  // Check if the current snippet is a timeout/error sentinel
+  const isErrorSnippet = snippets.length === 1 && 
+    (snippets[0]?.text?.startsWith('⏱️') || snippets[0]?.text?.startsWith('⚠️'));
+
+  const fetchSnippets = async () => {
+    console.log('[DocumentThumbnail] Fetching snippets', { docId: doc.id, entityType, entityName });
+    const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, { entityType, text: entityName });
+    console.log('[DocumentThumbnail] Got snippets:', fetchedSnippets.length);
+    setSnippets(fetchedSnippets);
+    setCurrentSnippetIndex(0);
+  };
+
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -155,13 +167,16 @@ const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProp
     setIsSelected(newIsSelected);  // Toggle immediately for instant feedback
     
     if (newIsSelected) {
-      console.log('[DocumentThumbnail] Fetching snippets', { docId: doc.id, entityType, entityName });
-      // Fetch snippets asynchronously (don't block the toggle)
-      const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, { entityType, text: entityName });
-      console.log('[DocumentThumbnail] Got snippets:', fetchedSnippets.length);
-      setSnippets(fetchedSnippets);
-      setCurrentSnippetIndex(0);
+      await fetchSnippets();
     }
+  };
+
+  const handleRetry = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Clear the cache for this document/entity so we can retry
+    entityDocuments.clearSnippetCache?.(doc.id, { entityType, text: entityName });
+    setSnippets([]);
+    await fetchSnippets();
   };
 
   const handlePrevSnippet = (e: React.MouseEvent) => {
@@ -226,6 +241,23 @@ const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProp
           ) : snippets.length === 0 ? (
             <div className="text-[10px] text-muted-foreground italic py-2 px-1">
               No text snippets found
+            </div>
+          ) : isErrorSnippet ? (
+            <div className="space-y-2">
+              <div className="text-[11px] text-muted-foreground italic py-1 px-1">
+                {snippets[0]?.text?.includes('timed out') 
+                  ? 'Snippet extraction took too long.' 
+                  : 'Could not extract snippets.'}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-7 text-xs"
+                onClick={handleRetry}
+              >
+                <RefreshCw className="h-3 w-3 mr-1.5" />
+                Retry
+              </Button>
             </div>
           ) : (
             <div className="space-y-1.5">
