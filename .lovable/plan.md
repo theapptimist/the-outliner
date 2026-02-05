@@ -1,112 +1,92 @@
 
-## Goal
-Stop “Snippet extraction took too long” from happening in the common case (even with 1 small document), and make failures actionable (clear reason + retry that actually retries) rather than a generic timeout.
 
-## What I think is happening (most likely)
-Right now the timeout is implemented as `Promise.race(...)` (`withTimeout`). That **does not cancel** the underlying network request(s). If a request to load `documents.hierarchy_blocks` (or `documents.content`) gets stuck (browser/network stall, server never completes, long TLS handshake, etc.), the UI times out after 15s and shows the “took too long” message, but the real fetch may still be hanging in the background.
+# Fix: Snippet Loading Stuck at getSession()
 
-Since you said:
-- it’s usually **1 document**
-- it’s **small**
-- and “nothing ever loads”
+## Root Cause Identified
 
-…this points less to “too much data to scan” and more to “the request sometimes hangs / never resolves”, and our current timeout can’t actually interrupt it.
+After 10+ hours of debugging, I've traced the actual problem:
 
-## Constraints in current code
-- `fetchSnippetsForDocument()` fetches `hierarchy_blocks` via `.single()` and only falls back to `content` if no hierarchy snippet is found.
-- Pre-cache only fetches `id, hierarchy_blocks` (batch), but for your case (1 doc) it doesn’t fundamentally change the behavior.
-- `withTimeout()` can surface a timeout, but cannot prevent the underlying request from continuing to hang.
+The `abortableFetch.ts` utility starts a 15-second timeout timer, then calls `await supabase.auth.getSession()` to get the access token. If `getSession()` hangs (which can happen with network issues, cold starts, or racing requests), the timeout fires before `fetch()` is even called. 
 
-## Proposed fix (high confidence)
-### A) Make snippet fetches **abortable** (real cancellation)
-Implement an internal helper specifically for snippet-loading that:
-1) Creates an `AbortController`
-2) Starts the network request
-3) Uses `setTimeout(() => controller.abort(), timeoutMs)`
-4) Cleans up the timer in `finally`
+**Evidence:**
+- Console shows `[snippets] precache: batch fetching...` (logged before abortableFetch)
+- Console does NOT show `[abortableFetch] Starting batch request...` (which is logged AFTER getSession)
+- Console shows `[abortableFetch] Batch timeout reached (15000ms), aborting` (timer fires)
+- Network logs show NO `hierarchy_blocks` request was ever made
 
-Then use this helper for:
-- the “fetch hierarchy_blocks” request
-- the “fetch content” request (fallback)
+This means the actual network fetch never started - it got stuck waiting for `getSession()`.
 
-This avoids “ghost requests” that keep the app in a bad state and dramatically reduces “it never loads” scenarios.
+## The Fix
 
-Implementation details:
-- Use `fetch()` directly against the backend REST endpoint for these two calls only (so we can pass `signal`), instead of `supabase.from(...).select(...).single()`.
-- Reuse the existing auth session token from `supabase.auth.getSession()` to set the `Authorization: Bearer ...` header.
-- Keep the response format identical to what the rest of the code expects (`{ hierarchy_blocks }` / `{ content }`).
-- Keep your current caches (`snippetCache`, `snippetLoading`) as-is.
+Move the session retrieval OUTSIDE the timeout-controlled section, and cache/reuse the session token to avoid repeated `getSession()` calls.
 
-Why direct fetch here:
-- supabase-js query builder doesn’t give us a straightforward way to pass an AbortController per-request in this code path without changing the global client config (which we must not edit).
+### Changes to `src/lib/abortableFetch.ts`
 
-Acceptance criteria:
-- When a request hangs, it’s forcibly aborted at the timeout, and retries don’t stack up stuck requests.
-- The “Loading” spinner on the thumbnail always stops, and a retry actually starts a fresh request.
+1. **Get session BEFORE starting the timeout timer**
+   - Call `getSession()` first, so if it hangs, we know immediately (and can surface a better error)
+   - Only start the abort timer right before the actual `fetch()`
+   
+2. **Add a timeout around `getSession()` itself**
+   - If getting the session takes > 2 seconds, abort and return an "auth" error
+   - This surfaces the real problem to the user
 
-### B) Replace `.single()` behavior with “maybe” semantics (avoid hard errors)
-Even though this likely isn’t the root cause, it’s a correctness improvement:
-- Replace `.single()` semantics with an equivalent “0 or 1 row” behavior.
-- If the document row is missing (or not accessible), return a clear sentinel: “Document not accessible” (distinct from timeout).
+3. **Add more instrumentation**
+   - Log time spent on `getSession()` vs actual fetch
+   - This helps diagnose future issues
 
-Acceptance criteria:
-- If a doc is deleted or inaccessible, the UI shows a “not found / no access” message instead of timing out.
+### Changes to `src/hooks/useEntityDocuments.ts`
 
-### C) Add targeted instrumentation so we stop guessing
-Add timing + size logging (behind a lightweight guard) for snippet operations:
-- time to fetch hierarchy
-- response payload size estimate (via `Content-Length` header when available, or `JSON.stringify(data).length` fallback)
-- time to scan hierarchy
-- whether it returned early or fell back to content
-- if aborted: log `AbortError`
+1. **Pass the session token from outside if already available**
+   - The `precacheSnippets` function can get the session once and pass it to `abortableFetchRows`
+   - This avoids multiple `getSession()` calls that can race/hang
 
-This will let us differentiate:
-- “network stall”
-- “huge payload”
-- “CPU scanning issue”
-- “permission/no row”
+2. **Better error message for auth timeout**
+   - Add a new sentinel: "Authentication timed out. Please refresh and try again."
 
-Acceptance criteria:
-- We can open the console and immediately see which stage is failing and why, for the exact doc.
+## Technical Details
 
-## Secondary improvements (nice-to-have, but I’d do right after A/B/C)
-### D) Chunk pre-cache even for bigger entities (prevents future regressions)
-If an entity expands to many docs later:
-- Fetch hierarchy_blocks in chunks (e.g., 5–10 docs per batch) with a per-batch abortable timeout.
-- Populate snippetCache as each chunk completes (partial progress).
+```text
+BEFORE (problematic flow):
+┌─────────────────────────────────────────────────────────────┐
+│ start timer (15s)                                           │
+│ await getSession()  ← CAN HANG HERE FOR 15s                 │
+│ log "Starting batch request..."  ← NEVER REACHED            │
+│ await fetch(...)                                            │
+│ return result                                               │
+└─────────────────────────────────────────────────────────────┘
+Timer fires after 15s → "timeout" error, but fetch never started
 
-### E) UI: make the error message more specific
-Instead of only “Snippet extraction took too long”:
-- “Network request timed out”
-- “Request was cancelled”
-- “Document not found or not accessible”
-- “No snippets found” (actual success case)
+AFTER (fixed flow):
+┌─────────────────────────────────────────────────────────────┐
+│ await getSessionWithTimeout(2s)  ← FAST FAIL if auth hangs  │
+│ start timer (15s)                                           │
+│ log "Starting batch request..."  ← NOW REACHED              │
+│ await fetch(...)                                            │
+│ return result                                               │
+└─────────────────────────────────────────────────────────────┘
+If getSession hangs: returns "auth_timeout" error in 2s
+If fetch hangs: returns "timeout" error in 15s
+```
 
-And keep the Retry button.
+## Files to Change
 
-## Files that will be changed (no new dependencies)
-- `src/hooks/useEntityDocuments.ts`
-  - Add an abortable fetch helper
-  - Use it for hierarchy/content retrieval
-  - Improve error classification + sentinels
-  - Add instrumentation logs
-- (Optional small tweak) `src/components/editor/MasterLibraryDialog.tsx`
-  - Display more specific message based on sentinel type
+| File | Changes |
+|------|---------|
+| `src/lib/abortableFetch.ts` | Move getSession outside timeout; add auth timeout wrapper |
+| `src/hooks/useEntityDocuments.ts` | Add AUTH_TIMEOUT_SNIPPET sentinel |
 
-## Test plan (end-to-end)
-1) Expand an entity with 1 linked document:
-   - “Loading snippets…” indicator appears then stops.
-2) Click the document thumbnail:
-   - Thumbnail spinner stops within timeout window.
-   - If successful: snippets show.
-   - If not: you get a specific reason + Retry.
-3) Click Retry repeatedly:
-   - Should not get worse over time (no accumulating hung requests).
-4) (If possible) Simulate bad network (throttle in browser devtools):
-   - Confirm abort happens and UI recovers cleanly.
+## Why This Will Work
 
-## If this still times out after abortable fetch
-That would strongly suggest the backend is responding slowly even for small docs, in which case the next step would be:
-- create a small backend-side “snippet index” (new table storing precomputed snippet strings per document/entity) populated when entities are extracted or when a doc is saved.
-But I would only do this if A/B/C show that the request is consistently slow rather than hanging.
+This fix addresses the actual root cause (getSession hanging), not just the symptoms. The current approach times out after 15 seconds but gives no useful information because the fetch never started. With this fix:
+
+1. If auth is slow/stuck → user sees "Authentication timed out" in 2 seconds
+2. If fetch is slow/stuck → user sees "Request timed out" in 15 seconds
+3. The retry button will actually work because subsequent getSession calls typically succeed
+
+## Test Plan
+
+1. Expand an entity with documents
+2. Observe "Loading snippets..." shows briefly
+3. Snippets should load within a few seconds (not 15+)
+4. If there's still a timeout, the error message should distinguish auth vs network
 
