@@ -435,25 +435,74 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
     const isExpanded = expandedFolders.has(folder.id);
     const folderDocs = documentsByFolder.get(folder.id) || [];
     const hasContent = folderDocs.length > 0 || folder.children.length > 0;
+   
+   // Get all document IDs in this folder and its children recursively
+   const getAllDocsInFolder = (f: FolderWithChildren): string[] => {
+     const docs = documentsByFolder.get(f.id) || [];
+     const docIds = docs.map(d => d.id);
+     const childDocIds = f.children.flatMap(child => getAllDocsInFolder(child));
+     return [...docIds, ...childDocIds];
+   };
+   
+   const allFolderDocIds = getAllDocsInFolder(folder);
+   const allSelected = allFolderDocIds.length > 0 && allFolderDocIds.every(id => selectedDocumentIds.has(id));
     
     return (
       <div key={folder.id}>
-        <button
-          onClick={() => toggleFolderExpanded(folder.id)}
-          className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+       <div
+         className={cn(
+           "w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-left text-xs transition-colors cursor-pointer",
+           allSelected 
+             ? "bg-primary/10 text-foreground"
+             : "text-muted-foreground hover:bg-muted hover:text-foreground"
+         )}
           style={{ paddingLeft: `${8 + depth * 12}px` }}
+         onClick={() => {
+           // Clicking folder selects all its docs (and deselects others)
+           if (allFolderDocIds.length > 0) {
+             if (allSelected) {
+               // Deselect all docs in this folder
+               setSelectedDocumentIds(new Set());
+             } else {
+               // Select only docs in this folder
+               setSelectedDocumentIds(new Set(allFolderDocIds));
+             }
+           }
+           // Auto-expand when selecting
+           if (!isExpanded) {
+             setExpandedFolders(prev => new Set([...prev, folder.id]));
+           }
+         }}
         >
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3 shrink-0" />
-          ) : (
-            <ChevronRight className="h-3 w-3 shrink-0" />
-          )}
+         <button
+           onClick={(e) => {
+             e.stopPropagation();
+             toggleFolderExpanded(folder.id);
+           }}
+           className="h-4 w-4 flex items-center justify-center shrink-0"
+         >
+           {isExpanded ? (
+             <ChevronDown className="h-3 w-3" />
+           ) : (
+             <ChevronRight className="h-3 w-3" />
+           )}
+         </button>
+         <div className={cn(
+           "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+           allSelected
+             ? "bg-primary border-primary"
+             : "border-border"
+         )}>
+           {allSelected && (
+             <Check className="h-3 w-3 text-primary-foreground" />
+           )}
+         </div>
           <Folder className={cn("h-3 w-3 shrink-0", isExpanded ? "text-warning" : "")} />
           <span className="flex-1 truncate font-medium">{folder.name}</span>
           <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
             {folderDocs.reduce((sum, d) => sum + d.entityCount, 0)}
           </Badge>
-        </button>
+       </div>
         
         {isExpanded && hasContent && (
           <div>
