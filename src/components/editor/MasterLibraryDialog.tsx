@@ -19,7 +19,9 @@ import {
   Folder,
   ChevronRight,
   ChevronDown,
+  File,
 } from 'lucide-react';
+import { useEntityDocuments, EntityDocumentInfo } from '@/hooks/useEntityDocuments';
 import { FolderPlus, MoreHorizontal, FolderInput, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,11 +126,27 @@ interface MasterEntityCardProps {
   isImporting?: boolean;
   showSource?: boolean;
   sourceLabel?: string;
+  entityDocuments: ReturnType<typeof useEntityDocuments>;
 }
 
-function MasterEntityCard({ entity, onImport, isImporting, showSource, sourceLabel }: MasterEntityCardProps) {
+function MasterEntityCard({ 
+  entity, 
+  onImport, 
+  isImporting, 
+  showSource, 
+  sourceLabel,
+  entityDocuments,
+}: MasterEntityCardProps) {
   const Icon = ENTITY_ICONS[entity.entity_type];
   const iconColor = ENTITY_COLORS[entity.entity_type];
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [documents, setDocuments] = useState<EntityDocumentInfo[]>([]);
+  
+  const cachedDocs = entityDocuments.getFromCache(entity.id);
+  const isLoadingDocs = entityDocuments.isLoading(entity.id);
+  
+  // Get document count from cache or show "..."
+  const docCount = cachedDocs?.length;
   
   const getName = () => {
     const data = entity.data;
@@ -150,57 +168,117 @@ function MasterEntityCard({ entity, onImport, isImporting, showSource, sourceLab
     }
   };
 
+  const handleCardClick = async () => {
+    if (!isExpanded) {
+      // Fetch documents when expanding
+      const docs = await entityDocuments.fetchDocumentsForEntity(entity.id, entity.source_document_id);
+      setDocuments(docs);
+    }
+    setIsExpanded(!isExpanded);
+  };
+
   return (
-    <div className={cn(
-      "group p-2.5 rounded-md border border-border bg-card hover:bg-muted/50 transition-colors",
-      "flex items-start gap-2.5"
-    )}>
-      <div className={cn("mt-0.5 p-1.5 rounded-md bg-muted", iconColor)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{getName()}</div>
-            {getSubtitle() && (
-              <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                {getSubtitle()}
+    <div className="space-y-0">
+      <div 
+        className={cn(
+          "group p-2.5 rounded-md border border-border bg-card hover:bg-muted/50 transition-colors cursor-pointer",
+          "flex items-start gap-2.5",
+          isExpanded && "rounded-b-none border-b-0"
+        )}
+        onClick={handleCardClick}
+      >
+        <div className={cn("mt-0.5 p-1.5 rounded-md bg-muted", iconColor)}>
+          <Icon className="h-4 w-4" />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium truncate">{getName()}</span>
+                {docCount !== undefined ? (
+                  <span className="text-xs text-muted-foreground">({docCount})</span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">(…)</span>
+                )}
               </div>
-            )}
-            {showSource && sourceLabel && (
-              <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                <ExternalLink className="h-2.5 w-2.5" />
-                {sourceLabel}
-              </div>
+              {getSubtitle() && (
+                <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                  {getSubtitle()}
+                </div>
+              )}
+              {showSource && sourceLabel && (
+                <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                  <ExternalLink className="h-2.5 w-2.5" />
+                  {sourceLabel}
+                </div>
+              )}
+            </div>
+            
+            {onImport && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onImport();
+                    }}
+                    disabled={isImporting}
+                  >
+                    {isImporting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Download className="h-3.5 w-3.5 mr-1" />
+                        <span className="text-xs">Import</span>
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="text-xs">Add to current document</TooltipContent>
+              </Tooltip>
             )}
           </div>
-          
-          {onImport && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={onImport}
-                  disabled={isImporting}
-                >
-                  {isImporting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <Download className="h-3.5 w-3.5 mr-1" />
-                      <span className="text-xs">Import</span>
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="text-xs">Add to current document</TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </div>
+      
+      {/* Expanded document thumbnails section */}
+      {isExpanded && (
+        <div className="border border-t-0 border-border rounded-b-md bg-muted/30 p-3">
+          {isLoadingDocs ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="text-xs text-muted-foreground text-center py-2">
+              No documents found
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {documents.map(doc => (
+                <Tooltip key={doc.id}>
+                  <TooltipTrigger asChild>
+                    <div className="flex flex-col items-center gap-1 p-2 rounded-md bg-card border border-border hover:bg-muted/50 transition-colors cursor-pointer min-w-[80px] max-w-[100px]">
+                      <div className="w-12 h-14 bg-background border border-border/50 rounded flex items-center justify-center">
+                        <File className="h-6 w-6 text-muted-foreground/50" />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground text-center line-clamp-2 leading-tight">
+                        {doc.title}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {doc.title}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -217,6 +295,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
   const { document: currentDocument } = useDocumentContext();
   const documentId = currentDocument?.meta?.id || '';
   const { toast } = useToast();
+  const entityDocuments = useEntityDocuments();
   
   const [importingId, setImportingId] = useState<string | null>(null);
   
@@ -286,6 +365,15 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
     
     return entities;
   }, [scope, ownedEntities, sharedEntities, publicEntities, searchQuery, entityTypeFilter, selectedDocumentIds]);
+  
+  // Pre-fetch document counts for visible entities
+  useEffect(() => {
+    filteredEntities.slice(0, 20).forEach(entity => {
+      if (!entityDocuments.getFromCache(entity.id)) {
+        entityDocuments.fetchDocumentsForEntity(entity.id, entity.source_document_id);
+      }
+    });
+  }, [filteredEntities, entityDocuments]);
   
   const handleImport = async (entity: MasterEntity) => {
     if (!documentId) {
@@ -357,6 +445,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
             isImporting={importingId === entity.id}
             showSource={scope === 'public'}
             sourceLabel={scope === 'public' ? 'Community' : undefined}
+            entityDocuments={entityDocuments}
           />
         ))}
       </div>
