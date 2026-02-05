@@ -152,31 +152,31 @@ export function FormattingToolbar({ editor, collapsed }: FormattingToolbarProps)
           onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
           isActive={editor?.isActive('heading', { level: 1 })}
           disabled={!editor}
-           icon={<Heading1 className="h-4 w-4 text-purple" />}
+          icon={<Heading1 className="h-4 w-4 text-white" />}
           label="H1"
           tooltip="Heading 1"
           collapsed={true}
-           color="purple"
+          color="purple"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
           isActive={editor?.isActive('heading', { level: 2 })}
           disabled={!editor}
-           icon={<Heading2 className="h-4 w-4 text-purple" />}
+          icon={<Heading2 className="h-4 w-4 text-white" />}
           label="H2"
           tooltip="Heading 2"
           collapsed={true}
-           color="purple"
+          color="purple"
         />
         <ToolButton
           onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
           isActive={editor?.isActive('heading', { level: 3 })}
           disabled={!editor}
-           icon={<Heading3 className="h-4 w-4 text-purple" />}
+          icon={<Heading3 className="h-4 w-4 text-white" />}
           label="H3"
           tooltip="Heading 3"
           collapsed={true}
-           color="purple"
+          color="purple"
         />
       </div>
 
