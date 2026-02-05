@@ -94,7 +94,10 @@ export async function listCloudDocuments(): Promise<CloudDocumentMetadata[]> {
 
 // Load a specific document
 export async function loadCloudDocument(id: string): Promise<DocumentState | null> {
+  console.log('[CloudStorage] loadCloudDocument called with id:', id);
+  
   return withRetry(async () => {
+    console.log('[CloudStorage] Executing Supabase query for document:', id);
     const { data, error } = await supabase
       .from('documents')
       .select('*')
@@ -107,8 +110,11 @@ export async function loadCloudDocument(id: string): Promise<DocumentState | nul
     }
 
     if (!data) {
+      console.log('[CloudStorage] No document found for id:', id);
       return null;
     }
+
+    console.log('[CloudStorage] Document loaded successfully:', data.title);
 
     // Track "recent" by opens (not just saves)
     addToRecentCloudDocuments(data.id);

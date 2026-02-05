@@ -770,25 +770,22 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     setIsNavigating(true);
     
-    // Close the dialog first
-    onOpenChange(false);
+    // Navigate IMMEDIATELY while context is valid (before dialog closes)
+    console.log('[MasterLibrary] Executing navigation BEFORE closing dialog');
     
-    // Defer navigation to allow dialog to close smoothly
-    requestAnimationFrame(() => {
-      console.log('[MasterLibrary] Executing navigation');
-      
-      if (navigateToDocument) {
-        console.log('[MasterLibrary] Using navigateToDocument from context');
-        navigateToDocument(docId, ''); // Title will be fetched by the handler
-      } else if (onJumpToDocument) {
-        console.log('[MasterLibrary] Using onJumpToDocument prop fallback');
-        onJumpToDocument(docId);
-      } else {
-        console.error('[MasterLibrary] No navigation handler available!');
-      }
-      
-      setIsNavigating(false);
-    });
+    if (navigateToDocument) {
+      console.log('[MasterLibrary] Using navigateToDocument from context');
+      navigateToDocument(docId, ''); // Title will be fetched by the handler
+    } else if (onJumpToDocument) {
+      console.log('[MasterLibrary] Using onJumpToDocument prop fallback');
+      onJumpToDocument(docId);
+    } else {
+      console.error('[MasterLibrary] No navigation handler available!');
+    }
+    
+    // Close dialog AFTER navigation is triggered
+    onOpenChange(false);
+    setIsNavigating(false);
   }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);
   
   // Migration state
