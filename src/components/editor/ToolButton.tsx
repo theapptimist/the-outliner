@@ -10,7 +10,7 @@ interface ToolButtonProps {
   label: string;
   tooltip: string;
   collapsed: boolean;
-  color?: 'primary' | 'accent' | 'success' | 'warning';
+   color?: 'primary' | 'accent' | 'success' | 'warning' | 'green' | 'purple';
 }
 
 const colorClasses = {
@@ -18,6 +18,8 @@ const colorClasses = {
   accent: "hover:bg-accent/15 hover:text-accent",
   success: "hover:bg-success/15 hover:text-success",
   warning: "hover:bg-warning/15 hover:text-warning",
+   green: "hover:bg-green/15 hover:text-green",
+   purple: "hover:bg-purple/15 hover:text-purple",
 };
 
 export function ToolButton({ 
