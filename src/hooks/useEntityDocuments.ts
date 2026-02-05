@@ -17,8 +17,8 @@ export interface EntityDocumentInfo {
   title: string;
 }
 
-// Timeout for snippet fetching (10 seconds)
-const SNIPPET_FETCH_TIMEOUT_MS = 10000;
+// Timeout for snippet fetching (15 seconds - gives more room for network latency)
+const SNIPPET_FETCH_TIMEOUT_MS = 15000;
 
 // Sentinel snippet for timeout/error states
 const TIMEOUT_SNIPPET: DocumentSnippet = {
@@ -117,15 +117,19 @@ export function useEntityDocuments() {
     setSnippetLoading(prev => new Set(prev).add(cacheKey));
 
     try {
+      const t0 = performance.now();
+      
       // Wrap the entire operation in a timeout
       const snippets = await withTimeout(
         (async (): Promise<DocumentSnippet[]> => {
-          // 1) Fetch + scan hierarchy blocks first (usually smaller/faster)
+          // 1) Fetch hierarchy blocks first (usually smaller/faster)
+          const t1 = performance.now();
           const { data: hier, error: hierError } = await supabase
             .from('documents')
             .select('hierarchy_blocks')
             .eq('id', documentId)
             .single();
+          console.log(`[snippets] hierarchy fetch: ${Math.round(performance.now() - t1)}ms`);
 
           if (hierError) {
             console.error('[useEntityDocuments] Error fetching hierarchy blocks:', hierError);
@@ -134,10 +138,12 @@ export function useEntityDocuments() {
           const result: DocumentSnippet[] = [];
 
           if (hier?.hierarchy_blocks) {
+            const t2 = performance.now();
             try {
               const hierarchyBlocks = hier.hierarchy_blocks as Record<string, any>;
               const hierarchySnippets = findSnippetsInHierarchy(hierarchyBlocks, input);
               result.push(...hierarchySnippets);
+              console.log(`[snippets] hierarchy scan: ${Math.round(performance.now() - t2)}ms, found ${hierarchySnippets.length}`);
             } catch (e) {
               console.error('[useEntityDocuments] Error scanning hierarchy:', e);
             }
@@ -145,11 +151,13 @@ export function useEntityDocuments() {
 
           // 2) Only fetch + scan full editor content if we still need more
           if (result.length < 10) {
+            const t3 = performance.now();
             const { data: body, error: bodyError } = await supabase
               .from('documents')
               .select('content')
               .eq('id', documentId)
               .single();
+            console.log(`[snippets] content fetch: ${Math.round(performance.now() - t3)}ms`);
 
             if (bodyError) {
               console.error('[useEntityDocuments] Error fetching document content:', bodyError);
@@ -157,15 +165,18 @@ export function useEntityDocuments() {
             }
 
             if (body?.content) {
+              const t4 = performance.now();
               try {
                 const contentSnippets = findSnippetsInContent(body.content, input, result.length);
                 result.push(...contentSnippets);
+                console.log(`[snippets] content scan: ${Math.round(performance.now() - t4)}ms, found ${contentSnippets.length}`);
               } catch (e) {
                 console.error('[useEntityDocuments] Error scanning content:', e);
               }
             }
           }
 
+          console.log(`[snippets] total time: ${Math.round(performance.now() - t0)}ms, total snippets: ${result.length}`);
           return result;
         })(),
         SNIPPET_FETCH_TIMEOUT_MS,
