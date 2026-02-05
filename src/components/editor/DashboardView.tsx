@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
  import type { SidebarTab } from '@/contexts/NavigationContext';
  
  interface DashboardTile {
-   id: SidebarTab | 'editor';
+  id: SidebarTab | 'editor' | 'master-library';
    label: string;
    description: string;
    icon: React.ReactNode;
@@ -38,9 +38,9 @@ import { Button } from '@/components/ui/button';
      bgColor: 'bg-purple/10 hover:bg-purple/20 border-purple/30',
    },
    {
-     id: 'library',
+    id: 'master-library',
      label: 'Library',
-     description: 'People, places, dates & terms',
+    description: 'Master research library',
     icon: <BookOpen className="h-10 w-10" />,
      color: 'text-blue',
      bgColor: 'bg-blue/10 hover:bg-blue/20 border-blue/30',
@@ -64,7 +64,7 @@ import { Button } from '@/components/ui/button';
  ];
  
  interface DashboardViewProps {
-   onSelectTile: (id: SidebarTab | 'editor') => void;
+  onSelectTile: (id: SidebarTab | 'editor' | 'master-library') => void;
   onClose: () => void;
  }
  
