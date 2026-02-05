@@ -154,9 +154,11 @@ const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProp
     const newIsSelected = !isSelected;
     setIsSelected(newIsSelected);  // Toggle immediately for instant feedback
     
-  if (newIsSelected) {
+    if (newIsSelected) {
+      console.log('[DocumentThumbnail] Fetching snippets', { docId: doc.id, entityType, entityName });
       // Fetch snippets asynchronously (don't block the toggle)
       const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, { entityType, text: entityName });
+      console.log('[DocumentThumbnail] Got snippets:', fetchedSnippets.length);
       setSnippets(fetchedSnippets);
       setCurrentSnippetIndex(0);
     }
@@ -694,25 +696,40 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   
   const [isNavigating, setIsNavigating] = useState(false);
   
-  const handleJumpToDocument = useCallback(async (docId: string) => {
+  const handleJumpToDocument = useCallback((docId: string) => {
+    console.log('[MasterLibrary] handleJumpToDocument called', { 
+      docId, 
+      currentDocId: currentDoc?.meta?.id,
+      hasNavigateToDocument: !!navigateToDocument,
+      hasOnJumpToDocument: !!onJumpToDocument
+    });
+    
     // Don't navigate if already on this document
     if (currentDoc?.meta?.id === docId) {
+      console.log('[MasterLibrary] Already on this document, just closing');
       onOpenChange(false);
       return;
     }
     
     setIsNavigating(true);
-    onOpenChange(false); // Close the dialog first
     
-    // Use requestAnimationFrame to ensure dialog close animation starts
+    // Close the dialog first
+    onOpenChange(false);
+    
+    // Defer navigation to allow dialog to close smoothly
     requestAnimationFrame(() => {
+      console.log('[MasterLibrary] Executing navigation');
+      
       if (navigateToDocument) {
-        // Use the canonical navigation handler from DocumentContext
+        console.log('[MasterLibrary] Using navigateToDocument from context');
         navigateToDocument(docId, ''); // Title will be fetched by the handler
+      } else if (onJumpToDocument) {
+        console.log('[MasterLibrary] Using onJumpToDocument prop fallback');
+        onJumpToDocument(docId);
       } else {
-        // Fallback to prop callback
-        onJumpToDocument?.(docId);
+        console.error('[MasterLibrary] No navigation handler available!');
       }
+      
       setIsNavigating(false);
     });
   }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);

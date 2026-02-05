@@ -50,7 +50,8 @@ function escapeRegex(str: string): string {
  */
 function createMatcher(input: SnippetSearchInput): (text: string) => { index: number; length: number }[] {
   const { entityType, text: searchText } = input;
-  const normalizedSearch = normalizeEntityName(searchText).toLowerCase();
+  
+  console.log('[createMatcher] Creating matcher', { entityType, searchText });
   
   if (entityType === 'terms') {
     // Word-boundary regex like TermHighlightPlugin
@@ -61,6 +62,7 @@ function createMatcher(input: SnippetSearchInput): (text: string) => { index: nu
       while ((match = regex.exec(text)) !== null) {
         matches.push({ index: match.index, length: match[0].length });
       }
+      regex.lastIndex = 0; // Reset for next call
       return matches;
     };
   }
@@ -80,30 +82,36 @@ function createMatcher(input: SnippetSearchInput): (text: string) => { index: nu
     };
   }
   
-  // people/places: normalized matching
+  // people/places: normalized matching - simpler approach
+  // Use case-insensitive substring search as fallback if normalized fails
+  const normalizedSearch = normalizeEntityName(searchText).toLowerCase();
+  const searchLower = searchText.toLowerCase();
+  
   return (text: string) => {
     const matches: { index: number; length: number }[] = [];
-    const normalizedText = normalizeEntityName(text).toLowerCase();
+    const textLower = text.toLowerCase();
     
-    // Find in normalized text
-    let searchStart = 0;
-    while (true) {
-      const normalizedIndex = normalizedText.indexOf(normalizedSearch, searchStart);
-      if (normalizedIndex === -1) break;
-      
-      // Map back to original text position (approximation)
-      // We'll search original text near that position
-      const textLower = text.toLowerCase();
-      const searchLower = searchText.toLowerCase();
-      let idx = textLower.indexOf(searchLower, Math.max(0, normalizedIndex - 5));
-      if (idx !== -1 && idx < normalizedIndex + 10) {
-        matches.push({ index: idx, length: searchText.length });
-      } else {
-        // Fallback: use normalized position
-        matches.push({ index: normalizedIndex, length: normalizedSearch.length });
-      }
-      searchStart = normalizedIndex + 1;
+    // Try direct substring match first (most common case)
+    let idx = 0;
+    while ((idx = textLower.indexOf(searchLower, idx)) !== -1) {
+      matches.push({ index: idx, length: searchText.length });
+      idx += 1;
     }
+    
+    // If no direct match, try normalized matching
+    if (matches.length === 0 && normalizedSearch !== searchLower) {
+      const normalizedText = normalizeEntityName(text).toLowerCase();
+      let searchStart = 0;
+      while (true) {
+        const normalizedIndex = normalizedText.indexOf(normalizedSearch, searchStart);
+        if (normalizedIndex === -1) break;
+        
+        // For normalized matches, use approximate position
+        matches.push({ index: normalizedIndex, length: normalizedSearch.length });
+        searchStart = normalizedIndex + 1;
+      }
+    }
+    
     return matches;
   };
 }
@@ -294,9 +302,13 @@ export function useEntityDocuments() {
   ): Promise<DocumentSnippet[]> => {
     const cacheKey = `${documentId}:${input.entityType}:${input.text}`;
     
+    console.log('[useEntityDocuments] fetchSnippetsForDocument', { documentId, input, cacheKey });
+    
     // Check cache first
     if (snippetCache.has(cacheKey)) {
-      return snippetCache.get(cacheKey) || [];
+      const cached = snippetCache.get(cacheKey) || [];
+      console.log('[useEntityDocuments] Returning from cache:', cached.length, 'snippets');
+      return cached;
     }
 
     // Mark as loading
@@ -315,20 +327,31 @@ export function useEntityDocuments() {
         return [];
       }
 
+      console.log('[useEntityDocuments] Document fetched', { 
+        hasContent: !!doc.content, 
+        hasHierarchyBlocks: !!doc.hierarchy_blocks,
+        hierarchyBlockKeys: doc.hierarchy_blocks ? Object.keys(doc.hierarchy_blocks as object) : []
+      });
+
       const snippets: DocumentSnippet[] = [];
 
       // Find snippets in hierarchy blocks
       if (doc.hierarchy_blocks) {
         const hierarchyBlocks = doc.hierarchy_blocks as Record<string, any>;
-        snippets.push(...findSnippetsInHierarchy(hierarchyBlocks, input));
+        const hierarchySnippets = findSnippetsInHierarchy(hierarchyBlocks, input);
+        console.log('[useEntityDocuments] Found', hierarchySnippets.length, 'snippets in hierarchy');
+        snippets.push(...hierarchySnippets);
       }
 
       // Find snippets in content (cap total at MAX_SNIPPETS_PER_DOCUMENT)
       if (doc.content && snippets.length < MAX_SNIPPETS_PER_DOCUMENT) {
         const contentSnippets = findSnippetsInContent(doc.content, input);
+        console.log('[useEntityDocuments] Found', contentSnippets.length, 'snippets in content');
         const remaining = MAX_SNIPPETS_PER_DOCUMENT - snippets.length;
         snippets.push(...contentSnippets.slice(0, remaining));
       }
+
+      console.log('[useEntityDocuments] Total snippets:', snippets.length);
 
       // Update cache
       setSnippetCache(prev => new Map(prev).set(cacheKey, snippets));
