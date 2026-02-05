@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDocumentFolders } from '@/hooks/useDocumentFolders';
+import { FolderPicker } from './FolderManagement';
 import {
   Sheet,
   SheetContent,
@@ -27,6 +29,8 @@ import {
   Cloud,
   Eraser,
   Settings,
+  Folder,
+  FolderPlus,
 } from 'lucide-react';
 import { getRecentCloudDocuments, CloudDocumentMetadata, purgeEmptyDocuments } from '@/lib/cloudDocumentStorage';
 import { formatDistanceToNow } from 'date-fns';
@@ -36,6 +40,8 @@ import { AutoSaveIndicator } from './AutoSaveIndicator';
 
 interface FileMenuProps {
   documentTitle: string;
+  documentId?: string;
+  documentFolderId?: string | null;
   hasUnsavedChanges: boolean;
   isSaving?: boolean;
   onNew: () => void;
@@ -47,6 +53,7 @@ interface FileMenuProps {
   onImport: () => void;
   onDelete: () => void;
   onOpenRecent: (id: string) => void;
+  onMoveToFolder?: (folderId: string | null) => void;
   onSignOut?: () => void;
   hasDocument: boolean;
   iconOnly?: boolean;
@@ -154,6 +161,8 @@ function DiagnosticsPanel({
 
 export function FileMenu({
   documentTitle,
+  documentId,
+  documentFolderId,
   hasUnsavedChanges,
   isSaving = false,
   onNew,
@@ -165,6 +174,7 @@ export function FileMenu({
   onImport,
   onDelete,
   onOpenRecent,
+  onMoveToFolder,
   onSignOut,
   hasDocument,
   iconOnly = false,
@@ -178,7 +188,11 @@ export function FileMenu({
   const [draftTitle, setDraftTitle] = useState(documentTitle);
   const [showRecent, setShowRecent] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showFolders, setShowFolders] = useState(false);
   const [recentDocs, setRecentDocs] = useState<CloudDocumentMetadata[]>([]);
+
+  // Folder management
+  const { folders, buildFolderTree, createFolder, moveDocumentToFolder, refresh: refreshFolders } = useDocumentFolders();
 
   // Sync draftTitle with documentTitle when prop changes (e.g., after save)
   useEffect(() => {
@@ -219,8 +233,38 @@ export function FileMenu({
       setIsRenaming(false);
       setShowRecent(false);
       setShowDiagnostics(false);
+      setShowFolders(false);
     }
   }, [sheetOpen]);
+
+  // Refresh folders when sheet opens
+  useEffect(() => {
+    if (sheetOpen) {
+      refreshFolders();
+    }
+  }, [sheetOpen, refreshFolders]);
+
+  const handleMoveToFolder = async (folderId: string | null) => {
+    if (!documentId) return;
+    const success = await moveDocumentToFolder(documentId, folderId);
+    if (success) {
+      onMoveToFolder?.(folderId);
+      toast.success(folderId ? 'Moved to folder' : 'Removed from folder');
+    }
+    setShowFolders(false);
+  };
+
+  const handleCreateFolder = async () => {
+    const name = prompt('Folder name:');
+    if (name?.trim()) {
+      await createFolder(name.trim());
+    }
+  };
+
+  // Get current folder name for display
+  const currentFolderName = documentFolderId 
+    ? folders.find(f => f.id === documentFolderId)?.name 
+    : null;
 
   const getDiagnosticsData = () => {
     // Diagnostics now shows cloud storage info
@@ -373,6 +417,34 @@ export function FileMenu({
               onCopy={copyDiagnostics}
               getData={getDiagnosticsData}
             />
+          ) : showFolders ? (
+            <div className="p-3">
+              <button
+                onClick={() => setShowFolders(false)}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronRight className="h-4 w-4 rotate-180" />
+                Back
+              </button>
+              <div className="h-px bg-border my-2" />
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-2.5 mb-2">
+                Move to folder
+              </div>
+              <FolderPicker
+                folders={folders}
+                currentFolderId={documentFolderId}
+                onSelect={handleMoveToFolder}
+                buildTree={buildFolderTree}
+              />
+              <div className="h-px bg-border my-2" />
+              <button
+                onClick={handleCreateFolder}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+              >
+                <FolderPlus className="h-4 w-4" />
+                <span>New Folder</span>
+              </button>
+            </div>
           ) : showRecent ? (
             <div className="p-3">
               <button
@@ -477,6 +549,17 @@ export function FileMenu({
                 label="Rename..."
                 onClick={startRenaming}
               />
+              <button
+                onClick={() => setShowFolders(true)}
+                disabled={!hasDocument}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs rounded-md transition-colors hover:bg-muted/50 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <Folder className="h-4 w-4" />
+                <span className="flex-1 text-left">
+                  {currentFolderName ? `In: ${currentFolderName}` : 'Move to Folder'}
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
 
               <div className="h-px bg-border my-3" />
 

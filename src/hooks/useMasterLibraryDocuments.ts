@@ -6,6 +6,7 @@ export interface DocumentWithEntityCount {
   id: string;
   title: string;
   entityCount: number;
+  folder_id: string | null;
 }
 
 /**
@@ -53,7 +54,7 @@ export function useMasterLibraryDocuments() {
       const docIds = Array.from(countMap.keys());
       const { data: docs, error: docsError } = await supabase
         .from('documents')
-        .select('id, title')
+        .select('id, title, folder_id')
         .in('id', docIds);
 
       if (docsError) throw docsError;
@@ -64,6 +65,7 @@ export function useMasterLibraryDocuments() {
           id: doc.id,
           title: doc.title,
           entityCount: countMap.get(doc.id) || 0,
+          folder_id: doc.folder_id,
         }))
         .sort((a, b) => b.entityCount - a.entityCount);
 
