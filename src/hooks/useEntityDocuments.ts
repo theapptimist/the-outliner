@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { normalizeEntityName } from '@/lib/entityNameUtils';
 
 export interface EntityDocumentInfo {
   id: string;
@@ -14,6 +15,17 @@ export interface DocumentSnippet {
   nodeId?: string;
 }
 
+export type EntityType = 'people' | 'places' | 'dates' | 'terms';
+
+export interface SnippetSearchInput {
+  entityType: EntityType;
+  text: string;
+}
+
+// Max snippets to return per search to keep UI usable
+const MAX_SNIPPETS_PER_DOCUMENT = 10;
+const MAX_SNIPPETS_PER_NODE = 2;
+
 // Extract plain text from TipTap JSON content
 function extractPlainText(content: any): string {
   if (!content) return '';
@@ -25,22 +37,107 @@ function extractPlainText(content: any): string {
   return '';
 }
 
+// Escape special regex characters
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Create a matcher based on entity type:
+ * - terms: word-boundary regex (case-insensitive)
+ * - dates: simple substring match
+ * - people/places: normalized matching
+ */
+function createMatcher(input: SnippetSearchInput): (text: string) => { index: number; length: number }[] {
+  const { entityType, text: searchText } = input;
+  const normalizedSearch = normalizeEntityName(searchText).toLowerCase();
+  
+  if (entityType === 'terms') {
+    // Word-boundary regex like TermHighlightPlugin
+    const regex = new RegExp(`\\b${escapeRegex(searchText)}\\b`, 'gi');
+    return (text: string) => {
+      const matches: { index: number; length: number }[] = [];
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({ index: match.index, length: match[0].length });
+      }
+      return matches;
+    };
+  }
+  
+  if (entityType === 'dates') {
+    // Simple substring match (dates may have various formats)
+    const searchLower = searchText.toLowerCase();
+    return (text: string) => {
+      const matches: { index: number; length: number }[] = [];
+      const textLower = text.toLowerCase();
+      let idx = 0;
+      while ((idx = textLower.indexOf(searchLower, idx)) !== -1) {
+        matches.push({ index: idx, length: searchText.length });
+        idx += 1;
+      }
+      return matches;
+    };
+  }
+  
+  // people/places: normalized matching
+  return (text: string) => {
+    const matches: { index: number; length: number }[] = [];
+    const normalizedText = normalizeEntityName(text).toLowerCase();
+    
+    // Find in normalized text
+    let searchStart = 0;
+    while (true) {
+      const normalizedIndex = normalizedText.indexOf(normalizedSearch, searchStart);
+      if (normalizedIndex === -1) break;
+      
+      // Map back to original text position (approximation)
+      // We'll search original text near that position
+      const textLower = text.toLowerCase();
+      const searchLower = searchText.toLowerCase();
+      let idx = textLower.indexOf(searchLower, Math.max(0, normalizedIndex - 5));
+      if (idx !== -1 && idx < normalizedIndex + 10) {
+        matches.push({ index: idx, length: searchText.length });
+      } else {
+        // Fallback: use normalized position
+        matches.push({ index: normalizedIndex, length: normalizedSearch.length });
+      }
+      searchStart = normalizedIndex + 1;
+    }
+    return matches;
+  };
+}
+
 // Find snippets containing a search term in hierarchy blocks
 function findSnippetsInHierarchy(
   hierarchyBlocks: Record<string, any>,
-  searchTerm: string
+  input: SnippetSearchInput
 ): DocumentSnippet[] {
   const snippets: DocumentSnippet[] = [];
-  const termLower = searchTerm.toLowerCase();
+  const matcher = createMatcher(input);
+  const nodeSnippetCounts = new Map<string, number>();
 
   function scanNode(node: any, blockId: string) {
-    // Check label using simple indexOf (avoids global regex state issues)
+    const nodeKey = `${blockId}:${node.id}`;
+    const currentCount = nodeSnippetCounts.get(nodeKey) || 0;
+    
+    if (currentCount >= MAX_SNIPPETS_PER_NODE) {
+      // Skip this node, but still check children
+      if (Array.isArray(node.children)) {
+        node.children.forEach((child: any) => scanNode(child, blockId));
+      }
+      return;
+    }
+    
+    // Check label
     if (node.label) {
-      const labelLower = node.label.toLowerCase();
-      const idx = labelLower.indexOf(termLower);
-      if (idx !== -1) {
-        const start = Math.max(0, idx - 40);
-        const end = Math.min(node.label.length, idx + searchTerm.length + 40);
+      const matches = matcher(node.label);
+      for (const match of matches) {
+        if (snippets.length >= MAX_SNIPPETS_PER_DOCUMENT) return;
+        if ((nodeSnippetCounts.get(nodeKey) || 0) >= MAX_SNIPPETS_PER_NODE) break;
+        
+        const start = Math.max(0, match.index - 40);
+        const end = Math.min(node.label.length, match.index + match.length + 40);
         let snippet = node.label.substring(start, end);
         if (start > 0) snippet = '...' + snippet;
         if (end < node.label.length) snippet = snippet + '...';
@@ -51,17 +148,20 @@ function findSnippetsInHierarchy(
           blockId,
           nodeId: node.id,
         });
+        nodeSnippetCounts.set(nodeKey, (nodeSnippetCounts.get(nodeKey) || 0) + 1);
       }
     }
 
-    // Check content using simple indexOf
+    // Check content
     if (node.content) {
       const plainText = extractPlainText(node.content);
-      const textLower = plainText.toLowerCase();
-      const idx = textLower.indexOf(termLower);
-      if (idx !== -1) {
-        const start = Math.max(0, idx - 40);
-        const end = Math.min(plainText.length, idx + searchTerm.length + 40);
+      const matches = matcher(plainText);
+      for (const match of matches) {
+        if (snippets.length >= MAX_SNIPPETS_PER_DOCUMENT) return;
+        if ((nodeSnippetCounts.get(nodeKey) || 0) >= MAX_SNIPPETS_PER_NODE) break;
+        
+        const start = Math.max(0, match.index - 40);
+        const end = Math.min(plainText.length, match.index + match.length + 40);
         let snippet = plainText.substring(start, end);
         if (start > 0) snippet = '...' + snippet;
         if (end < plainText.length) snippet = snippet + '...';
@@ -72,6 +172,7 @@ function findSnippetsInHierarchy(
           blockId,
           nodeId: node.id,
         });
+        nodeSnippetCounts.set(nodeKey, (nodeSnippetCounts.get(nodeKey) || 0) + 1);
       }
     }
 
@@ -82,6 +183,7 @@ function findSnippetsInHierarchy(
   }
 
   Object.entries(hierarchyBlocks).forEach(([blockId, block]) => {
+    if (snippets.length >= MAX_SNIPPETS_PER_DOCUMENT) return;
     const tree = (block as any)?.tree;
     if (Array.isArray(tree)) {
       tree.forEach(node => scanNode(node, blockId));
@@ -92,24 +194,22 @@ function findSnippetsInHierarchy(
 }
 
 // Find snippets in TipTap content
-function findSnippetsInContent(content: any, searchTerm: string): DocumentSnippet[] {
+function findSnippetsInContent(content: any, input: SnippetSearchInput): DocumentSnippet[] {
   const snippets: DocumentSnippet[] = [];
-  const termLower = searchTerm.toLowerCase();
+  const matcher = createMatcher(input);
   const plainText = extractPlainText(content);
-  const textLower = plainText.toLowerCase();
+  const matches = matcher(plainText);
   
-  // Find all occurrences using indexOf in a loop
-  let searchStart = 0;
-  let idx: number;
-  while ((idx = textLower.indexOf(termLower, searchStart)) !== -1) {
-    const start = Math.max(0, idx - 40);
-    const end = Math.min(plainText.length, idx + searchTerm.length + 40);
+  for (const match of matches) {
+    if (snippets.length >= MAX_SNIPPETS_PER_DOCUMENT) break;
+    
+    const start = Math.max(0, match.index - 40);
+    const end = Math.min(plainText.length, match.index + match.length + 40);
     let snippet = plainText.substring(start, end);
     if (start > 0) snippet = '...' + snippet;
     if (end < plainText.length) snippet = snippet + '...';
     
     snippets.push({ text: snippet });
-    searchStart = idx + 1; // Move past this match
   }
 
   return snippets;
@@ -190,9 +290,9 @@ export function useEntityDocuments() {
 
   const fetchSnippetsForDocument = useCallback(async (
     documentId: string,
-    entityName: string
+    input: SnippetSearchInput
   ): Promise<DocumentSnippet[]> => {
-    const cacheKey = `${documentId}:${entityName}`;
+    const cacheKey = `${documentId}:${input.entityType}:${input.text}`;
     
     // Check cache first
     if (snippetCache.has(cacheKey)) {
@@ -220,12 +320,14 @@ export function useEntityDocuments() {
       // Find snippets in hierarchy blocks
       if (doc.hierarchy_blocks) {
         const hierarchyBlocks = doc.hierarchy_blocks as Record<string, any>;
-        snippets.push(...findSnippetsInHierarchy(hierarchyBlocks, entityName));
+        snippets.push(...findSnippetsInHierarchy(hierarchyBlocks, input));
       }
 
-      // Find snippets in content
-      if (doc.content) {
-        snippets.push(...findSnippetsInContent(doc.content, entityName));
+      // Find snippets in content (cap total at MAX_SNIPPETS_PER_DOCUMENT)
+      if (doc.content && snippets.length < MAX_SNIPPETS_PER_DOCUMENT) {
+        const contentSnippets = findSnippetsInContent(doc.content, input);
+        const remaining = MAX_SNIPPETS_PER_DOCUMENT - snippets.length;
+        snippets.push(...contentSnippets.slice(0, remaining));
       }
 
       // Update cache
@@ -242,10 +344,14 @@ export function useEntityDocuments() {
 
   const isLoading = useCallback((entityId: string) => loading.has(entityId), [loading]);
   const getFromCache = useCallback((entityId: string) => cache.get(entityId), [cache]);
-  const isSnippetLoading = useCallback((documentId: string, entityName: string) => 
-    snippetLoading.has(`${documentId}:${entityName}`), [snippetLoading]);
-  const getSnippetsFromCache = useCallback((documentId: string, entityName: string) => 
-    snippetCache.get(`${documentId}:${entityName}`), [snippetCache]);
+  const isSnippetLoading = useCallback((documentId: string, input: SnippetSearchInput | string) => {
+    const key = typeof input === 'string' ? `${documentId}:${input}` : `${documentId}:${input.entityType}:${input.text}`;
+    return snippetLoading.has(key);
+  }, [snippetLoading]);
+  const getSnippetsFromCache = useCallback((documentId: string, input: SnippetSearchInput | string) => {
+    const key = typeof input === 'string' ? `${documentId}:${input}` : `${documentId}:${input.entityType}:${input.text}`;
+    return snippetCache.get(key);
+  }, [snippetCache]);
 
   return {
     fetchDocumentsForEntity,

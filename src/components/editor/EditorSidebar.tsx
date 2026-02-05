@@ -22,11 +22,14 @@ import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
 import { UserMenu } from './UserMenu';
 import { DashboardView } from './DashboardView';
-import { MasterLibraryDialog } from './MasterLibraryDialog';
+import { lazyDialog } from '@/lib/lazyComponent';
 import { cn } from '@/lib/utils';
 
 // Lazy load the AI toolbar since it's rarely used immediately
 const LazyAIToolbar = lazy(() => import('./AIToolbar').then(m => ({ default: m.AIToolbar })));
+
+// Lazy load the Master Library Dialog - it's heavy and only opened on demand
+const LazyMasterLibraryDialog = lazyDialog(() => import('./MasterLibraryDialog').then(m => ({ default: m.MasterLibraryDialog })));
 
 import type { SidebarTab } from '@/contexts/NavigationContext';
 
@@ -344,8 +347,8 @@ export function EditorSidebar({
         />
       )}
 
-      {/* Master Library Dialog */}
-      <MasterLibraryDialog
+      {/* Master Library Dialog - Lazy loaded */}
+      <LazyMasterLibraryDialog
         open={masterLibraryOpen}
         onOpenChange={setMasterLibraryOpen}
         onJumpToDocument={onNavigateToDocument}

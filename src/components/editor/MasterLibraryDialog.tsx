@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { 
   User, 
   MapPin, 
@@ -126,21 +126,27 @@ function isDocumentEmpty(content: Json | null, hierarchyBlocks: Json | null): bo
 interface DocumentThumbnailProps {
   doc: EntityDocumentInfo;
   entityName: string;
+  entityType: EntityType;
   entityDocuments: ReturnType<typeof useEntityDocuments>;
   onJumpToDocument: (docId: string) => void;
+  isNavigating?: boolean;
 }
 
-function DocumentThumbnail({ 
+
+
+const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProps>(({ 
   doc, 
-  entityName, 
+  entityName,
+  entityType,
   entityDocuments, 
-  onJumpToDocument 
-}: DocumentThumbnailProps) {
+  onJumpToDocument,
+  isNavigating,
+}, ref) => {
   const [isSelected, setIsSelected] = useState(false);
   const [snippets, setSnippets] = useState<DocumentSnippet[]>([]);
   const [currentSnippetIndex, setCurrentSnippetIndex] = useState(0);
   
-  const isLoadingSnippets = entityDocuments.isSnippetLoading(doc.id, entityName);
+  const isLoadingSnippets = entityDocuments.isSnippetLoading(doc.id, { entityType, text: entityName });
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -148,9 +154,9 @@ function DocumentThumbnail({
     const newIsSelected = !isSelected;
     setIsSelected(newIsSelected);  // Toggle immediately for instant feedback
     
-    if (newIsSelected) {
+  if (newIsSelected) {
       // Fetch snippets asynchronously (don't block the toggle)
-      const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, entityName);
+      const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, { entityType, text: entityName });
       setSnippets(fetchedSnippets);
       setCurrentSnippetIndex(0);
     }
@@ -172,7 +178,7 @@ function DocumentThumbnail({
   };
 
   return (
-    <div className="flex flex-col" data-allow-pointer>
+    <div ref={ref} className="flex flex-col" data-allow-pointer>
       {/* Thumbnail */}
       <div 
         className={cn(
@@ -194,15 +200,20 @@ function DocumentThumbnail({
       {/* Expanded section below thumbnail */}
       {isSelected && (
         <div className="mt-1 p-2 rounded-md bg-card border border-primary/30 min-w-[200px] max-w-[280px]">
-          {/* Jump to document button */}
+        {/* Jump to document button */}
           <Button
             variant="ghost"
             size="sm"
             className="w-full justify-start h-7 px-2 mb-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
             onClick={handleJump}
+            disabled={isNavigating}
           >
-            <ArrowRight className="h-3 w-3 mr-1.5" />
-            Jump to document
+            {isNavigating ? (
+              <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+            ) : (
+              <ArrowRight className="h-3 w-3 mr-1.5" />
+            )}
+            {isNavigating ? 'Opening...' : 'Jump to document'}
           </Button>
           
           {/* Snippet section */}
@@ -256,7 +267,9 @@ function DocumentThumbnail({
       )}
     </div>
   );
-}
+});
+
+DocumentThumbnail.displayName = 'DocumentThumbnail';
 
 // Component to highlight the entity name within snippet text
 function HighlightedSnippet({ text, highlight }: { text: string; highlight: string }) {
@@ -432,6 +445,7 @@ function MasterEntityCard({
                   key={doc.id}
                   doc={doc}
                   entityName={entityName}
+                  entityType={entity.entity_type}
                   entityDocuments={entityDocuments}
                   onJumpToDocument={onJumpToDocument || (() => {})}
                 />
@@ -675,13 +689,33 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   }, []);
 
   // Handler for jumping to a document from entity cards
-  const handleJumpToDocument = useCallback((docId: string) => {
+  // Uses navigateToDocument from DocumentContext if available (canonical navigation pipe)
+  const { navigateToDocument, document: currentDoc } = useDocumentContext();
+  
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  const handleJumpToDocument = useCallback(async (docId: string) => {
+    // Don't navigate if already on this document
+    if (currentDoc?.meta?.id === docId) {
+      onOpenChange(false);
+      return;
+    }
+    
+    setIsNavigating(true);
     onOpenChange(false); // Close the dialog first
-    // Defer navigation until after dialog close animation completes
-    setTimeout(() => {
-      onJumpToDocument?.(docId);
-    }, 100);
-  }, [onOpenChange, onJumpToDocument]);
+    
+    // Use requestAnimationFrame to ensure dialog close animation starts
+    requestAnimationFrame(() => {
+      if (navigateToDocument) {
+        // Use the canonical navigation handler from DocumentContext
+        navigateToDocument(docId, ''); // Title will be fetched by the handler
+      } else {
+        // Fallback to prop callback
+        onJumpToDocument?.(docId);
+      }
+      setIsNavigating(false);
+    });
+  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);
   
   // Migration state
   const { user } = useAuth();

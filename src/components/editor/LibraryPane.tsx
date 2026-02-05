@@ -64,7 +64,10 @@ import { EditEntityDialog, EditableEntity } from './EditEntityDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 import { useDocumentContext } from './context';
 import { useEntityRelationshipCounts } from '@/hooks/useEntityRelationships';
-import { MasterLibraryDialog } from './MasterLibraryDialog';
+import { lazyDialog } from '@/lib/lazyComponent';
+
+// Lazy load Master Library Dialog
+const LazyMasterLibraryDialog = lazyDialog(() => import('./MasterLibraryDialog').then(m => ({ default: m.MasterLibraryDialog })));
 
 // EntityTab type is imported from NavigationContext
 
@@ -1780,8 +1783,8 @@ export function LibraryPane({
         onRelationshipDeleted={refreshRelationshipCounts}
       />
 
-      {/* Master Library Dialog */}
-      <MasterLibraryDialog
+      {/* Master Library Dialog - Lazy loaded */}
+      <LazyMasterLibraryDialog
         open={masterLibraryOpen}
         onOpenChange={setMasterLibraryOpen}
         onJumpToDocument={onNavigateToDocument}
