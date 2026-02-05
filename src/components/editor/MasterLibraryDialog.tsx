@@ -274,8 +274,14 @@ const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProp
 DocumentThumbnail.displayName = 'DocumentThumbnail';
 
 // Component to highlight the entity name within snippet text
-function HighlightedSnippet({ text, highlight }: { text: string; highlight: string }) {
+// Using a simple function that returns JSX (no ref needed)
+const HighlightedSnippet = ({ text, highlight }: { text: string; highlight: string }) => {
   if (!highlight || !text) return <span>{text}</span>;
+  
+  // Check for timeout/error sentinel snippets
+  if (text.startsWith('⏱️') || text.startsWith('⚠️')) {
+    return <span className="text-muted-foreground italic">{text}</span>;
+  }
   
   const regex = new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
   const parts = text.split(regex);
@@ -293,7 +299,7 @@ function HighlightedSnippet({ text, highlight }: { text: string; highlight: stri
       )}
     </span>
   );
-}
+};
 
 // Entity card for master library view
 interface MasterEntityCardProps {

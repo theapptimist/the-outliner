@@ -125,14 +125,9 @@ function EditorContent({
         return;
       }
 
-      // If document has links but is NOT saved as master, prompt user
-      if (!document.meta.isMaster) {
-        const links = extractLinkNodes(document.hierarchyBlocks);
-        if (links.length > 0) {
-          onPromptSaveAsMaster({ documentId, documentTitle, links });
-          return;
-        }
-      }
+      // NOTE: Save-as-master prompting is only triggered for link-based navigation
+      // from within the document (clicking a link node), not for Master Library jumps.
+      // Master Library navigation should always proceed directly.
 
       // Push current document onto navigation stack before navigating
       pushDocument(document.meta.id, document.meta.title);
@@ -152,7 +147,7 @@ function EditorContent({
     };
     setNavigateToDocument(handler);
     return () => setNavigateToDocument(null);
-  }, [setNavigateToDocument, pushDocument, document, onNavigateToDocument, setMasterDocument, setActiveSubOutlineId, onPromptSaveAsMaster]);
+  }, [setNavigateToDocument, pushDocument, document, onNavigateToDocument, setMasterDocument, setActiveSubOutlineId]);
 
   // Key the panel group so defaultSize recalculates when the usages pane opens/closes
   const layoutKey = inspectedTerm ? `usages:${inspectedTerm.id}` : 'usages:none';
