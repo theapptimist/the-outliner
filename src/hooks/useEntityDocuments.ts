@@ -339,6 +339,17 @@ export function useEntityDocuments() {
 
     } catch (error) {
       console.error('[snippets] precache failed:', error);
+      // Cache timeout/error sentinels so clicking doesn't trigger another long wait
+      const isTimeout = error instanceof Error && error.message.includes('timed out');
+      const errorSnippet = isTimeout ? TIMEOUT_SNIPPET : ERROR_SNIPPET;
+      setSnippetCache(prev => {
+        const next = new Map(prev);
+        itemsToFetch.forEach(item => {
+          const cacheKey = `${item.documentId}:${item.input.entityType}:${item.input.text}`;
+          next.set(cacheKey, [errorSnippet]);
+        });
+        return next;
+      });
     } finally {
       // Always clear in-progress flags + UI state so the indicator can't get stuck
       itemsToFetch.forEach(item => {
