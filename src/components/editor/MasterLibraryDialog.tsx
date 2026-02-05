@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { 
   User, 
   MapPin, 
@@ -377,6 +377,44 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [isBulkMoving, setIsBulkMoving] = useState(false);
+  
+  // Resizable explorer pane
+  const [explorerWidth, setExplorerWidth] = useState(192); // 12rem = 192px (w-48)
+  const isResizing = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(192);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    isResizing.current = true;
+    startX.current = e.clientX;
+    startWidth.current = explorerWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [explorerWidth]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      const delta = e.clientX - startX.current;
+      const newWidth = Math.max(160, Math.min(400, startWidth.current + delta));
+      setExplorerWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
   
   // Migration state
   const { user } = useAuth();
@@ -849,7 +887,10 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
             
             {/* Document Explorer Strip - Always show for My Library tab */}
             {activeTab === 'my-library' && (
-              <div className="w-48 flex flex-col border-r border-border/30 bg-muted/10 shrink-0 min-h-0 overflow-hidden">
+              <div 
+                className="flex flex-col border-r border-border/30 bg-muted/10 shrink-0 min-h-0 overflow-hidden relative"
+                style={{ width: explorerWidth }}
+              >
                 <div className="px-3 py-2 border-b border-border/30">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -1018,6 +1059,12 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                     )}
                   </div>
                 </ScrollArea>
+                {/* Resize Handle */}
+                <div
+                  onMouseDown={handleMouseDown}
+                  className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10"
+                  title="Drag to resize"
+                />
               </div>
             )}
             
