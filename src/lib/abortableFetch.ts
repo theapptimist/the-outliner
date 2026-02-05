@@ -17,7 +17,8 @@ export interface AbortableFetchResult<T> {
 }
 
 // Auth timeout - if getSession takes longer than this, something is wrong
-const AUTH_TIMEOUT_MS = 2000;
+// 5 seconds allows for initial session hydration while still failing fast for true hangs
+const AUTH_TIMEOUT_MS = 5000;
 
 /**
  * Get session with a timeout wrapper.
