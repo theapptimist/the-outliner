@@ -57,6 +57,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkMigrationNeeded, migrateDocumentEntitiesToMaster, backfillSourceDocumentIds } from '@/lib/masterEntityMigration';
 
+// MasterLibraryDialog - Full-page modal for managing the Master Library
 type MasterLibraryTab = 'my-library' | 'shared' | 'public';
 
 interface MasterLibraryDialogProps {
