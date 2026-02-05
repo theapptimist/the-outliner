@@ -50,6 +50,7 @@ import { useEntityPermissions } from '@/hooks/useEntityPermissions';
 import { usePublicEntities } from '@/hooks/usePublicEntities';
 import { useMasterLibraryDocuments } from '@/hooks/useMasterLibraryDocuments';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 import { useDocumentFolders, FolderWithChildren } from '@/hooks/useDocumentFolders';
 import { useDocumentContext } from './context';
 import { useToast } from '@/hooks/use-toast';
@@ -76,6 +77,43 @@ const ENTITY_COLORS = {
   dates: 'text-blue-500',
   terms: 'text-amber-500',
 };
+
+// --- Document emptiness detection (keeps Master Library explorer free of blank/Untitled docs) ---
+function hasNonEmptyNodes(nodes: any[]): boolean {
+  if (!Array.isArray(nodes) || nodes.length === 0) return false;
+  return nodes.some((node) => {
+    const label = node.label?.trim?.() || '';
+    if (label.length > 0) return true;
+    if (Array.isArray(node.children) && hasNonEmptyNodes(node.children)) return true;
+    return false;
+  });
+}
+
+function parseHierarchyBlocks(json: Json | null): Record<string, any> {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return {};
+  return json as Record<string, any>;
+}
+
+function isDocumentEmpty(content: Json | null, hierarchyBlocks: Json | null): boolean {
+  const blocks = parseHierarchyBlocks(hierarchyBlocks);
+
+  const hasHierarchyContent = Object.values(blocks).some((block) => {
+    const tree = (block as any)?.tree;
+    return hasNonEmptyNodes(tree);
+  });
+  if (hasHierarchyContent) return false;
+
+  if (!content || typeof content !== 'object') return true;
+  const docContent = (content as any).content;
+  if (!Array.isArray(docContent)) return true;
+
+  const hasRealContent = docContent.some((node: any) => {
+    if (node.type === 'hierarchyBlock') return false;
+    if (node.type === 'paragraph') return node.content && node.content.length > 0;
+    return node.type !== 'paragraph';
+  });
+  return !hasRealContent;
+}
 
 // Entity card for master library view
 interface MasterEntityCardProps {
@@ -365,7 +403,7 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
     setLoadingAllDocs(true);
     supabase
       .from('documents')
-      .select('id, title, folder_id')
+      .select('id, title, folder_id, content, hierarchy_blocks')
       .eq('user_id', user.id)
       .order('title')
       .then(({ data, error }) => {
@@ -373,8 +411,12 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
           console.error('[MasterLibrary] Error fetching documents:', error);
           setAllDocuments([]);
         } else {
+          const nonEmptyDocs = (data || []).filter(
+            (doc) => !isDocumentEmpty((doc as any).content, (doc as any).hierarchy_blocks)
+          );
+
           // Merge with library docs to get entity counts
-          const docsWithCounts = (data || []).map(doc => {
+          const docsWithCounts = nonEmptyDocs.map(doc => {
             const libraryDoc = libraryDocuments.find(ld => ld.id === doc.id);
             return {
               id: doc.id,
