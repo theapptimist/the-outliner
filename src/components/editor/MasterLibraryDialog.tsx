@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
+import { FolderPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -316,6 +317,9 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
   // Document and folder data
   const { documents: libraryDocuments, loading: loadingDocs, refresh: refreshDocs } = useMasterLibraryDocuments();
   const { folders, buildFolderTree, loading: loadingFolders } = useDocumentFolders();
+  const { createFolder } = useDocumentFolders();
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
   
   // Migration state
   const { user } = useAuth();
@@ -630,10 +634,69 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
                 </div>
                 <ScrollArea className="flex-1 min-h-0">
                   <div className="p-2 space-y-0.5">
-                    {libraryDocuments.length === 0 ? (
+                    {/* New Folder Button */}
+                    {creatingFolder ? (
+                      <div className="flex items-center gap-1 px-2 py-1">
+                        <Input
+                          value={newFolderName}
+                          onChange={(e) => setNewFolderName(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter' && newFolderName.trim()) {
+                              await createFolder(newFolderName.trim());
+                              setNewFolderName('');
+                              setCreatingFolder(false);
+                            }
+                            if (e.key === 'Escape') {
+                              setNewFolderName('');
+                              setCreatingFolder(false);
+                            }
+                          }}
+                          placeholder="Folder name..."
+                          className="h-6 text-xs flex-1"
+                          autoFocus
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={async () => {
+                            if (newFolderName.trim()) {
+                              await createFolder(newFolderName.trim());
+                              setNewFolderName('');
+                              setCreatingFolder(false);
+                            }
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            setNewFolderName('');
+                            setCreatingFolder(false);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setCreatingFolder(true)}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <FolderPlus className="h-3.5 w-3.5" />
+                        <span>New Folder</span>
+                      </button>
+                    )}
+                    
+                    <div className="h-px bg-border/50 my-1.5" />
+                    
+                    {libraryDocuments.length === 0 && folderTree.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
                         <FileText className="h-8 w-8 mb-2 opacity-30" />
-                        <p className="text-xs text-center">No documents with entities yet</p>
+                        <p className="text-xs text-center">No documents or folders yet</p>
                       </div>
                     ) : (
                       <>
