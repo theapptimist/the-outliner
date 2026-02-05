@@ -10,6 +10,8 @@ import { TermHighlightExtension, termHighlightPluginKey } from './extensions/Ter
 import { DateHighlightExtension, dateHighlightPluginKey } from './extensions/DateHighlightPlugin';
 import { PeopleHighlightExtension, peopleHighlightPluginKey } from './extensions/PeopleHighlightPlugin';
 import { PlacesHighlightExtension, placesHighlightPluginKey } from './extensions/PlacesHighlightPlugin';
+ import { EntityClickExtension } from './extensions/EntityClickExtension';
+ import type { EntityClickStorage } from './extensions/EntityClickExtension';
 import { PaginatedDocument } from './PageContainer';
 import { useEditorContext, EntityType } from './EditorContext';
 
@@ -76,6 +78,7 @@ export function DocumentEditor() {
       DateHighlightExtension,
       PeopleHighlightExtension,
       PlacesHighlightExtension,
+       EntityClickExtension,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
@@ -205,6 +208,16 @@ export function DocumentEditor() {
     editor.view.dispatch(tr);
   }, [editor, places, placesHighlightMode, highlightedPlace]);
 
+   // Set up entity click handler
+   useEffect(() => {
+     if (!editor) return;
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     const storage = (editor.storage as any).entityClick as EntityClickStorage;
+     storage.onEntityClick = (type, text) => {
+       revealEntityInLibrary(type, text);
+     };
+   }, [editor, revealEntityInLibrary]);
+ 
   // Keyboard shortcuts for find/replace
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -262,37 +275,9 @@ export function DocumentEditor() {
     setInsertHierarchyHandler(handleInsertHierarchy);
   }, [handleInsertHierarchy, setInsertHierarchyHandler]);
 
-  // Handle click on entity highlights in TipTap
-  const handleEntityHighlightClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    
-    // Check if clicked on an entity highlight
-    const highlightClasses = ['term-highlight', 'person-highlight', 'place-highlight', 'date-highlight'];
-    const matchedClass = highlightClasses.find(cls => target.classList.contains(cls));
-    
-    if (matchedClass) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const matchedText = target.textContent || '';
-      let entityType: EntityType;
-      
-      switch (matchedClass) {
-        case 'term-highlight': entityType = 'term'; break;
-        case 'person-highlight': entityType = 'person'; break;
-        case 'place-highlight': entityType = 'place'; break;
-        case 'date-highlight': entityType = 'date'; break;
-        default: return;
-      }
-      
-      revealEntityInLibrary(entityType, matchedText);
-    }
-  }, [revealEntityInLibrary]);
-
   return (
     <div
       className="flex flex-col h-full bg-muted/30 dark:bg-zinc-950 relative"
-      onClick={handleEntityHighlightClick}
       onMouseDown={(e) => {
         if (!editor) return;
         const t = e.target as HTMLElement | null;
