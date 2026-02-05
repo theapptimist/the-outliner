@@ -9,6 +9,7 @@
  } from 'lucide-react';
  import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { UserMenu } from './UserMenu';
  import type { SidebarTab } from '@/contexts/NavigationContext';
  
  interface DashboardTile {
@@ -77,14 +78,17 @@ export function DashboardView({ onSelectTile, onClose }: DashboardViewProps) {
           <h1 className="text-2xl font-bold text-brand">The Outliner</h1>
           <p className="text-sm text-muted-foreground">Select a section to get started</p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-10 w-10 hover:bg-muted"
-        >
-          <X className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-3">
+          <UserMenu />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-10 w-10 hover:bg-muted"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
        </div>
        
       {/* Tiles Grid */}
