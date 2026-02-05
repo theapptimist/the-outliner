@@ -733,12 +733,8 @@ export function MasterLibraryDialog({ open, onOpenChange }: MasterLibraryDialogP
         </div>
         <FileText className="h-3 w-3 shrink-0 opacity-50 mt-0.5" />
         <span
-          className={cn(
-            "flex-1 leading-tight",
-            doc.title.length > 15
-              ? "block whitespace-normal break-words"
-              : "truncate"
-          )}
+          className="flex-1 leading-tight whitespace-normal break-words"
+          style={{ maxWidth: '15ch' }}
         >
           {doc.title}
         </span>
