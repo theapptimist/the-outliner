@@ -1,92 +1,102 @@
 
+# Fix: Jump to Document Not Working in Master Library
 
-# Fix: Snippet Loading Stuck at getSession()
+## Root Cause Analysis
 
-## Root Cause Identified
+After tracing the code flow, I've identified the issue:
 
-After 10+ hours of debugging, I've traced the actual problem:
+1. When clicking "Jump to document", `handleJumpToDocument` is called
+2. It logs: `[MasterLibrary] handleJumpToDocument called` ✓
+3. The dialog closes via `onOpenChange(false)`
+4. Navigation is deferred via `requestAnimationFrame`
+5. It logs: `[MasterLibrary] Executing navigation` ✓
+6. The context handler logs: `[nav] navigating to` ✓
+7. `onNavigateToDocument(documentId)` is called
+8. **But no network request is made for the target document**
 
-The `abortableFetch.ts` utility starts a 15-second timeout timer, then calls `await supabase.auth.getSession()` to get the access token. If `getSession()` hangs (which can happen with network issues, cold starts, or racing requests), the timeout fires before `fetch()` is even called. 
+The problem is that when the dialog closes, React may be unmounting or re-rendering components. The `requestAnimationFrame` callback runs, but by then the function references may have been affected by React's reconciliation cycle. Additionally, `loadCloudDocument` internally uses `withRetry`, which doesn't have logging, so we can't see if it's entering or failing silently.
 
-**Evidence:**
-- Console shows `[snippets] precache: batch fetching...` (logged before abortableFetch)
-- Console does NOT show `[abortableFetch] Starting batch request...` (which is logged AFTER getSession)
-- Console shows `[abortableFetch] Batch timeout reached (15000ms), aborting` (timer fires)
-- Network logs show NO `hierarchy_blocks` request was ever made
-
-This means the actual network fetch never started - it got stuck waiting for `getSession()`.
+**Key finding**: There's no logging in `handleNavigateToDocument` or `loadCloudDocument` to confirm they're being entered. The navigation chain appears to complete, but we have no visibility into whether the actual async document loading is happening.
 
 ## The Fix
 
-Move the session retrieval OUTSIDE the timeout-controlled section, and cache/reuse the session token to avoid repeated `getSession()` calls.
+### 1. Add instrumentation to confirm the navigation function is being called
+Add console logging at the entry point of `handleNavigateToDocument` in Editor.tsx to confirm it receives the call.
 
-### Changes to `src/lib/abortableFetch.ts`
+### 2. Navigate BEFORE closing the dialog (not after)
+The current flow:
+1. Close dialog → `onOpenChange(false)`
+2. Wait for `requestAnimationFrame`
+3. Call `navigateToDocument`
 
-1. **Get session BEFORE starting the timeout timer**
-   - Call `getSession()` first, so if it hangs, we know immediately (and can surface a better error)
-   - Only start the abort timer right before the actual `fetch()`
-   
-2. **Add a timeout around `getSession()` itself**
-   - If getting the session takes > 2 seconds, abort and return an "auth" error
-   - This surfaces the real problem to the user
+This creates a race condition where the dialog unmounting can interfere with the navigation. Instead:
+1. Call `navigateToDocument` directly
+2. Let the navigation complete (or at least start)
+3. Close dialog as part of navigation success
 
-3. **Add more instrumentation**
-   - Log time spent on `getSession()` vs actual fetch
-   - This helps diagnose future issues
-
-### Changes to `src/hooks/useEntityDocuments.ts`
-
-1. **Pass the session token from outside if already available**
-   - The `precacheSnippets` function can get the session once and pass it to `abortableFetchRows`
-   - This avoids multiple `getSession()` calls that can race/hang
-
-2. **Better error message for auth timeout**
-   - Add a new sentinel: "Authentication timed out. Please refresh and try again."
-
-## Technical Details
-
-```text
-BEFORE (problematic flow):
-┌─────────────────────────────────────────────────────────────┐
-│ start timer (15s)                                           │
-│ await getSession()  ← CAN HANG HERE FOR 15s                 │
-│ log "Starting batch request..."  ← NEVER REACHED            │
-│ await fetch(...)                                            │
-│ return result                                               │
-└─────────────────────────────────────────────────────────────┘
-Timer fires after 15s → "timeout" error, but fetch never started
-
-AFTER (fixed flow):
-┌─────────────────────────────────────────────────────────────┐
-│ await getSessionWithTimeout(2s)  ← FAST FAIL if auth hangs  │
-│ start timer (15s)                                           │
-│ log "Starting batch request..."  ← NOW REACHED              │
-│ await fetch(...)                                            │
-│ return result                                               │
-└─────────────────────────────────────────────────────────────┘
-If getSession hangs: returns "auth_timeout" error in 2s
-If fetch hangs: returns "timeout" error in 15s
-```
+### 3. Remove `requestAnimationFrame` deferral
+The `requestAnimationFrame` was added for UI smoothness, but it's causing the navigation to fail. The navigation should happen immediately while the context is still valid.
 
 ## Files to Change
 
 | File | Changes |
 |------|---------|
-| `src/lib/abortableFetch.ts` | Move getSession outside timeout; add auth timeout wrapper |
-| `src/hooks/useEntityDocuments.ts` | Add AUTH_TIMEOUT_SNIPPET sentinel |
+| `src/components/editor/MasterLibraryDialog.tsx` | Reorder: navigate first, close dialog in callback or after |
+| `src/pages/Editor.tsx` | Add entry logging to `handleNavigateToDocument` |
+| `src/lib/cloudDocumentStorage.ts` | Add entry logging to `loadCloudDocument` |
 
-## Why This Will Work
+## Technical Details
 
-This fix addresses the actual root cause (getSession hanging), not just the symptoms. The current approach times out after 15 seconds but gives no useful information because the fetch never started. With this fix:
+### Current problematic flow in MasterLibraryDialog.tsx (lines 756-792):
+```javascript
+const handleJumpToDocument = useCallback((docId: string) => {
+  setIsNavigating(true);
+  
+  // Close the dialog first ← PROBLEM: This triggers unmount/re-render
+  onOpenChange(false);
+  
+  // Defer navigation ← PROBLEM: By now context may be stale
+  requestAnimationFrame(() => {
+    if (navigateToDocument) {
+      navigateToDocument(docId, '');
+    }
+    setIsNavigating(false);
+  });
+}, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);
+```
 
-1. If auth is slow/stuck → user sees "Authentication timed out" in 2 seconds
-2. If fetch is slow/stuck → user sees "Request timed out" in 15 seconds
-3. The retry button will actually work because subsequent getSession calls typically succeed
+### Fixed flow:
+```javascript
+const handleJumpToDocument = useCallback((docId: string) => {
+  if (currentDoc?.meta?.id === docId) {
+    onOpenChange(false);
+    return;
+  }
+  
+  setIsNavigating(true);
+  
+  // Navigate IMMEDIATELY while context is valid
+  if (navigateToDocument) {
+    navigateToDocument(docId, '');
+  } else if (onJumpToDocument) {
+    onJumpToDocument(docId);
+  }
+  
+  // Close dialog AFTER navigation is triggered
+  onOpenChange(false);
+  setIsNavigating(false);
+}, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);
+```
 
 ## Test Plan
 
-1. Expand an entity with documents
-2. Observe "Loading snippets..." shows briefly
-3. Snippets should load within a few seconds (not 15+)
-4. If there's still a timeout, the error message should distinguish auth vs network
+1. Open Master Library
+2. Expand an entity with documents
+3. Click on a document thumbnail
+4. Click "Jump to document"
+5. Verify:
+   - Console shows `[nav] handleNavigateToDocument called`
+   - Console shows `[CloudStorage] Loading document: ...`
+   - Document loads in the editor
+   - Dialog closes after navigation completes
 
