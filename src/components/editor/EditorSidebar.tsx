@@ -22,6 +22,7 @@ import { TimelinePane } from './TimelinePane';
 import { FileMenu } from './FileMenu';
 import { UserMenu } from './UserMenu';
 import { DashboardView } from './DashboardView';
+import { MasterLibraryDialog } from './MasterLibraryDialog';
 import { cn } from '@/lib/utils';
 
 // Lazy load the AI toolbar since it's rarely used immediately
@@ -74,6 +75,7 @@ export function EditorSidebar({
   const [libraryFullPage, setLibraryFullPage] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [masterLibraryOpen, setMasterLibraryOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
@@ -333,13 +335,21 @@ export function EditorSidebar({
           onClose={() => setShowDashboard(false)}
           onSelectTile={(id) => {
             setShowDashboard(false);
-            if (id !== 'editor') {
+            if (id === 'master-library') {
+              setMasterLibraryOpen(true);
+            } else if (id !== 'editor') {
               setActiveTab(id);
             }
             // 'editor' just closes the dashboard to show the editor
           }}
         />
       )}
+
+      {/* Master Library Dialog */}
+      <MasterLibraryDialog
+        open={masterLibraryOpen}
+        onOpenChange={setMasterLibraryOpen}
+      />
 
       {/* Conditional Content - now properly conditional rendering */}
       {!showDashboard && activeTab === 'library' && (
