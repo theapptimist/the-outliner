@@ -32,19 +32,13 @@ function findSnippetsInHierarchy(
 ): DocumentSnippet[] {
   const snippets: DocumentSnippet[] = [];
   const termLower = searchTerm.toLowerCase();
-  const wordBoundaryRegex = new RegExp(`\\b${escapeRegex(searchTerm)}\\b`, 'gi');
-
-  function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
 
   function scanNode(node: any, blockId: string) {
-    // Check label
-    if (node.label && wordBoundaryRegex.test(node.label)) {
-      const match = node.label.match(wordBoundaryRegex);
-      if (match) {
-        // Create a snippet around the match
-        const idx = node.label.toLowerCase().indexOf(termLower);
+    // Check label using simple indexOf (avoids global regex state issues)
+    if (node.label) {
+      const labelLower = node.label.toLowerCase();
+      const idx = labelLower.indexOf(termLower);
+      if (idx !== -1) {
         const start = Math.max(0, idx - 40);
         const end = Math.min(node.label.length, idx + searchTerm.length + 40);
         let snippet = node.label.substring(start, end);
@@ -60,11 +54,12 @@ function findSnippetsInHierarchy(
       }
     }
 
-    // Check content
+    // Check content using simple indexOf
     if (node.content) {
       const plainText = extractPlainText(node.content);
-      if (wordBoundaryRegex.test(plainText)) {
-        const idx = plainText.toLowerCase().indexOf(termLower);
+      const textLower = plainText.toLowerCase();
+      const idx = textLower.indexOf(termLower);
+      if (idx !== -1) {
         const start = Math.max(0, idx - 40);
         const end = Math.min(plainText.length, idx + searchTerm.length + 40);
         let snippet = plainText.substring(start, end);
@@ -100,16 +95,13 @@ function findSnippetsInHierarchy(
 function findSnippetsInContent(content: any, searchTerm: string): DocumentSnippet[] {
   const snippets: DocumentSnippet[] = [];
   const termLower = searchTerm.toLowerCase();
-  const wordBoundaryRegex = new RegExp(`\\b${escapeRegex(searchTerm)}\\b`, 'gi');
-
-  function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
   const plainText = extractPlainText(content);
-  let match;
-  while ((match = wordBoundaryRegex.exec(plainText)) !== null) {
-    const idx = match.index;
+  const textLower = plainText.toLowerCase();
+  
+  // Find all occurrences using indexOf in a loop
+  let searchStart = 0;
+  let idx: number;
+  while ((idx = textLower.indexOf(termLower, searchStart)) !== -1) {
     const start = Math.max(0, idx - 40);
     const end = Math.min(plainText.length, idx + searchTerm.length + 40);
     let snippet = plainText.substring(start, end);
@@ -117,6 +109,7 @@ function findSnippetsInContent(content: any, searchTerm: string): DocumentSnippe
     if (end < plainText.length) snippet = snippet + '...';
     
     snippets.push({ text: snippet });
+    searchStart = idx + 1; // Move past this match
   }
 
   return snippets;

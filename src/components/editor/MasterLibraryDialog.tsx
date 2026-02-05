@@ -676,8 +676,11 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
 
   // Handler for jumping to a document from entity cards
   const handleJumpToDocument = useCallback((docId: string) => {
-    onOpenChange(false); // Close the dialog
-    onJumpToDocument?.(docId); // Navigate to the document
+    onOpenChange(false); // Close the dialog first
+    // Defer navigation until after dialog close animation completes
+    setTimeout(() => {
+      onJumpToDocument?.(docId);
+    }, 100);
   }, [onOpenChange, onJumpToDocument]);
   
   // Migration state
