@@ -120,24 +120,22 @@ export function useEntityDocuments() {
       // Wrap the entire operation in a timeout
       const snippets = await withTimeout(
         (async (): Promise<DocumentSnippet[]> => {
-          // Fetch document content
-          const { data: doc, error } = await supabase
+          // 1) Fetch + scan hierarchy blocks first (usually smaller/faster)
+          const { data: hier, error: hierError } = await supabase
             .from('documents')
-            .select('content, hierarchy_blocks')
+            .select('hierarchy_blocks')
             .eq('id', documentId)
             .single();
 
-          if (error || !doc) {
-            console.error('[useEntityDocuments] Error fetching document:', error);
-            return [];
+          if (hierError) {
+            console.error('[useEntityDocuments] Error fetching hierarchy blocks:', hierError);
           }
 
           const result: DocumentSnippet[] = [];
 
-          // Find snippets in hierarchy blocks first (usually smaller/faster)
-          if (doc.hierarchy_blocks) {
+          if (hier?.hierarchy_blocks) {
             try {
-              const hierarchyBlocks = doc.hierarchy_blocks as Record<string, any>;
+              const hierarchyBlocks = hier.hierarchy_blocks as Record<string, any>;
               const hierarchySnippets = findSnippetsInHierarchy(hierarchyBlocks, input);
               result.push(...hierarchySnippets);
             } catch (e) {
@@ -145,13 +143,26 @@ export function useEntityDocuments() {
             }
           }
 
-          // Find snippets in content (with remaining cap)
-          if (doc.content && result.length < 10) {
-            try {
-              const contentSnippets = findSnippetsInContent(doc.content, input, result.length);
-              result.push(...contentSnippets);
-            } catch (e) {
-              console.error('[useEntityDocuments] Error scanning content:', e);
+          // 2) Only fetch + scan full editor content if we still need more
+          if (result.length < 10) {
+            const { data: body, error: bodyError } = await supabase
+              .from('documents')
+              .select('content')
+              .eq('id', documentId)
+              .single();
+
+            if (bodyError) {
+              console.error('[useEntityDocuments] Error fetching document content:', bodyError);
+              return result;
+            }
+
+            if (body?.content) {
+              try {
+                const contentSnippets = findSnippetsInContent(body.content, input, result.length);
+                result.push(...contentSnippets);
+              } catch (e) {
+                console.error('[useEntityDocuments] Error scanning content:', e);
+              }
             }
           }
 
