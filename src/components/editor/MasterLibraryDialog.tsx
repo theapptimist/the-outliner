@@ -145,13 +145,15 @@ function DocumentThumbnail({
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!isSelected) {
-      // Fetch snippets when selecting
+    const newIsSelected = !isSelected;
+    setIsSelected(newIsSelected);  // Toggle immediately for instant feedback
+    
+    if (newIsSelected) {
+      // Fetch snippets asynchronously (don't block the toggle)
       const fetchedSnippets = await entityDocuments.fetchSnippetsForDocument(doc.id, entityName);
       setSnippets(fetchedSnippets);
       setCurrentSnippetIndex(0);
     }
-    setIsSelected(!isSelected);
   };
 
   const handlePrevSnippet = (e: React.MouseEvent) => {
@@ -178,6 +180,7 @@ function DocumentThumbnail({
           isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
         )}
         onClick={handleClick}
+        onMouseDown={(e) => e.stopPropagation()}
         data-allow-pointer
       >
         <div className="w-12 h-14 bg-background border border-border/50 rounded flex items-center justify-center pointer-events-none">
