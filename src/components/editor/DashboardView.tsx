@@ -4,11 +4,9 @@
    BookOpen, 
    Sparkles, 
    Clock,
-  Edit3,
-  X
+  Edit3
  } from 'lucide-react';
  import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { UserMenu } from './UserMenu';
  import type { SidebarTab } from '@/contexts/NavigationContext';
  
@@ -66,10 +64,9 @@ import { UserMenu } from './UserMenu';
  
  interface DashboardViewProps {
   onSelectTile: (id: SidebarTab | 'editor' | 'master-library') => void;
-  onClose: () => void;
  }
  
-export function DashboardView({ onSelectTile, onClose }: DashboardViewProps) {
+export function DashboardView({ onSelectTile }: DashboardViewProps) {
    return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
       {/* Header */}
@@ -78,17 +75,7 @@ export function DashboardView({ onSelectTile, onClose }: DashboardViewProps) {
           <h1 className="text-2xl font-bold text-brand">The Outliner</h1>
           <p className="text-sm text-muted-foreground">Select a section to get started</p>
         </div>
-        <div className="flex items-center gap-3">
-          <UserMenu />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-10 w-10 hover:bg-muted"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+        <UserMenu />
        </div>
        
       {/* Tiles Grid */}
