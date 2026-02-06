@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Json } from '@/integrations/supabase/types';
 
 export interface DocumentWithEntityCount {
   id: string;
@@ -10,56 +9,9 @@ export interface DocumentWithEntityCount {
   folder_id: string | null;
 }
 
-// Check if hierarchy blocks have any non-empty nodes
-function hasNonEmptyNodes(nodes: any[]): boolean {
-  if (!Array.isArray(nodes) || nodes.length === 0) return false;
-  
-  return nodes.some(node => {
-    const label = node.label?.trim?.() || '';
-    if (label.length > 0) return true;
-    if (Array.isArray(node.children) && hasNonEmptyNodes(node.children)) return true;
-    return false;
-  });
-}
-
-// Parse hierarchy blocks from JSON
-function parseHierarchyBlocks(json: Json | null): Record<string, any> {
-  if (!json || typeof json !== 'object' || Array.isArray(json)) return {};
-  return json as Record<string, any>;
-}
-
-// Check if a document is empty (no meaningful content)
-function isDocumentEmpty(content: Json | null, hierarchyBlocks: Json | null): boolean {
-  const blocks = parseHierarchyBlocks(hierarchyBlocks);
-  
-  // Check hierarchy blocks for content
-  const hasHierarchyContent = Object.values(blocks).some(block => {
-    const tree = (block as any)?.tree;
-    return hasNonEmptyNodes(tree);
-  });
-  
-  if (hasHierarchyContent) return false;
-
-  // Check TipTap content
-  if (!content || typeof content !== 'object') return true;
-  
-  const docContent = (content as any).content;
-  if (!Array.isArray(docContent)) return true;
-  
-  const hasRealContent = docContent.some((node: any) => {
-    if (node.type === 'hierarchyBlock') return false;
-    if (node.type === 'paragraph') {
-      return node.content && node.content.length > 0;
-    }
-    return node.type !== 'paragraph';
-  });
-  
-  return !hasRealContent;
-}
-
 /**
  * Hook to fetch documents that have entities in the Master Library
- * Filters out empty documents (no meaningful content)
+ * Uses LIGHTWEIGHT query (no content/hierarchy_blocks) for fast loading
  */
 export function useMasterLibraryDocuments() {
   const { user } = useAuth();
@@ -73,6 +25,10 @@ export function useMasterLibraryDocuments() {
       setLoading(false);
       return;
     }
+
+    const flowId = `lib-docs-hook-${Date.now()}`;
+    console.log(`[useMasterLibraryDocuments:${flowId}] Starting fetch`);
+    const startTime = performance.now();
 
     setLoading(true);
 
@@ -90,8 +46,12 @@ export function useMasterLibraryDocuments() {
 
       const { data: entities, error: entitiesError } = await entitiesQuery;
 
-      // Don't update state if request was aborted
-      if (signal?.aborted) return;
+      // Don't update state if request was aborted - but always clear loading
+      if (signal?.aborted) {
+        console.log(`[useMasterLibraryDocuments:${flowId}] Aborted during entities fetch`);
+        setLoading(false);
+        return;
+      }
 
       if (entitiesError) throw entitiesError;
 
@@ -104,16 +64,17 @@ export function useMasterLibraryDocuments() {
       });
 
       if (countMap.size === 0) {
+        console.log(`[useMasterLibraryDocuments:${flowId}] No documents with entities`);
         setDocuments([]);
-        if (!signal?.aborted) setLoading(false);
+        setLoading(false);
         return;
       }
 
-      // Fetch document titles
+      // Fetch document titles - LIGHTWEIGHT, no content/hierarchy_blocks
       const docIds = Array.from(countMap.keys());
       let docsQuery = supabase
         .from('documents')
-        .select('id, title, folder_id, content, hierarchy_blocks')
+        .select('id, title, folder_id')
         .in('id', docIds);
 
       if (signal) {
@@ -122,14 +83,20 @@ export function useMasterLibraryDocuments() {
 
       const { data: docs, error: docsError } = await docsQuery;
 
-      // Don't update state if request was aborted
-      if (signal?.aborted) return;
+      // Don't update state if request was aborted - but always clear loading
+      if (signal?.aborted) {
+        console.log(`[useMasterLibraryDocuments:${flowId}] Aborted during docs fetch`);
+        setLoading(false);
+        return;
+      }
 
       if (docsError) throw docsError;
 
-      // Merge with counts and filter out empty documents
+      const duration = Math.round(performance.now() - startTime);
+      console.log(`[useMasterLibraryDocuments:${flowId}] Completed in ${duration}ms, ${docs?.length || 0} docs`);
+
+      // Merge with counts - no empty filtering needed since these docs have entities
       const result: DocumentWithEntityCount[] = (docs || [])
-        .filter(doc => !isDocumentEmpty(doc.content, doc.hierarchy_blocks))
         .map(doc => ({
           id: doc.id,
           title: doc.title,
@@ -140,15 +107,12 @@ export function useMasterLibraryDocuments() {
 
       setDocuments(result);
     } catch (err) {
-      // Don't set error state for aborted requests
-      if (signal?.aborted) return;
+      // Always clear loading, even on error
       console.error('[useMasterLibraryDocuments] Error:', err);
       setDocuments([]);
     } finally {
-      // Only clear loading if not aborted
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
+      // ALWAYS clear loading - prevents stuck spinners
+      setLoading(false);
     }
   }, [user]);
 

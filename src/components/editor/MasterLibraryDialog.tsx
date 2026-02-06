@@ -836,31 +836,50 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   const [loadingAllDocs, setLoadingAllDocs] = useState(false);
   
   // Fetch all user documents when dialog opens
+  // LIGHTWEIGHT query - no content/hierarchy_blocks to avoid 20-40s load times
   useEffect(() => {
     if (!open || !user?.id) return;
     
     const controller = new AbortController();
     const seq = openSeqRef.current;
+    const flowId = `lib-docs-${Date.now()}`;
+    
+    console.log(`[MasterLibrary:${flowId}] Starting all-docs fetch`);
+    const startTime = performance.now();
     
     setLoadingAllDocs(true);
-    supabase
-      .from('documents')
-      .select('id, title, folder_id, content, hierarchy_blocks')
-      .eq('user_id', user.id)
-      .order('title')
-      .abortSignal(controller.signal)
-      .then(({ data, error }) => {
-        // Check if request is stale or aborted
-        if (openSeqRef.current !== seq) return;
-        if (controller.signal.aborted) return;
+    
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .select('id, title, folder_id, created_at, updated_at')
+          .eq('user_id', user.id)
+          .order('title')
+          .abortSignal(controller.signal);
+        
+        const duration = Math.round(performance.now() - startTime);
+        
+        // Check if request is stale or aborted - but ALWAYS clear loading
+        if (openSeqRef.current !== seq || controller.signal.aborted) {
+          console.log(`[MasterLibrary:${flowId}] Stale/aborted after ${duration}ms, clearing loading`);
+          setLoadingAllDocs(false);
+          return;
+        }
+        
+        console.log(`[MasterLibrary:${flowId}] Completed in ${duration}ms, ${data?.length || 0} docs`);
         
         if (error) {
           console.error('[MasterLibrary] Error fetching documents:', error);
           setAllDocuments([]);
         } else {
-          const nonEmptyDocs = (data || []).filter(
-            (doc) => !isDocumentEmpty((doc as any).content, (doc as any).hierarchy_blocks)
-          );
+          // Fast heuristic: hide docs that are likely auto-created blanks
+          // (title === 'Untitled' AND never edited)
+          const nonEmptyDocs = (data || []).filter((doc) => {
+            if (doc.title !== 'Untitled') return true;
+            // If created_at !== updated_at, the doc has been edited
+            return doc.created_at !== doc.updated_at;
+          });
 
           // Merge with library docs to get entity counts
           const docsWithCounts = nonEmptyDocs.map(doc => {
@@ -874,8 +893,14 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
           });
           setAllDocuments(docsWithCounts);
         }
+      } catch (err) {
+        // Ensure loading clears even on unexpected errors
+        console.error('[MasterLibrary] Unexpected error:', err);
+      } finally {
+        // ALWAYS clear loading - prevents stuck spinners
         setLoadingAllDocs(false);
-      });
+      }
+    })();
     
     return () => {
       controller.abort();
