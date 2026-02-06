@@ -807,6 +807,8 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   // This is critical for the lazyDialog pattern which keeps the component mounted
   useEffect(() => {
     if (open) {
+      // Reset navigation state on re-open
+      setIsNavigating(false);
       refreshMaster();
       refreshDocs();
     }
