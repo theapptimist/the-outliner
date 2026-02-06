@@ -754,6 +754,13 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   const [isNavigating, setIsNavigating] = useState(false);
   
   const handleJumpToDocument = useCallback((docId: string) => {
+    // DIAGNOSTIC: Log which branch will execute
+    console.log('[MasterLibraryDialog] handleJumpToDocument called:', {
+      docId,
+      hasOnJumpToDocument: typeof onJumpToDocument === 'function',
+      hasNavigateToDocument: typeof navigateToDocument === 'function',
+    });
+    
     // Don't navigate if already on this document
     if (currentDoc?.meta?.id === docId) {
       onOpenChange(false);
@@ -772,8 +779,10 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     // The parent callback now handles pushing to the navigation stack
     requestAnimationFrame(() => {
       if (onJumpToDocument) {
+        console.log('[MasterLibraryDialog] Using onJumpToDocument prop callback');
         onJumpToDocument(docId);
       } else if (navigateToDocument) {
+        console.log('[MasterLibraryDialog] FALLBACK: Using navigateToDocument context');
         navigateToDocument(docId, '');
       }
       setIsNavigating(false);
