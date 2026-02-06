@@ -756,16 +756,8 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   const [isNavigating, setIsNavigating] = useState(false);
   
   const handleJumpToDocument = useCallback((docId: string) => {
-    console.log('[MasterLibrary] handleJumpToDocument called', { 
-      docId, 
-      currentDocId: currentDoc?.meta?.id,
-      hasOnJumpToDocument: !!onJumpToDocument,
-      hasNavigateToDocument: !!navigateToDocument
-    });
-    
     // Don't navigate if already on this document
     if (currentDoc?.meta?.id === docId) {
-      console.log('[MasterLibrary] Already on this document, just closing');
       onOpenChange(false);
       return;
     }
@@ -774,26 +766,23 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     // Push a special "master-library" entry to the navigation stack
     // This allows the Back button to return to the Master Library instead of a document
-    console.log('[MasterLibrary] Pushing master-library origin to nav stack');
     pushDocument('master-library', 'Snippets', { type: 'master-library' });
     
-    // Navigate using the DIRECT prop callback first (more reliable than context pipeline)
-    if (onJumpToDocument) {
-      console.log('[MasterLibrary] Using onJumpToDocument (direct callback)');
-      onJumpToDocument(docId);
-    } else if (navigateToDocument) {
-      console.log('[MasterLibrary] Fallback to navigateToDocument from context');
-      navigateToDocument(docId, '');
-    } else {
-      console.error('[MasterLibrary] No navigation handler available!');
-      setIsNavigating(false);
-      return;
-    }
-    
-    // Close dialog AFTER navigation is triggered
+    // CRITICAL: Close dialog BEFORE triggering navigation
+    // This ensures the navigation callback captures current context before dialog unmounts
     onOpenChange(false);
-    setIsNavigating(false);
-  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, currentDoc?.meta?.title, currentDoc?.meta?.createdAt, currentDoc?.meta?.updatedAt, pushDocument]);
+    
+    // Navigate using the DIRECT prop callback (preferred - bypasses context pipeline)
+    // Use requestAnimationFrame to ensure dialog close is processed first
+    requestAnimationFrame(() => {
+      if (onJumpToDocument) {
+        onJumpToDocument(docId);
+      } else if (navigateToDocument) {
+        navigateToDocument(docId, '');
+      }
+      setIsNavigating(false);
+    });
+  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, pushDocument]);
   
   // Migration state
   const { user } = useAuth();
