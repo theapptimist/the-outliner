@@ -43,8 +43,8 @@ export function useMasterEntities(options: UseMasterEntitiesOptions = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Fetch owned entities
-  const fetchEntities = useCallback(async () => {
+  // Fetch owned entities - supports AbortSignal for cancellation
+  const fetchEntities = useCallback(async (signal?: AbortSignal) => {
     if (!user) {
       setEntities([]);
       setLoading(false);
@@ -64,7 +64,15 @@ export function useMasterEntities(options: UseMasterEntitiesOptions = {}) {
         query = query.eq('entity_type', entityType);
       }
 
+      // Add abort signal if provided
+      if (signal) {
+        query = query.abortSignal(signal);
+      }
+
       const { data, error: fetchError } = await query.order('created_at', { ascending: false });
+
+      // Don't update state if request was aborted
+      if (signal?.aborted) return;
 
       if (fetchError) throw fetchError;
 
@@ -77,10 +85,15 @@ export function useMasterEntities(options: UseMasterEntitiesOptions = {}) {
 
       setEntities(parsed);
     } catch (err) {
+      // Don't set error state for aborted requests
+      if (signal?.aborted) return;
       console.error('[useMasterEntities] Error fetching entities:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch entities'));
     } finally {
-      setLoading(false);
+      // Only clear loading if not aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [user, entityType]);
 
