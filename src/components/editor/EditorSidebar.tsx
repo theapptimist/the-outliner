@@ -52,6 +52,7 @@ interface EditorSidebarProps {
   canRedo: boolean;
   fileMenuProps: React.ComponentProps<typeof FileMenu>;
   onNavigateToDocument?: (id: string) => void;
+  onJumpFromMasterLibrary?: (docId: string) => void;
   onMasterLibraryOpenChange?: (open: boolean) => void;
   masterLibraryOpen?: boolean;
 }
@@ -75,6 +76,7 @@ export function EditorSidebar({
   canRedo,
   fileMenuProps,
   onNavigateToDocument,
+  onJumpFromMasterLibrary,
   onMasterLibraryOpenChange,
   masterLibraryOpen: controlledMasterLibraryOpen,
 }: EditorSidebarProps) {
@@ -359,7 +361,7 @@ export function EditorSidebar({
       <LazyMasterLibraryDialog
         open={masterLibraryOpen}
         onOpenChange={setMasterLibraryOpen}
-        onJumpToDocument={onNavigateToDocument}
+        onJumpToDocument={onJumpFromMasterLibrary ?? onNavigateToDocument}
       />
 
       {/* Conditional Content - now properly conditional rendering */}
