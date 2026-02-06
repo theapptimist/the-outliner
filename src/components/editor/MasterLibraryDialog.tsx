@@ -191,6 +191,7 @@ const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProp
 
   const handleJump = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('[DocumentThumbnail] handleJump called:', { docId: doc.id, hasCallback: typeof onJumpToDocument === 'function' });
     onJumpToDocument(doc.id);
   };
 
