@@ -21,8 +21,12 @@ export function NavigationBackBar({ onNavigateBack, onOpenMasterLibrary }: Navig
   const isMasterLibraryOrigin = currentOrigin.type === 'master-library';
 
   const handleBack = () => {
-    const origin = popDocument();
+    // Use currentOrigin snapshot (already available) for decisions
+    // Call popDocument() only to mutate the stack
+    const origin = currentOrigin;
     if (!origin) return;
+
+    popDocument(); // mutate stack
 
     // If coming from Master Library, re-open it instead of navigating to a document
     if (origin.type === 'master-library') {

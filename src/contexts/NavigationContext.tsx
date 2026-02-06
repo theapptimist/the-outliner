@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 
 export type NavigationEntryType = 'document' | 'master-library';
 
@@ -128,6 +128,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   );
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('tools');
 
+  // Keep a ref to the stack for synchronous reads in popDocument
+  const stackRef = useRef<NavigationEntry[]>(stack);
+  useEffect(() => {
+    stackRef.current = stack;
+  }, [stack]);
+
   // Persist stack to sessionStorage
   useEffect(() => {
     sessionStorage.setItem(NAV_STACK_KEY, JSON.stringify(stack));
@@ -174,14 +180,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   }, []);
 
   const popDocument = useCallback((): NavigationEntry | null => {
-    let popped: NavigationEntry | null = null;
-
-    setStack(prev => {
-      if (prev.length === 0) return prev;
-      popped = prev[prev.length - 1];
-      return prev.slice(0, -1);
-    });
-
+    // Read from ref synchronously to get the correct entry before React batches the update
+    const currentStack = stackRef.current;
+    if (currentStack.length === 0) return null;
+    
+    const popped = currentStack[currentStack.length - 1];
+    setStack(prev => prev.slice(0, -1));
     return popped;
   }, []);
 
