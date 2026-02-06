@@ -1,242 +1,129 @@
 
+## What’s actually happening (why it still “does nothing”)
+From the code you shared + the current Master Library implementation, the spinner problem is now very likely **not** “stale requests winning” (though that can happen). It’s primarily:
 
-# Fix Master Library Loading - Abort Stale Requests & Reset State on Reopen
+1) **The Master Library explorer is fetching huge document payloads**  
+In `MasterLibraryDialog.tsx`, the “all documents” fetch does:
+- `select('id, title, folder_id, content, hierarchy_blocks')`
 
-## Problem Summary
+That means every open of the Master Library is transferring potentially very large JSON blobs (`content` + `hierarchy_blocks`) for *every document* just to:
+- build a title list
+- filter out “empty” docs
 
-When clicking "Back to Snippets", the Master Library opens immediately but its content stays on infinite spinners for 20-40+ seconds (sometimes never loads). The navigation fix is working, but the data fetching inside the Master Library is broken.
+This can easily take **20–40 seconds** depending on document count + outline size, and it will look exactly like “library opens immediately but no content / spinners spin”.
 
-## Root Cause
+2) **The loading flags can get stuck true on abort/stale returns**  
+In the all-documents `.then(...)`, if the request is aborted or considered stale you `return` early and **never clear `loadingAllDocs`**. That alone can cause “infinite spinner” even if later requests finish.
 
-The Master Library uses the `lazyDialog` HOC pattern which keeps the component mounted after first open. When the dialog reopens:
+So we need two changes:
+- Make document listing lightweight (fast, deterministic)
+- Make loading state deterministic (never stuck)
 
-1. **Stale requests compete with new ones**: Previous fetch requests may still be in-flight, causing race conditions where old results overwrite new state
-2. **No request versioning**: There's no way to tell which request "wins" when multiple are in flight
-3. **Session token retrieval delays**: The `abortableFetch` utility retrieves the session token inside the timeout window, which can cause the entire request to stall if auth is slow
-4. **Multiple concurrent fetch paths**: The dialog triggers 5+ different data fetches on open without coordination
-
-## Solution: Request Versioning + AbortController Cleanup
-
-Add an "open sequence" counter that increments each time the dialog opens. Only allow data from the *current* sequence to update state. Also cancel in-flight requests when the dialog closes.
-
----
-
-## Implementation Steps
-
-### Step 1: Add Open Sequence Tracking in MasterLibraryDialog
-
-**File: `src/components/editor/MasterLibraryDialog.tsx`**
-
-Add a ref to track the current "open sequence" and pass it to data-fetching effects:
-
-```typescript
-// Near the top of MasterLibraryDialog component
-const openSeqRef = useRef(0);
-
-// In the useEffect that triggers on open
-useEffect(() => {
-  if (open) {
-    // Increment sequence - any in-flight requests from previous opens are now stale
-    openSeqRef.current += 1;
-    const currentSeq = openSeqRef.current;
-    
-    // Reset navigation state
-    setIsNavigating(false);
-    
-    // Only update state if still on this sequence
-    refreshMaster().then(() => {
-      if (openSeqRef.current !== currentSeq) return; // stale
-    });
-    refreshDocs().then(() => {
-      if (openSeqRef.current !== currentSeq) return; // stale
-    });
-  }
-}, [open]);
-```
-
-### Step 2: Add AbortController to Document Fetching
-
-**File: `src/components/editor/MasterLibraryDialog.tsx`**
-
-The `allDocuments` fetch effect (around line 818) needs an AbortController:
-
-```typescript
-useEffect(() => {
-  if (!open || !user?.id) return;
-  
-  const controller = new AbortController();
-  const seq = openSeqRef.current;
-  
-  setLoadingAllDocs(true);
-  
-  supabase
-    .from('documents')
-    .select('id, title, folder_id, content, hierarchy_blocks')
-    .eq('user_id', user.id)
-    .order('title')
-    .abortSignal(controller.signal) // Supabase supports this
-    .then(({ data, error }) => {
-      // Check if request is stale
-      if (openSeqRef.current !== seq) return;
-      if (controller.signal.aborted) return;
-      
-      // ... rest of logic unchanged
-    });
-  
-  return () => {
-    controller.abort();
-  };
-}, [open, user?.id, libraryDocuments]);
-```
-
-### Step 3: Update useMasterEntities Hook for Abort Support
-
-**File: `src/hooks/useMasterEntities.ts`**
-
-Add AbortController support to the fetch function:
-
-```typescript
-const fetchEntities = useCallback(async (signal?: AbortSignal) => {
-  if (!user) {
-    setEntities([]);
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-  setError(null);
-
-  try {
-    let query = supabase
-      .from('entities')
-      .select('*')
-      .eq('owner_id', user.id);
-
-    if (entityType) {
-      query = query.eq('entity_type', entityType);
-    }
-    
-    // Add abort signal
-    if (signal) {
-      query = query.abortSignal(signal);
-    }
-
-    const { data, error: fetchError } = await query.order('created_at', { ascending: false });
-
-    // Check if aborted
-    if (signal?.aborted) return;
-    
-    if (fetchError) throw fetchError;
-    // ... rest unchanged
-  } catch (err) {
-    if (signal?.aborted) return; // Don't set error state for aborted requests
-    console.error('[useMasterEntities] Error fetching entities:', err);
-    setError(err instanceof Error ? err : new Error('Failed to fetch entities'));
-  } finally {
-    if (!signal?.aborted) {
-      setLoading(false);
-    }
-  }
-}, [user, entityType]);
-```
-
-### Step 4: Update useMasterLibraryDocuments Hook
-
-**File: `src/hooks/useMasterLibraryDocuments.ts`**
-
-Similar abort support:
-
-```typescript
-const fetchDocuments = useCallback(async (signal?: AbortSignal) => {
-  if (!user) {
-    setDocuments([]);
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    // Add signal to both queries
-    let entitiesQuery = supabase
-      .from('entities')
-      .select('source_document_id')
-      .eq('owner_id', user.id)
-      .not('source_document_id', 'is', null);
-    
-    if (signal) entitiesQuery = entitiesQuery.abortSignal(signal);
-    
-    const { data: entities, error: entitiesError } = await entitiesQuery;
-    
-    if (signal?.aborted) return;
-    // ... rest with similar abort checks
-  } catch (err) {
-    if (signal?.aborted) return;
-    // ... error handling
-  } finally {
-    if (!signal?.aborted) {
-      setLoading(false);
-    }
-  }
-}, [user]);
-```
-
-### Step 5: Wire Up Abort Controllers in Dialog
-
-**File: `src/components/editor/MasterLibraryDialog.tsx`**
-
-Create a centralized abort controller that's cancelled on close:
-
-```typescript
-const abortControllerRef = useRef<AbortController | null>(null);
-
-useEffect(() => {
-  if (open) {
-    // Cancel any previous requests
-    abortControllerRef.current?.abort();
-    
-    // Create new controller for this open session
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
-    const seq = ++openSeqRef.current;
-    
-    setIsNavigating(false);
-    
-    // Pass signal to refresh functions
-    // (These would need to accept signal parameter)
-  } else {
-    // Dialog closed - abort all in-flight requests
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-  }
-}, [open]);
-```
+## Goal
+When you click “Back to Snippets”:
+- Master Library opens immediately
+- Document explorer and entity lists populate within ~1–2 seconds
+- No infinite spinners
+- If deeper “empty doc” detection is needed, it happens *after* the UI renders (progressive enhancement)
 
 ---
 
-## Technical Details
+## Implementation plan (approved work I will implement next)
 
-### Why This Fixes the Issue
+### Phase 1 — Stop the stuck spinners (deterministic loading lifecycle)
+**A. Fix `loadingAllDocs` to always clear**
+In `src/components/editor/MasterLibraryDialog.tsx`, update the “fetch all user documents” effect to:
+- use `try/catch/finally` (or a `.finally`)
+- ensure `setLoadingAllDocs(false)` runs when:
+  - request succeeds
+  - request errors
+  - request is aborted
+  - request is “stale” due to open sequence changing
 
-1. **Request versioning**: Each dialog open increments a sequence counter. Stale requests check the counter before updating state and bail out if it doesn't match.
+Concretely:
+- If `openSeqRef.current !== seq` OR `controller.signal.aborted`, still clear loading (or clear it in finally).
 
-2. **Abort on close**: When the dialog closes, all in-flight requests are cancelled via AbortController, preventing them from interfering with the next open.
+**B. Ensure hook loading flags also clear on abort**
+Right now `useMasterEntities` / `useMasterLibraryDocuments` intentionally do not setLoading(false) when aborted. That’s fine when closed, but in a keep-mounted dialog it can leave UI in “loading forever” unless a later request always completes.
+I’ll adjust the dialog’s orchestration so that on every open we trigger a non-aborted request, and also ensure that any aborted refresh is followed by a new refresh (or we explicitly clear the visible loading state when closing).
 
-3. **Abort on reopen**: When the dialog opens again, the previous controller is aborted before creating a new one, ensuring only fresh requests can update state.
+### Phase 2 — Make Master Library open fast (remove heavyweight document payloads)
+**A. Change the “all documents” query to be lightweight**
+In `MasterLibraryDialog.tsx`:
+- Replace:
+  - `select('id, title, folder_id, content, hierarchy_blocks')`
+- With:
+  - `select('id, title, folder_id, created_at, updated_at')` (or just `id,title,folder_id,updated_at`)
 
-4. **Loading state protection**: The `finally` blocks check if the request was aborted before clearing loading states, preventing race conditions where loading gets stuck.
+This reduces payload size drastically.
 
-### Files to Modify
+**B. Replace “empty document” detection with a fast heuristic**
+Because we won’t have `content`/`hierarchy_blocks` in that list query anymore, we cannot run `isDocumentEmpty(...)` there.
 
-1. `src/components/editor/MasterLibraryDialog.tsx` - Add sequence tracking and abort controller management
-2. `src/hooks/useMasterEntities.ts` - Add abort signal support
-3. `src/hooks/useMasterLibraryDocuments.ts` - Add abort signal support
+We’ll use a heuristic that avoids listing obviously “blank” documents without pulling large JSON:
+- hide docs that are very likely auto-created blanks, for example:
+  - `title === 'Untitled'` AND `created_at === updated_at`
+- optionally keep “Untitled but edited” docs (if updated_at differs)
 
-### Risk Assessment
+This gets you 95% of the original intention (don’t clutter explorer with blank docs) without 40-second loads.
 
-**Low-Medium Risk**: 
-- Changes are additive (adding abort support)
-- No changes to existing data flow logic
-- Supabase client natively supports AbortController via `.abortSignal()`
-- Pattern is well-established in the codebase (already used in `useEntityDocuments`)
+**C. Keep the strict “empty doc” filtering only where it’s cheap**
+In `useMasterLibraryDocuments.ts`, you currently fetch `content,hierarchy_blocks` to filter empties for the “docs that have entities”.
+That set is typically much smaller than “all docs”, but it can still be big.
 
+I’ll change `useMasterLibraryDocuments` to:
+- first fetch `entities.source_document_id` counts (as it does)
+- then fetch documents with **light fields** (`id,title,folder_id,updated_at`)
+- remove strict `isDocumentEmpty` filtering there as well (or apply the same heuristic)
+
+If we still need strict filtering, we can add a *second stage background check* later (Phase 3), but first we need the UI to be fast and reliable.
+
+### Phase 3 (optional but recommended) — Progressive enhancement for “hide empty docs” without blocking UI
+If you truly need “perfect empty detection” (TipTap + hierarchy), we can do it without blocking:
+- Show the list quickly using lightweight fields
+- Add a toggle “Hide empty documents (deep scan)” that:
+  - runs a background scan in batches (e.g., 25 docs at a time) fetching `content/hierarchy_blocks` only for that batch
+  - updates the explorer incrementally
+This prevents “open library = huge download”.
+
+### Phase 4 — Add precise instrumentation (single flow id)
+To prevent another wasted day, I’ll add a single flowId when:
+- Back to Snippets clicked
+- Master Library open begins
+- allDocuments fetch start/end (duration)
+- masterEntities fetch start/end
+- libraryDocuments fetch start/end
+And log durations so we can see exactly what is taking 40 seconds (and confirm the fix).
+
+---
+
+## Files that will be changed
+1) `src/components/editor/MasterLibraryDialog.tsx`
+- Fix loadingAllDocs stuck spinner (always clear)
+- Make “all docs” query lightweight
+- Replace deep emptiness check with heuristic
+- Add timing logs / flowId
+
+2) `src/hooks/useMasterLibraryDocuments.ts`
+- Make document-title fetch lightweight (no content/hierarchy_blocks)
+- Replace deep emptiness filter with heuristic or remove it
+- Keep abort logic intact
+
+3) (Possibly) `src/hooks/useMasterEntities.ts`
+- Likely no functional change needed beyond ensuring the dialog does not leave it stuck loading; if required, we’ll add a safe “if aborted, clear loading on close/open transitions” pattern.
+
+---
+
+## Acceptance criteria (what you should see after this)
+1) Click “Back to Snippets” → Master Library opens and populates content quickly (seconds, not tens of seconds).
+2) No infinite spinners after open/close cycles.
+3) Rapid open/close/open does not wedge the dialog into loading forever.
+4) Console logs show fetch durations so we can verify the slowdown is gone.
+
+---
+
+## If this still isn’t enough (backup path)
+If even the lightweight queries are slow, the bottleneck is likely database performance or an RLS/function slowdown. In that case, we’ll:
+- identify the slow endpoint via network timing (which request takes 40s)
+- change the query shape (add limits/pagination for docs explorer)
+- add “load more” in explorer so it never fetches everything at once.
