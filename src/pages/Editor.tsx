@@ -11,6 +11,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { OpenDocumentDialog } from '@/components/editor/OpenDocumentDialog';
 import { SaveAsDialog } from '@/components/editor/SaveAsDialog';
 import { SaveAsMasterDialog } from '@/components/editor/SaveAsMasterDialog';
+import { FileMenu } from '@/components/editor/FileMenu';
 import { DocumentState, createEmptyDocument, HierarchyBlockData, DocumentDisplayOptions } from '@/types/document';
 import { HierarchyNode } from '@/types/node';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,6 +74,7 @@ function EditorContent({
   onClearPendingNavigation,
   onSaveDocumentAsMaster,
   onOpenMasterLibrary,
+  onJumpFromMasterLibrary,
 }: { 
   onNavigateToDocument: (id: string) => void;
   onPromptSaveAsMaster: (pending: PendingNavigation) => void;
@@ -80,6 +82,7 @@ function EditorContent({
   onClearPendingNavigation: () => void;
   onSaveDocumentAsMaster: (newTitle?: string) => Promise<DocumentState | null>;
   onOpenMasterLibrary: () => void;
+  onJumpFromMasterLibrary: (docId: string) => void;
 }) {
   const { inspectedTerm, setInspectedTerm, documentVersion, setNavigateToDocument, document } = useEditorContext();
   const { pushDocument, setMasterDocument, setActiveSubOutlineId } = useNavigation();
@@ -201,6 +204,157 @@ function EditorContent({
         documentTitle={document?.meta?.title || 'Untitled'}
       />
     </>
+  );
+}
+
+// Wrapper component that provides navigation-aware callbacks to both Sidebar and EditorContent
+// This component lives inside NavigationProvider so it can use useNavigation
+interface NavigationAwareContentProps {
+  document: DocumentState;
+  masterLibraryOpen: boolean;
+  setMasterLibraryOpen: (open: boolean) => void;
+  handleNavigateToDocument: (id: string, skipConfirm?: boolean) => Promise<void>;
+  handlePromptSaveAsMaster: (pending: PendingNavigation) => void;
+  pendingNavigation: PendingNavigation | null;
+  setPendingNavigation: (pending: PendingNavigation | null) => void;
+  handleSaveDocumentAsMaster: (newTitle?: string) => Promise<DocumentState | null>;
+  outlineStyle: OutlineStyle;
+  setOutlineStyle: (style: OutlineStyle) => void;
+  mixedConfig: MixedStyleConfig;
+  setMixedConfig: (config: MixedStyleConfig) => void;
+  autoDescend: boolean;
+  setAutoDescend: (value: boolean) => void;
+  showRevealCodes: boolean;
+  setShowRevealCodes: (value: boolean) => void;
+  showRowHighlight: boolean;
+  setShowRowHighlight: (value: boolean) => void;
+  showSlashPlaceholder: boolean;
+  setShowSlashPlaceholder: (value: boolean) => void;
+  undoRef: React.MutableRefObject<() => void>;
+  redoRef: React.MutableRefObject<() => void>;
+  canUndo: boolean;
+  canRedo: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  handleFileSelected: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  openDialogOpen: boolean;
+  setOpenDialogOpen: (open: boolean) => void;
+  handleOpenDocument: (id: string) => void;
+  saveAsDialogOpen: boolean;
+  setSaveAsDialogOpen: (open: boolean) => void;
+  handleSaveAs: (title: string, isMaster?: boolean) => Promise<void>;
+  fileMenuProps: React.ComponentProps<typeof FileMenu>;
+}
+
+function NavigationAwareContent({
+  document,
+  masterLibraryOpen,
+  setMasterLibraryOpen,
+  handleNavigateToDocument,
+  handlePromptSaveAsMaster,
+  pendingNavigation,
+  setPendingNavigation,
+  handleSaveDocumentAsMaster,
+  outlineStyle,
+  setOutlineStyle,
+  mixedConfig,
+  setMixedConfig,
+  autoDescend,
+  setAutoDescend,
+  showRevealCodes,
+  setShowRevealCodes,
+  showRowHighlight,
+  setShowRowHighlight,
+  showSlashPlaceholder,
+  setShowSlashPlaceholder,
+  undoRef,
+  redoRef,
+  canUndo,
+  canRedo,
+  fileInputRef,
+  handleFileSelected,
+  openDialogOpen,
+  setOpenDialogOpen,
+  handleOpenDocument,
+  saveAsDialogOpen,
+  setSaveAsDialogOpen,
+  handleSaveAs,
+  fileMenuProps,
+}: NavigationAwareContentProps) {
+  const { pushDocument } = useNavigation();
+
+  // CRITICAL: This callback pushes to navigation stack BEFORE navigating
+  // Because it runs in a stable component (not the lazy dialog), the stack update commits reliably
+  const handleJumpFromMasterLibrary = useCallback((docId: string) => {
+    // Push master-library to stack before navigating
+    pushDocument('master-library', 'Snippets', { type: 'master-library' });
+    // Then navigate
+    handleNavigateToDocument(docId, true);
+  }, [pushDocument, handleNavigateToDocument]);
+
+  return (
+    <div className="h-screen flex bg-background">
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept=".json"
+        onChange={handleFileSelected}
+      />
+      
+      <EditorSidebar
+        outlineStyle={outlineStyle}
+        onOutlineStyleChange={setOutlineStyle}
+        mixedConfig={mixedConfig}
+        onMixedConfigChange={setMixedConfig}
+        autoDescend={autoDescend}
+        onAutoDescendChange={setAutoDescend}
+        showRevealCodes={showRevealCodes}
+        onShowRevealCodesChange={setShowRevealCodes}
+        showRowHighlight={showRowHighlight}
+        onShowRowHighlightChange={(v) => {
+          setShowRowHighlight(v);
+          localStorage.setItem('outliner:showRowHighlight', String(v));
+        }}
+        showSlashPlaceholder={showSlashPlaceholder}
+        onShowSlashPlaceholderChange={(v) => {
+          setShowSlashPlaceholder(v);
+          localStorage.setItem('outliner:showSlashPlaceholder', String(v));
+        }}
+        onUndo={() => undoRef.current()}
+        onRedo={() => redoRef.current()}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        fileMenuProps={fileMenuProps}
+        onNavigateToDocument={handleJumpFromMasterLibrary}
+        masterLibraryOpen={masterLibraryOpen}
+        onMasterLibraryOpenChange={setMasterLibraryOpen}
+      />
+      
+      <EditorContent 
+        onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} 
+        onPromptSaveAsMaster={handlePromptSaveAsMaster}
+        pendingNavigation={pendingNavigation}
+        onClearPendingNavigation={() => setPendingNavigation(null)}
+        onSaveDocumentAsMaster={handleSaveDocumentAsMaster}
+        onOpenMasterLibrary={() => setMasterLibraryOpen(true)}
+        onJumpFromMasterLibrary={handleJumpFromMasterLibrary}
+      />
+
+      <OpenDocumentDialog
+        open={openDialogOpen}
+        onOpenChange={setOpenDialogOpen}
+        onSelect={handleOpenDocument}
+        currentDocId={document.meta.id}
+      />
+
+      <SaveAsDialog
+        open={saveAsDialogOpen}
+        onOpenChange={setSaveAsDialogOpen}
+        onSave={handleSaveAs}
+        defaultTitle={document.meta.title}
+        defaultIsMaster={document.meta.isMaster}
+      />
+    </div>
   );
 }
 
@@ -635,68 +789,41 @@ export default function Editor() {
         onCitationDefinitionsChange={handleCitationDefinitionsChange}
         onUndoRedoChange={handleUndoRedoChange}
       >
-        <div className="h-screen flex bg-background">
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept=".json"
-            onChange={handleFileSelected}
-          />
-          
-          <EditorSidebar
-            outlineStyle={outlineStyle}
-            onOutlineStyleChange={setOutlineStyle}
-            mixedConfig={mixedConfig}
-            onMixedConfigChange={setMixedConfig}
-            autoDescend={autoDescend}
-            onAutoDescendChange={setAutoDescend}
-            showRevealCodes={showRevealCodes}
-            onShowRevealCodesChange={setShowRevealCodes}
-            showRowHighlight={showRowHighlight}
-            onShowRowHighlightChange={(v) => {
-              setShowRowHighlight(v);
-              localStorage.setItem('outliner:showRowHighlight', String(v));
-            }}
-            showSlashPlaceholder={showSlashPlaceholder}
-            onShowSlashPlaceholderChange={(v) => {
-              setShowSlashPlaceholder(v);
-              localStorage.setItem('outliner:showSlashPlaceholder', String(v));
-            }}
-            onUndo={() => undoRef.current()}
-            onRedo={() => redoRef.current()}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            fileMenuProps={fileMenuProps}
-            onNavigateToDocument={(id) => handleNavigateToDocument(id, true)}
-            masterLibraryOpen={masterLibraryOpen}
-            onMasterLibraryOpenChange={setMasterLibraryOpen}
-          />
-          
-          <EditorContent 
-            onNavigateToDocument={(id) => handleNavigateToDocument(id, true)} 
-            onPromptSaveAsMaster={handlePromptSaveAsMaster}
-            pendingNavigation={pendingNavigation}
-            onClearPendingNavigation={() => setPendingNavigation(null)}
-            onSaveDocumentAsMaster={handleSaveDocumentAsMaster}
-            onOpenMasterLibrary={() => setMasterLibraryOpen(true)}
-          />
-
-          <OpenDocumentDialog
-            open={openDialogOpen}
-            onOpenChange={setOpenDialogOpen}
-            onSelect={handleOpenDocument}
-            currentDocId={document.meta.id}
-          />
-
-          <SaveAsDialog
-            open={saveAsDialogOpen}
-            onOpenChange={setSaveAsDialogOpen}
-            onSave={handleSaveAs}
-            defaultTitle={document.meta.title}
-            defaultIsMaster={document.meta.isMaster}
-          />
-        </div>
+        <NavigationAwareContent
+          document={document}
+          masterLibraryOpen={masterLibraryOpen}
+          setMasterLibraryOpen={setMasterLibraryOpen}
+          handleNavigateToDocument={handleNavigateToDocument}
+          handlePromptSaveAsMaster={handlePromptSaveAsMaster}
+          pendingNavigation={pendingNavigation}
+          setPendingNavigation={setPendingNavigation}
+          handleSaveDocumentAsMaster={handleSaveDocumentAsMaster}
+          outlineStyle={outlineStyle}
+          setOutlineStyle={setOutlineStyle}
+          mixedConfig={mixedConfig}
+          setMixedConfig={setMixedConfig}
+          autoDescend={autoDescend}
+          setAutoDescend={setAutoDescend}
+          showRevealCodes={showRevealCodes}
+          setShowRevealCodes={setShowRevealCodes}
+          showRowHighlight={showRowHighlight}
+          setShowRowHighlight={setShowRowHighlight}
+          showSlashPlaceholder={showSlashPlaceholder}
+          setShowSlashPlaceholder={setShowSlashPlaceholder}
+          undoRef={undoRef}
+          redoRef={redoRef}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          fileInputRef={fileInputRef}
+          handleFileSelected={handleFileSelected}
+          openDialogOpen={openDialogOpen}
+          setOpenDialogOpen={setOpenDialogOpen}
+          handleOpenDocument={handleOpenDocument}
+          saveAsDialogOpen={saveAsDialogOpen}
+          setSaveAsDialogOpen={setSaveAsDialogOpen}
+          handleSaveAs={handleSaveAs}
+          fileMenuProps={fileMenuProps}
+        />
       </EditorProvider>
     </NavigationProvider>
   );
