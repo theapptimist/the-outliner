@@ -1,4 +1,4 @@
-import { lazy, Suspense, ComponentType, ReactNode, ComponentProps, useState } from 'react';
+import { lazy, Suspense, ComponentType, ReactNode, ComponentProps, useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -44,10 +44,12 @@ export function lazyDialog<T extends ComponentType<any>>(
     // Track whether the dialog has ever been opened
     const [hasBeenOpened, setHasBeenOpened] = useState(false);
     
-    // Once opened, we keep the component mounted to maintain stable hook count
-    if (props.open && !hasBeenOpened) {
-      setHasBeenOpened(true);
-    }
+    // Arm hasBeenOpened via effect when open becomes true (not during render)
+    useEffect(() => {
+      if (props.open && !hasBeenOpened) {
+        setHasBeenOpened(true);
+      }
+    }, [props.open, hasBeenOpened]);
     
     // Don't render anything until first opened (avoids loading the component bundle)
     if (!hasBeenOpened) return null;
