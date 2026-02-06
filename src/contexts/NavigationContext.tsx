@@ -165,7 +165,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const isInMasterMode = masterDocument !== null;
 
   const pushDocument = useCallback((id: string, title: string, options?: { type?: NavigationEntryType; entityId?: string; entityType?: string }) => {
-    setStack(prev => [...prev, { id, title, type: options?.type, entityId: options?.entityId, entityType: options?.entityType }]);
+    console.log('[NavigationContext] pushDocument called:', { id, title, options });
+    setStack(prev => {
+      const newStack = [...prev, { id, title, type: options?.type, entityId: options?.entityId, entityType: options?.entityType }];
+      console.log('[NavigationContext] New stack:', newStack);
+      return newStack;
+    });
   }, []);
 
   const popDocument = useCallback((): NavigationEntry | null => {
