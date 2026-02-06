@@ -1,4 +1,4 @@
-import { lazy, Suspense, ComponentType, ReactNode, ComponentProps } from 'react';
+import { lazy, Suspense, ComponentType, ReactNode, ComponentProps, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -32,8 +32,8 @@ export function lazyWithFallback<T extends ComponentType<any>>(
 }
 
 /**
- * Creates a lazy-loaded dialog that only loads when opened.
- * The component won't be loaded until the 'open' prop is true.
+ * Creates a lazy-loaded dialog that defers loading until first opened.
+ * Once loaded, the component stays mounted to avoid hook count mismatches.
  */
 export function lazyDialog<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>
@@ -41,8 +41,16 @@ export function lazyDialog<T extends ComponentType<any>>(
   const LazyComponent = lazy(importFn);
   
   return function LazyDialogWrapper(props: ComponentProps<T> & { open?: boolean }) {
-    // Don't render anything if not open (avoids loading the component)
-    if (!props.open) return null;
+    // Track whether the dialog has ever been opened
+    const [hasBeenOpened, setHasBeenOpened] = useState(false);
+    
+    // Once opened, we keep the component mounted to maintain stable hook count
+    if (props.open && !hasBeenOpened) {
+      setHasBeenOpened(true);
+    }
+    
+    // Don't render anything until first opened (avoids loading the component bundle)
+    if (!hasBeenOpened) return null;
     
     return (
       <Suspense fallback={null}>
