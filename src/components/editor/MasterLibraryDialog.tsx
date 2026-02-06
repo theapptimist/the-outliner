@@ -532,8 +532,14 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
   const documentId = currentDocument?.meta?.id || '';
   const { toast } = useToast();
   const entityDocuments = useEntityDocuments();
+  const { user } = useAuth();
   
   const [importingId, setImportingId] = useState<string | null>(null);
+  
+  // Track entity IDs that are allowed based on document selection
+  // null = no filtering (show all), Set = filter to these IDs only
+  const [allowedEntityIds, setAllowedEntityIds] = useState<Set<string> | null>(null);
+  const [loadingAllowedIds, setLoadingAllowedIds] = useState(false);
   
   const { 
     entities: ownedEntities, 
@@ -559,6 +565,34 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
     }
   }, [scope, fetchSharedEntities]);
   
+  // Fetch allowed entity IDs from document_entity_refs when documents are selected
+  useEffect(() => {
+    if (scope !== 'my-library' || selectedDocumentIds.size === 0 || !user?.id) {
+      setAllowedEntityIds(null);
+      return;
+    }
+    
+    setLoadingAllowedIds(true);
+    const docIds = Array.from(selectedDocumentIds);
+    
+    supabase
+      .from('document_entity_refs')
+      .select('entity_id')
+      .in('document_id', docIds)
+      .eq('user_id', user.id)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[LibraryTabContent] Error fetching entity refs:', error);
+          setAllowedEntityIds(null);
+        } else {
+          const ids = new Set((data || []).map(r => r.entity_id));
+          console.log('[LibraryTabContent] Loaded allowed entity IDs:', ids.size, 'from', docIds.length, 'documents');
+          setAllowedEntityIds(ids);
+        }
+        setLoadingAllowedIds(false);
+      });
+  }, [scope, selectedDocumentIds, user?.id]);
+  
   const getEntities = (): MasterEntity[] => {
     switch (scope) {
       case 'my-library': return ownedEntities;
@@ -567,25 +601,21 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
     }
   };
   
-  const isLoading = scope === 'my-library' ? loadingOwned 
+  const isLoading = scope === 'my-library' ? (loadingOwned || loadingAllowedIds)
     : scope === 'shared' ? loadingShared 
     : loadingPublic;
   
   const filteredEntities = useMemo(() => {
     let entities = getEntities();
     
-    // Filter by selected documents (only for my-library)
-    if (scope === 'my-library' && selectedDocumentIds.size > 0) {
-     console.log('[LibraryTabContent] Filtering by documents:', {
-       selectedCount: selectedDocumentIds.size,
-       selectedIds: Array.from(selectedDocumentIds),
-       totalEntities: entities.length,
-       entitiesWithSourceDoc: entities.filter(e => e.source_document_id).length,
-     });
-      entities = entities.filter(e => 
-        e.source_document_id && selectedDocumentIds.has(e.source_document_id)
-      );
-     console.log('[LibraryTabContent] After filter:', entities.length, 'entities');
+    // Filter by selected documents using document_entity_refs (only for my-library)
+    if (scope === 'my-library' && allowedEntityIds !== null) {
+      console.log('[LibraryTabContent] Filtering by document refs:', {
+        allowedCount: allowedEntityIds.size,
+        totalEntities: entities.length,
+      });
+      entities = entities.filter(e => allowedEntityIds.has(e.id));
+      console.log('[LibraryTabContent] After filter:', entities.length, 'entities');
     }
     
     // Filter by search query
@@ -600,7 +630,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
     }
     
     return entities;
-  }, [scope, ownedEntities, sharedEntities, publicEntities, searchQuery, entityTypeFilter, selectedDocumentIds]);
+  }, [scope, ownedEntities, sharedEntities, publicEntities, searchQuery, entityTypeFilter, allowedEntityIds]);
   
   // Pre-fetch document counts for visible entities
   useEffect(() => {
