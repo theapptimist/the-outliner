@@ -10,8 +10,11 @@ interface NavigationBackBarProps {
 export function NavigationBackBar({ onNavigateBack, onOpenMasterLibrary }: NavigationBackBarProps) {
   const { canGoBack, currentOrigin, popDocument, masterDocument, setActiveSubOutlineId, activeSidebarTab } = useNavigation();
 
+  console.log('[NavigationBackBar] Render check:', { canGoBack, currentOrigin, activeSidebarTab });
+
   // Hide the back bar when viewing the Master Outline pane (it has its own navigation)
   if (!canGoBack || !currentOrigin || activeSidebarTab === 'master') {
+    console.log('[NavigationBackBar] Hiding bar:', { canGoBack, currentOrigin, activeSidebarTab });
     return null;
   }
 
