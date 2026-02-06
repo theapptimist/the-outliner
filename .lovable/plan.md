@@ -1,111 +1,133 @@
 
-## What I believe is actually happening (rephrased, in plain terms)
-You have 3 moving pieces that have to line up every time:
+# Fix: Navigation Stack Timing Race Condition
 
-1) **Close Snippets modal**
-2) **Navigate to the chosen document**
-3) **Record “where you came from”** so the header can show **Back to Snippets**
+## Root Cause Analysis
 
-Right now, the “record where you came from” step is *sometimes not happening*, even though navigation does happen. That produces the exact symptom: document loads, library loads, but **Back to Snippets** is missing.
+After tracing through the code, I found a fundamental timing bug in how the navigation history is being recorded.
 
-The evidence in the code strongly suggests the “Back to Snippets” stack entry is currently too dependent on a callback chain (Editor → Sidebar → Lazy dialog → dialog internals). Any time that chain is missing/undefined at the moment of click, the dialog falls back to a different navigation path that does not push the `master-library` entry.
+### The Problem
 
-So the real fix is: **make the Snippets modal itself always push the stack entry**, so “Back to Snippets” can’t disappear due to callback wiring/timing.
+In `MasterLibraryDialog.tsx`, the `handleJumpToDocument` function has this sequence:
 
-## Goals
-- Make **Jump to document** always:
-  - close Snippets
-  - open the target document
-  - reliably show **Back to Snippets**
-- Make **Back to Snippets** always:
-  - reopen Snippets
-  - not leave the modal in a “double spinner / stuck loading” state
-- Remove the “see-saw” behavior (fixing one breaks the other).
+```
+1. onOpenChange(false)  ← Triggers React re-render
+2. requestAnimationFrame(() => {
+     pushDocument(...)  ← Updates navigation stack
+     navigate(...)
+   })
+```
 
-## Implementation approach (deterministic: put the responsibility in one place)
-### Key idea
-Move the “push `master-library` navigation entry” logic **into `MasterLibraryDialog`** (the one component that definitively knows “this navigation originated from Snippets”).
+This causes:
+1. Dialog closes → React re-renders the entire component tree
+2. `NavigationBackBar` checks `canGoBack` (which is `false` because stack is empty)
+3. `NavigationBackBar` returns `null` (hidden)
+4. Only THEN does `requestAnimationFrame` fire and update the stack
+5. The back bar has already rendered as hidden and doesn't re-render
 
-That means even if `onJumpToDocument` is missing or delayed for any reason, the dialog still records the origin and the header can still render **Back to Snippets**.
+### The Solution
 
-### Why this is better than what we have
-- The dialog is the source of truth for “this is a snippet jump”.
-- It avoids depending on whether props are wired correctly through `lazyDialog` and other wrappers at the exact moment of the click.
-- It avoids polluting normal navigation (Library pane, Timeline, Master outline) with Snippets-only behavior.
+**Push the navigation entry BEFORE closing the dialog.** The order must be:
 
-## Concrete code changes (files and what will change)
-### 1) `src/components/editor/MasterLibraryDialog.tsx`
-**Change `handleJumpToDocument` to:**
-1. Set `isNavigating=true`
-2. Close the dialog (`onOpenChange(false)`)
-3. In `requestAnimationFrame`:
-   - Push navigation stack entry: `pushDocument('master-library', 'Snippets', { type: 'master-library' })`
-   - Then navigate using:
-     - `onJumpToDocument(docId)` if provided
-     - else fallback to `navigateToDocument(docId, '')`
-4. Set `isNavigating=false`
+```
+1. pushDocument(...)    ← Stack updated first
+2. onOpenChange(false)  ← Dialog closes, React re-renders with correct stack
+3. navigate(...)        ← Load the document
+```
 
-**Also:**
-- Import `useNavigation` and read `pushDocument` from it.
-- Remove the now-misleading comment in the dialog that says “pushDocument is now called by the parent”.
-- Remove or significantly reduce the diagnostic `console.log`s we added while chasing this (they’re adding noise and you’ve been stuck too long).
+This ensures when React re-renders after the dialog closes, the `NavigationBackBar` sees `canGoBack = true` and `currentOrigin.type = 'master-library'`.
 
-**Expected result:**
-Even if the prop callback chain fails, the stack entry is still created, so **Back to Snippets** can’t vanish after a successful jump.
+---
 
-### 2) `src/components/editor/NavigationBackBar.tsx`
-Add a small safety tweak so the bar is not accidentally hidden in any edge case when the origin is Snippets:
-- Current hide rule: hide if `activeSidebarTab === 'master'`.
-- Update to: hide for master tab **only if the origin is not** `master-library`.
+## Implementation
 
-This is a defensive guardrail. Even though you answered “Not Master tab” when it disappears, this prevents one known class of “it’s there but hidden” failures.
+### File: `src/components/editor/MasterLibraryDialog.tsx`
 
-### 3) `src/pages/Editor.tsx` and `src/components/editor/EditorSidebar.tsx`
-After step (1), the parent-level Snippets-only push is no longer required for correctness.
+**Change the `handleJumpToDocument` function** (around lines 762-787):
 
-We’ll simplify:
-- Keep `onJumpFromMasterLibrary` as “close + navigate” (optional), but remove any requirement that it must push the stack.
-- Ensure `EditorSidebar` continues to pass the callback down, but the dialog no longer depends on it for history correctness.
+**Current (buggy) code:**
+```typescript
+const handleJumpToDocument = useCallback((docId: string) => {
+  if (currentDoc?.meta?.id === docId) {
+    onOpenChange(false);
+    return;
+  }
+  
+  setIsNavigating(true);
+  onOpenChange(false);  // ← Step 1: Close triggers re-render
+  
+  requestAnimationFrame(() => {
+    pushDocument('master-library', 'Snippets', { type: 'master-library' }); // ← Step 2: Too late!
+    if (onJumpToDocument) onJumpToDocument(docId);
+    else if (navigateToDocument) navigateToDocument(docId, '');
+    setIsNavigating(false);
+  });
+}, [...]);
+```
 
-This reduces complexity and makes the system more resilient.
+**New (fixed) code:**
+```typescript
+const handleJumpToDocument = useCallback((docId: string) => {
+  // Don't navigate if already on this document
+  if (currentDoc?.meta?.id === docId) {
+    onOpenChange(false);
+    return;
+  }
+  
+  setIsNavigating(true);
+  
+  // CRITICAL: Push navigation entry BEFORE closing dialog
+  // This ensures NavigationBackBar sees the entry when it re-renders
+  pushDocument('master-library', 'Snippets', { type: 'master-library' });
+  
+  // Close dialog - React will re-render with the stack already updated
+  onOpenChange(false);
+  
+  // Navigate after a microtask to let the dialog close animation start
+  // Using queueMicrotask instead of requestAnimationFrame for more reliable timing
+  queueMicrotask(() => {
+    if (onJumpToDocument) {
+      onJumpToDocument(docId);
+    } else if (navigateToDocument) {
+      navigateToDocument(docId, '');
+    }
+    setIsNavigating(false);
+  });
+}, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, pushDocument]);
+```
 
-## Validation checklist (what we’ll test after implementation)
-1) Open Snippets → expand entity → click **Jump to document**
-   - Snippets closes
-   - Document editor is visible
-   - **Back to Snippets** appears every time
+**Key changes:**
+1. `pushDocument()` moved BEFORE `onOpenChange(false)`
+2. Changed `requestAnimationFrame` to `queueMicrotask` for more predictable timing
+3. Only the navigation call is deferred, not the stack push
 
-2) Click **Back to Snippets**
-   - Snippets opens
-   - Sidebar/editor behind it remain healthy (no “dead” UI state)
-   - No persistent “Opening…” state
+---
 
-3) Repeat the loop 10 times quickly:
-   - Snippets → Jump → Back → Jump → Back
-   - Goal: no missing back button, no double spinner stuck state
+## Why This Fixes Both Issues
 
-4) Test from a brand-new unsaved document (“Untitled”):
-   - The stack push should still happen (because it’s Snippets-originated, not based on “saved doc” rules)
+### "Back to Snippets" appearing:
+- The stack entry exists BEFORE the dialog close triggers re-render
+- `NavigationBackBar` sees `canGoBack = true` and renders correctly
 
-## Risks / edge cases and how the plan handles them
-- **Unsaved/Untitled current document:** normal navigation avoids pushing it (by design), but Snippets-originated navigation will still push `master-library` so back button exists.
-- **lazyDialog keeps component mounted:** we keep the existing “reset isNavigating on open” behavior and ensure navigation state resets regardless of previous runs.
-- **Prop callback missing:** dialog still pushes stack entry and uses fallback navigation.
+### No "double spinner" hang:
+- `queueMicrotask` still defers navigation to allow dialog close animation
+- Navigation happens in the next microtask, not blocking the current frame
 
-## Scope control (so we don’t keep looping)
-This plan focuses strictly on:
-- making **Back to Snippets** deterministic
-- removing reliance on a fragile callback chain
-- preventing “UI stuck” navigation state
+---
 
-It does not attempt to preserve deep Snippets expansion state (entity open/scroll position) unless that’s already implemented elsewhere.
+## Verification Steps
 
-## Files involved
-- `src/components/editor/MasterLibraryDialog.tsx` (core fix)
-- `src/components/editor/NavigationBackBar.tsx` (defensive visibility rule)
-- `src/pages/Editor.tsx` (simplify Snippets jump responsibility)
-- `src/components/editor/EditorSidebar.tsx` (minor cleanup if needed)
+1. Open Snippets → expand any entity → click "Jump to document"
+2. **Verify**: "Back to Snippets" bar appears immediately
+3. Click "Back to Snippets"
+4. **Verify**: Snippets modal opens without stuck loading state
+5. Repeat the cycle 5-10 times rapidly to confirm stability
 
-## Success criteria
-- You can no longer reproduce “doc loads but Back to Snippets is missing”.
-- You can no longer reproduce “Back to Snippets returns but nothing loads / double spinner forever”.
+---
+
+## Files Changed
+
+- `src/components/editor/MasterLibraryDialog.tsx` (single function reorder)
+
+## Risk Assessment
+
+**Low risk** - This is a single function reorder that fixes a race condition. The logic remains the same; only the execution order changes.
