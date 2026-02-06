@@ -118,21 +118,20 @@ function EditorContent({
 
   // Register navigation handler with context
   useEffect(() => {
-    console.log('[nav] registering navigateToDocument handler', { currentDocId: document?.meta?.id, isMaster: document?.meta?.isMaster });
     const handler = (documentId: string, documentTitle: string) => {
-      console.log('[nav] navigating to', { from: document?.meta?.id, to: documentId, title: documentTitle });
-      
       if (!document) {
         onNavigateToDocument(documentId);
         return;
       }
 
-      // NOTE: Save-as-master prompting is only triggered for link-based navigation
-      // from within the document (clicking a link node), not for Master Library jumps.
-      // Master Library navigation should always proceed directly.
-
-      // Push current document onto navigation stack before navigating
-      pushDocument(document.meta.id, document.meta.title);
+      // Only push saved documents onto the navigation stack
+      // A document is considered "saved" if it has a real title OR has been modified since creation
+      const isSaved = document.meta.title !== 'Untitled' || 
+                      document.meta.createdAt !== document.meta.updatedAt;
+      
+      if (isSaved) {
+        pushDocument(document.meta.id, document.meta.title);
+      }
       
       // If current document is a master, set up master mode
       if (document.meta.isMaster) {

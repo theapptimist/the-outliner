@@ -99,10 +99,23 @@ function getStoredValue<T>(key: string, fallback: T): T {
   return fallback;
 }
 
+// Filter out invalid "Untitled" document entries that can't be reliably navigated back to
+function sanitizeNavigationStack(stack: NavigationEntry[]): NavigationEntry[] {
+  return stack.filter(entry => {
+    // Keep all master-library entries
+    if (entry.type === 'master-library') return true;
+    // Filter out "Untitled" document entries (they weren't saved and can't be reopened)
+    if (entry.title === 'Untitled' && (!entry.type || entry.type === 'document')) return false;
+    // Keep all other entries
+    return true;
+  });
+}
+
 export function NavigationProvider({ children }: NavigationProviderProps) {
   // Initialize state from sessionStorage for persistence across reloads
+  // Sanitize persisted stack to remove invalid "Untitled" entries
   const [stack, setStack] = useState<NavigationEntry[]>(() => 
-    getStoredValue<NavigationEntry[]>(NAV_STACK_KEY, [])
+    sanitizeNavigationStack(getStoredValue<NavigationEntry[]>(NAV_STACK_KEY, []))
   );
   const [masterDocument, setMasterDocumentState] = useState<MasterDocumentInfo | null>(() =>
     getStoredValue<MasterDocumentInfo | null>(MASTER_DOC_KEY, null)
