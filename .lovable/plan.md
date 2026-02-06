@@ -1,82 +1,90 @@
 
-# Add "Back to Snippets" Navigation from Master Library
+Goal: When you “Jump to document” from the Master Library, the top back bar should say “Back to Snippets” (not “Back to ‘Untitled’”), and clicking it should reliably re-open the Master Library instead of trying to navigate back to an unsaved/ephemeral document.
 
-## Problem
-When using "Jump to document" from the Master Library, there's no way to return to the snippet view. Currently:
-- The system tries to push the current document to the navigation stack
-- If that document is unsaved ("Untitled"), clicking "Back" leads to a broken state
-- Even if it works, it goes back to a document, not back to the Master Library
+What’s happening (why you still see “Back to ‘Untitled’”)
+- The back bar label comes from the NavigationContext “stack” top entry (`currentOrigin.title`).
+- We already push a special stack entry from MasterLibraryDialog:
+  - `pushDocument('master-library', 'Snippets', { type: 'master-library' })`
+- But you’re still ending up with “Back to ‘Untitled’” because another navigation path is also pushing the current document (“Untitled”) onto the stack after (or instead of) the “master-library” entry.
+- The key culprit is the context navigation handler registered in `EditorContent` (Editor.tsx). It currently does this for link-style navigation:
+  - Always `pushDocument(document.meta.id, document.meta.title)` before navigating.
+- If MasterLibraryDialog ever falls back to the context-based `navigateToDocument` path (or any path that triggers that handler), the handler will push the current doc (often “Untitled”) onto the stack, causing the back bar to show “Back to ‘Untitled’” and leading to a broken “go back” attempt (because that document ID may not exist in the backend).
 
-## Solution
-Add a special navigation entry type that represents "came from Master Library" so the Back button can return the user to the snippet view.
+High-confidence fix (robust against all entry points)
+We’ll prevent unsaved/ephemeral “Untitled” documents from ever being pushed onto the navigation stack. This makes the navigation stack safe, even if MasterLibraryDialog uses the context pipeline for navigation in some cases.
 
-## Implementation
+Implementation plan (code changes)
 
-### 1. Extend Navigation Entry Type
-Modify `NavigationContext.tsx` to support a special "master-library" origin type:
+1) Guard stack pushes in the EditorContent navigation handler (Editor.tsx)
+Where:
+- `src/pages/Editor.tsx` inside `EditorContent`’s `useEffect` that registers the `setNavigateToDocument(handler)`.
 
-```typescript
-export interface NavigationEntry {
-  id: string;
-  title: string;
-  type?: 'document' | 'master-library';  // New field
-  entityId?: string;     // Which entity was expanded (for restoration)
-  entityType?: EntityType;  // Type of entity
-}
-```
+Change:
+- Before calling `pushDocument(document.meta.id, document.meta.title)`, compute “is this document safely navigable back to?”
+- Use the same heuristic already used elsewhere in the project:
+  - treat as “saved” if:
+    - title is not “Untitled”, OR
+    - createdAt !== updatedAt
+- Only push if it’s “saved”.
+- If it is not “saved”, skip the push (so we don’t create “Back to Untitled” entries that can’t be reopened).
 
-### 2. Track Master Library State
-When jumping from Master Library, push a special entry:
+Expected result:
+- Even if MasterLibraryDialog falls back to `navigateToDocument`, the stack will not get polluted with “Untitled”.
+- Therefore the top stack entry remains the “master-library / Snippets” entry, so the back bar renders “Back to Snippets”.
 
-```typescript
-// In MasterLibraryDialog handleJumpToDocument:
-pushDocument('master-library', 'Snippets', {
-  type: 'master-library',
-  entityId: currentEntityId,
-  entityType: currentEntityType,
-});
-```
+2) Add a safety clean-up for existing persisted bad stack entries (NavigationContext.tsx)
+Why:
+- The navigation stack is persisted in sessionStorage. If there’s already an “Untitled” entry at the top from earlier runs, it can continue to show until replaced/cleared.
 
-### 3. Update NavigationBackBar
-Modify `NavigationBackBar.tsx` to:
-- Detect when origin is `type: 'master-library'`
-- Show "Back to Snippets" instead of "Back to [document title]"
-- Call a different handler that re-opens the Master Library dialog
+Where:
+- `src/contexts/NavigationContext.tsx` in the initialization of `stack` (the `useState(() => getStoredValue(...))` initializer).
 
-### 4. Re-open Master Library on Back
-Add a callback prop to `NavigationBackBar` for opening the Master Library:
+Change:
+- After loading the stored stack, filter out clearly-invalid entries that we never want to show:
+  - entries with `title === 'Untitled'` and missing `type` (or `type === 'document'`) are the common problematic case.
+- Keep `type === 'master-library'` entries and all normal document entries with real titles.
 
-```typescript
-interface NavigationBackBarProps {
-  onNavigateBack: (documentId: string) => void;
-  onOpenMasterLibrary?: () => void;  // New prop
-}
-```
+Expected result:
+- Existing sessions won’t keep showing “Back to Untitled” just because it was saved in sessionStorage previously.
 
-When the origin type is `master-library`, call `onOpenMasterLibrary()` instead of `onNavigateBack()`.
+3) Strengthen MasterLibraryDialog’s “prefer direct navigation” behavior (optional but recommended)
+Where:
+- `src/components/editor/MasterLibraryDialog.tsx` `handleJumpToDocument`
 
-## Files to Change
+Change:
+- Keep current behavior (use `onJumpToDocument` first).
+- Add a defensive console warning (temporary) or toast (optional) if `onJumpToDocument` is missing, because that’s when the dialog is forced to use the context pipeline, which has different side effects.
+- (We can remove debug logging after validation.)
 
-| File | Change |
-|------|--------|
-| `src/contexts/NavigationContext.tsx` | Add `type` and optional entity tracking fields to `NavigationEntry` |
-| `src/components/editor/MasterLibraryDialog.tsx` | Push `master-library` type entry instead of document entry |
-| `src/components/editor/NavigationBackBar.tsx` | Handle `master-library` origin type, show "Back to Snippets" |
-| `src/pages/Editor.tsx` | Pass `onOpenMasterLibrary` callback to NavigationBackBar |
+Expected result:
+- Easier to spot if some part of the UI opens Master Library without wiring the direct navigation callback.
 
-## User Experience
+Test plan (what you’ll verify in the UI)
+A. Main scenario (the one in your screenshot)
+1. Start from a brand-new local “Untitled” document (not saved).
+2. Open Master Library.
+3. Click “Jump to document” on a snippet thumbnail.
+4. Confirm the top bar reads “Back to Snippets”.
+5. Click it.
+6. Confirm the Master Library re-opens (instead of the editor going blank / document “disappearing”).
 
-**Before:**
-1. Click "Jump to document" from Master Library
-2. See "Back to Untitled" bar (or broken navigation)
-3. Click Back → document disappears, broken state
+B. Regression checks
+1. Navigate document-to-document using in-document link nodes.
+2. Confirm the back bar still works for saved documents (e.g., “Back to ‘My Contract Draft’”).
+3. Confirm “Back to Untitled” does not appear after any navigation path.
+4. Refresh the page mid-session and confirm the back bar does not resurrect “Back to Untitled” from persistence.
 
-**After:**
-1. Click "Jump to document" from Master Library
-2. See "Back to Snippets" bar
-3. Click Back → Master Library re-opens to the same entity view
+Files that will be modified
+- `src/pages/Editor.tsx` (guard `pushDocument` in the registered navigation handler)
+- `src/contexts/NavigationContext.tsx` (sanitize persisted stack on initialization)
+- (Optional) `src/components/editor/MasterLibraryDialog.tsx` (diagnostic hardening; remove later)
 
-## Technical Notes
-- The entity ID and type are tracked so we can potentially restore the exact expanded state when returning (future enhancement)
-- This approach cleanly separates "go back to a document" from "go back to a UI view"
-- The existing document-to-document navigation continues to work unchanged
+Why this approach is the right fix
+- It addresses the root issue: pushing “unstable” origins onto a stack that assumes it can re-open items by ID.
+- It makes the system resilient regardless of which component instance opened the Master Library (Sidebar dialog vs LibraryPane dialog vs any future entry point).
+- It prevents the broken “doc disappeared but tiles stayed” state by ensuring “Back” never tries to open a non-existent backend document.
+
+Potential trade-off (explicit)
+- If a user navigates away from an unsaved “Untitled” document via a link, they won’t have a “Back” entry to return to that unsaved doc. This is intentional: returning to it by ID is not reliable because it was never saved. We can later add an explicit “Save before navigating” UX if you want to preserve local drafts across navigation.
+
+If you want, we can follow up after this fix with “restore Master Library state” (remember which entity was expanded) using the `entityId/entityType` fields already added to NavigationEntry, so “Back to Snippets” returns you to the exact same expanded entity view.
