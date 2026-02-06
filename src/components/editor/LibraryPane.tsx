@@ -64,10 +64,6 @@ import { EditEntityDialog, EditableEntity } from './EditEntityDialog';
 import { formatDateForDisplay } from '@/lib/dateScanner';
 import { useDocumentContext } from './context';
 import { useEntityRelationshipCounts } from '@/hooks/useEntityRelationships';
-import { lazyDialog } from '@/lib/lazyComponent';
-
-// Lazy load Master Library Dialog
-const LazyMasterLibraryDialog = lazyDialog(() => import('./MasterLibraryDialog').then(m => ({ default: m.MasterLibraryDialog })));
 
 // EntityTab type is imported from NavigationContext
 
@@ -91,6 +87,8 @@ interface LibraryPaneProps {
   onSelectSource?: (entity: EntityRef) => void;
   // Navigation to document
   onNavigateToDocument?: (docId: string) => void;
+  // Opens Master Library dialog (controlled by parent)
+  onOpenMasterLibrary?: () => void;
 }
 
 export function LibraryPane({ 
@@ -102,6 +100,7 @@ export function LibraryPane({
   selectedSource,
   onSelectSource,
   onNavigateToDocument,
+  onOpenMasterLibrary,
 }: LibraryPaneProps) {
   const { isInMasterMode, activeEntityTab, setActiveEntityTab, activeSubOutlineId } = useNavigation();
   
@@ -130,9 +129,6 @@ export function LibraryPane({
   const [linkSourceEntity, setLinkSourceEntity] = useState<{ id: string; title: string; subtitle?: string; documentId: string } | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<EditableEntity | null>(null);
-  
-  // Master library dialog state
-  const [masterLibraryOpen, setMasterLibraryOpen] = useState(false);
   
   // Debug logging for edit dialog state
   useEffect(() => {
@@ -828,7 +824,7 @@ export function LibraryPane({
       {/* Master Library Bar - spans full width */}
       <button
         data-allow-pointer
-        onClick={() => setMasterLibraryOpen(true)}
+        onClick={() => onOpenMasterLibrary?.()}
         className="flex items-center justify-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 hover:bg-muted/30 transition-colors shrink-0 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <Library className="h-4 w-4" />
@@ -1781,13 +1777,6 @@ export function LibraryPane({
         entity={editingEntity}
         onSave={handleEditSave}
         onRelationshipDeleted={refreshRelationshipCounts}
-      />
-
-      {/* Master Library Dialog - Lazy loaded */}
-      <LazyMasterLibraryDialog
-        open={masterLibraryOpen}
-        onOpenChange={setMasterLibraryOpen}
-        onJumpToDocument={onNavigateToDocument}
       />
       </div>
     </div>
