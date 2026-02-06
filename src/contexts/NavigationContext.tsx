@@ -172,9 +172,10 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
   const pushDocument = useCallback((id: string, title: string, options?: { type?: NavigationEntryType; entityId?: string; entityType?: string }) => {
     console.log('[NavigationContext] pushDocument called:', { id, title, options });
+    console.trace('[NavigationContext] pushDocument call stack');
     setStack(prev => {
       const newStack = [...prev, { id, title, type: options?.type, entityId: options?.entityId, entityType: options?.entityType }];
-      console.log('[NavigationContext] New stack:', newStack);
+      console.log('[NavigationContext] Stack updated:', { prevLength: prev.length, newLength: newStack.length, newStack });
       return newStack;
     });
   }, []);
