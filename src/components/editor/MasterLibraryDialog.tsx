@@ -61,6 +61,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkMigrationNeeded, migrateDocumentEntitiesToMaster, backfillSourceDocumentIds } from '@/lib/masterEntityMigration';
 import { FullScreenModalHeader } from './FullScreenModalHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 // MasterLibraryDialog - Full-page modal for managing the Master Library
 type MasterLibraryTab = 'my-library' | 'shared' | 'public';
@@ -752,19 +753,13 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   }, []);
 
   // Handler for jumping to a document from entity cards
-  // Prefer onJumpToDocument (direct editor callback) over navigateToDocument (context pipeline)
+  // This dialog owns the responsibility of pushing 'master-library' to the navigation stack
   const { navigateToDocument, document: currentDoc } = useDocumentContext();
+  const { pushDocument } = useNavigation();
   
   const [isNavigating, setIsNavigating] = useState(false);
   
   const handleJumpToDocument = useCallback((docId: string) => {
-    // DIAGNOSTIC: Log which branch will execute
-    console.log('[MasterLibraryDialog] handleJumpToDocument called:', {
-      docId,
-      hasOnJumpToDocument: typeof onJumpToDocument === 'function',
-      hasNavigateToDocument: typeof navigateToDocument === 'function',
-    });
-    
     // Don't navigate if already on this document
     if (currentDoc?.meta?.id === docId) {
       onOpenChange(false);
@@ -773,25 +768,23 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     setIsNavigating(true);
     
-    // NOTE: pushDocument is now called by the parent (EditorContent) via onJumpToDocument
-    // This ensures the stack update happens in a stable component that doesn't unmount
-    
     // Close dialog BEFORE triggering navigation
     onOpenChange(false);
     
-    // Navigate using the DIRECT prop callback (preferred - bypasses context pipeline)
-    // The parent callback now handles pushing to the navigation stack
     requestAnimationFrame(() => {
+      // CRITICAL: Push the master-library entry HERE so Back to Snippets always appears
+      // This makes the dialog the source of truth for "this navigation came from Snippets"
+      pushDocument('master-library', 'Snippets', { type: 'master-library' });
+      
+      // Navigate using the prop callback (preferred) or context fallback
       if (onJumpToDocument) {
-        console.log('[MasterLibraryDialog] Using onJumpToDocument prop callback');
         onJumpToDocument(docId);
       } else if (navigateToDocument) {
-        console.log('[MasterLibraryDialog] FALLBACK: Using navigateToDocument context');
         navigateToDocument(docId, '');
       }
       setIsNavigating(false);
     });
-  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);
+  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, pushDocument]);
   
   // Migration state
   const { user } = useAuth();

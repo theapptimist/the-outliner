@@ -280,21 +280,14 @@ function NavigationAwareContent({
   handleSaveAs,
   fileMenuProps,
 }: NavigationAwareContentProps) {
-  const { pushDocument } = useNavigation();
 
-  // CRITICAL: This callback pushes to navigation stack BEFORE navigating
-  // Because it runs in a stable component (not the lazy dialog), the stack update commits reliably
-  // SNIPPETS-ONLY callback: force-closes modal, pushes stack, then navigates
+  // Snippets navigation callback - dialog now owns pushDocument, so this just navigates
   const handleJumpFromMasterLibrary = useCallback((docId: string) => {
-    console.log('[Editor] handleJumpFromMasterLibrary called:', { docId });
-    // 1. Force close modal first (defensive - dialog may also close itself)
+    // Close modal (defensive - dialog also closes itself)
     setMasterLibraryOpen(false);
-    // 2. Push master-library to stack before navigating
-    pushDocument('master-library', 'Snippets', { type: 'master-library' });
-    console.log('[Editor] pushDocument called, now navigating...');
-    // 3. Navigate
+    // Navigate - pushDocument('master-library') is now handled inside MasterLibraryDialog
     handleNavigateToDocument(docId, true);
-  }, [setMasterLibraryOpen, pushDocument, handleNavigateToDocument]);
+  }, [setMasterLibraryOpen, handleNavigateToDocument]);
 
   return (
     <div className="h-screen flex bg-background">
