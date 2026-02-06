@@ -1,8 +1,13 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 
+export type NavigationEntryType = 'document' | 'master-library';
+
 export interface NavigationEntry {
   id: string;
   title: string;
+  type?: NavigationEntryType;
+  entityId?: string;     // Which entity was expanded (for restoration)
+  entityType?: string;   // Type of entity (people, places, dates, terms)
 }
 
 export interface MasterDocumentLink {
@@ -34,7 +39,7 @@ interface NavigationContextValue {
   /** The document we came from (top of stack) */
   currentOrigin: NavigationEntry | null;
   /** Push a document onto the stack (called before navigating away) */
-  pushDocument: (id: string, title: string) => void;
+  pushDocument: (id: string, title: string, options?: { type?: NavigationEntryType; entityId?: string; entityType?: string }) => void;
   /** Pop the stack and return the previous document */
   popDocument: () => NavigationEntry | null;
   /** Clear the entire navigation stack */
@@ -146,8 +151,8 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
   const currentOrigin = stack.length > 0 ? stack[stack.length - 1] : null;
   const isInMasterMode = masterDocument !== null;
 
-  const pushDocument = useCallback((id: string, title: string) => {
-    setStack(prev => [...prev, { id, title }]);
+  const pushDocument = useCallback((id: string, title: string, options?: { type?: NavigationEntryType; entityId?: string; entityType?: string }) => {
+    setStack(prev => [...prev, { id, title, type: options?.type, entityId: options?.entityId, entityType: options?.entityType }]);
   }, []);
 
   const popDocument = useCallback((): NavigationEntry | null => {

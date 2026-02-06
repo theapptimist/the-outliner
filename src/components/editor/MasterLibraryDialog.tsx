@@ -772,22 +772,10 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     setIsNavigating(true);
     
-    // Only push current document to navigation stack if it's been SAVED (not a local-only "Untitled")
-    // Check: document must have an ID AND either:
-    // - createdAt !== updatedAt (has been saved at least once), OR
-    // - title !== 'Untitled' (user gave it a name)
-    const currentId = currentDoc?.meta?.id;
-    const currentTitle = currentDoc?.meta?.title || 'Untitled';
-    const createdAt = currentDoc?.meta?.createdAt;
-    const updatedAt = currentDoc?.meta?.updatedAt;
-    const hasBeenSaved = createdAt !== updatedAt || currentTitle !== 'Untitled';
-    
-    if (currentId && hasBeenSaved) {
-      console.log('[MasterLibrary] Pushing saved doc to nav stack:', currentId, currentTitle);
-      pushDocument(currentId, currentTitle);
-    } else {
-      console.log('[MasterLibrary] Skipping nav stack push for unsaved document');
-    }
+    // Push a special "master-library" entry to the navigation stack
+    // This allows the Back button to return to the Master Library instead of a document
+    console.log('[MasterLibrary] Pushing master-library origin to nav stack');
+    pushDocument('master-library', 'Snippets', { type: 'master-library' });
     
     // Navigate using the DIRECT prop callback first (more reliable than context pipeline)
     if (onJumpToDocument) {

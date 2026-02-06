@@ -72,12 +72,14 @@ function EditorContent({
   pendingNavigation,
   onClearPendingNavigation,
   onSaveDocumentAsMaster,
+  onOpenMasterLibrary,
 }: { 
   onNavigateToDocument: (id: string) => void;
   onPromptSaveAsMaster: (pending: PendingNavigation) => void;
   pendingNavigation: PendingNavigation | null;
   onClearPendingNavigation: () => void;
   onSaveDocumentAsMaster: (newTitle?: string) => Promise<DocumentState | null>;
+  onOpenMasterLibrary: () => void;
 }) {
   const { inspectedTerm, setInspectedTerm, documentVersion, setNavigateToDocument, document } = useEditorContext();
   const { pushDocument, setMasterDocument, setActiveSubOutlineId } = useNavigation();
@@ -156,7 +158,10 @@ function EditorContent({
     <>
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Back navigation bar */}
-        <NavigationBackBar onNavigateBack={onNavigateToDocument} />
+        <NavigationBackBar 
+          onNavigateBack={onNavigateToDocument} 
+          onOpenMasterLibrary={onOpenMasterLibrary}
+        />
         
         <div className="flex-1 flex overflow-hidden">
           <ResizablePanelGroup key={layoutKey} direction="horizontal" className="flex-1">
@@ -249,6 +254,7 @@ export default function Editor() {
   const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [masterLibraryOpen, setMasterLibraryOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Undo/redo state passed up from document
@@ -669,6 +675,8 @@ export default function Editor() {
             canRedo={canRedo}
             fileMenuProps={fileMenuProps}
             onNavigateToDocument={(id) => handleNavigateToDocument(id, true)}
+            masterLibraryOpen={masterLibraryOpen}
+            onMasterLibraryOpenChange={setMasterLibraryOpen}
           />
           
           <EditorContent 
@@ -677,6 +685,7 @@ export default function Editor() {
             pendingNavigation={pendingNavigation}
             onClearPendingNavigation={() => setPendingNavigation(null)}
             onSaveDocumentAsMaster={handleSaveDocumentAsMaster}
+            onOpenMasterLibrary={() => setMasterLibraryOpen(true)}
           />
 
           <OpenDocumentDialog
