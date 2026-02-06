@@ -1,62 +1,79 @@
 
-# Fix "Back to Snippets" Opening Blank Dialog
+## What’s happening (in plain English)
 
-## Problem
-When clicking "Back to Snippets", the Master Library dialog opens but appears blank. This happens because:
+You’re seeing an unstable “sometimes it loads, sometimes it doesn’t” behavior because one core utility is currently triggering a React state update **during rendering**.
 
-1. The `lazyDialog` HOC keeps the component mounted after first open (to maintain stable hook counts)
-2. When the dialog re-opens via "Back to Snippets", the component is already mounted with stale state
-3. The data-fetching hooks (`useMasterEntities`, `useMasterLibraryDocuments`, etc.) run their initial `useEffect` on mount, not when `open` changes
-4. Since the component doesn't unmount/remount, the data isn't refreshed
+That specific pattern can cause:
+- rapid repeated re-renders (you’re seeing this as the repeated `[NavigationBackBar] Render check` spam),
+- UI pieces that intermittently don’t finish rendering (blank library/doc area),
+- racey behavior where the “Return to Snippets” button appears/disappears unpredictably depending on which render “wins”.
 
-## Solution
-Add explicit data refresh when the dialog's `open` prop transitions to `true`. This ensures fresh data loads every time the dialog opens, regardless of whether it's the first open or a subsequent one.
+So even though we previously fixed the “fewer hooks than expected” crash by keeping lazy dialogs mounted after the first open, the current `lazyDialog` implementation still has a serious React anti-pattern.
 
-## Implementation
+## Evidence from your logs
 
-### File: `src/components/editor/MasterLibraryDialog.tsx`
+- Your console snapshot shows the same `[NavigationBackBar] Render check` message printed many times in a row with the same values.
+- That strongly suggests a render loop / thrash rather than a normal navigation flow.
 
-Add a `useEffect` that triggers data refresh when `open` becomes `true`:
+## Root cause (technical)
 
-```typescript
-// Refresh data every time dialog opens (not just on mount)
-useEffect(() => {
-  if (open) {
-    // Refresh master entities
-    refreshMaster();
-    // Refresh documents
-    refreshDocs();
-    // Shared count is already fetched in existing effect
-  }
-}, [open, refreshMaster, refreshDocs]);
+File: `src/lib/lazyComponent.tsx`
+
+Current code (problematic):
+
+```ts
+if (props.open && !hasBeenOpened) {
+  setHasBeenOpened(true);
+}
 ```
 
-This needs to be placed after the hooks that provide `refreshMaster` and `refreshDocs` are declared.
+This runs **inside render**. React warns against this, and it can create repeated renders and unpredictable UI.
 
-Looking at the current code:
-- Line 796: `const { entities: masterEntities, refresh: refreshMaster } = useMasterEntities();`
-- Line 702: `const { documents: libraryDocuments, loading: loadingDocs, refresh: refreshDocs } = useMasterLibraryDocuments();`
+We must move that update into a `useEffect`.
 
-I'll add a dedicated effect after these hooks to trigger refresh on every dialog open.
+## Fix approach
 
-### Why This Works
-- First open: Component mounts, initial useEffects run, data loads
-- Subsequent opens: Component already mounted, but new effect detects `open=true` and explicitly calls refresh
-- The existing `open`-gated effects (lines 806-838, 841-852, 854-858) will also run since they depend on `open`
+### 1) Fix `lazyDialog` to never call setState during render
+Update `lazyDialog` so it:
+- always calls hooks in the same order,
+- uses `useEffect` to “arm” `hasBeenOpened` when `open` becomes true,
+- returns `null` until the first open (so the heavy bundle is still deferred),
+- once opened, it stays mounted and receives open/close via props (preserving hook stability inside the lazy-loaded dialog).
 
-### Technical Notes
-- The `refreshMaster` and `refreshDocs` functions from hooks are stable (created with `useCallback`)
-- This approach is safe and won't cause infinite loops since we only call refresh when `open` is `true`
-- The existing loading states (`loading`, `loadingDocs`) will properly show spinners during refresh
+Implementation outline:
 
-## Files to Change
+- Add `useEffect(() => { if (props.open) setHasBeenOpened(true) }, [props.open])`
+- Remove the inline `if (props.open && !hasBeenOpened) setHasBeenOpened(true)` from render
 
-| File | Change |
-|------|--------|
-| `src/components/editor/MasterLibraryDialog.tsx` | Add `useEffect` to refresh data when `open` becomes `true` |
+This should eliminate render thrash and stop the “blank doc + blank library” intermittent state.
 
-## Expected Outcome
-1. User opens Master Library, views entities, clicks "Jump to document"
-2. User clicks "Back to Snippets"
-3. Master Library dialog opens with fresh data loading (shows loading spinner briefly)
-4. Data populates correctly - no blank screen
+### 2) (If needed) Add minimal guardrails to reduce re-render spam
+After step (1), the spam should stop. If it doesn’t, we’ll:
+- add targeted logs in `EditorSidebar` and `Editor.tsx` to detect which state is toggling repeatedly (likely `masterLibraryOpen` or `activeSidebarTab`),
+- inspect whether any `useEffect` is repeatedly calling `setActiveSidebarTab('library')` (there is one in `EditorSidebar` that can run whenever `isInMasterMode/activeEntityTab` changes).
+
+But we should not preemptively change that logic until we confirm it still loops after fixing `lazyDialog`.
+
+### 3) Verification checklist (what you should see after the fix)
+After implementing step (1):
+
+1. Open the Snippets (Master Library) dialog.
+2. Click “Jump to document”.
+3. The editor document should load.
+4. The “Back to Snippets” bar should appear once (no render spam in console).
+5. Clicking “Back to Snippets” should re-open Snippets with content (and no blank dialog).
+
+Expected console behavior:
+- The `[NavigationBackBar] Render check` log should appear a normal number of times (a couple on route changes), not dozens/hundreds.
+
+## Files that will change
+- `src/lib/lazyComponent.tsx`
+  - Change `lazyDialog` to set `hasBeenOpened` via `useEffect` instead of during render.
+
+## Why this is the right next step
+Right now your symptoms alternate between:
+- “button but blank content”
+- “content but missing button”
+
+That’s exactly what you get when React is forced into repeated rerenders while asynchronous navigation + dialog open/close are happening. Fixing the render-loop source restores determinism, and then any remaining navigation-state issues become straightforward to diagnose.
+
