@@ -223,7 +223,10 @@ const DocumentThumbnail = React.forwardRef<HTMLDivElement, DocumentThumbnailProp
             variant="ghost"
             size="sm"
             className="w-full justify-start h-7 px-2 mb-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
-            onClick={handleJump}
+            onClick={(e) => {
+              console.log('[DocumentThumbnail] Button onClick fired!', doc.id);
+              handleJump(e);
+            }}
             disabled={isNavigating}
           >
             {isNavigating ? (
