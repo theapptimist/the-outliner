@@ -10,15 +10,16 @@ interface NavigationBackBarProps {
 export function NavigationBackBar({ onNavigateBack, onOpenMasterLibrary }: NavigationBackBarProps) {
   const { canGoBack, currentOrigin, popDocument, masterDocument, setActiveSubOutlineId, activeSidebarTab } = useNavigation();
 
-  console.log('[NavigationBackBar] Render check:', { canGoBack, currentOrigin, activeSidebarTab });
-
   // Hide the back bar when viewing the Master Outline pane (it has its own navigation)
-  if (!canGoBack || !currentOrigin || activeSidebarTab === 'master') {
-    console.log('[NavigationBackBar] Hiding bar:', { canGoBack, currentOrigin, activeSidebarTab });
+  // BUT: Always show for master-library origin so "Back to Snippets" is never hidden
+  const isMasterLibraryOrigin = currentOrigin?.type === 'master-library';
+  const shouldHideForMasterTab = activeSidebarTab === 'master' && !isMasterLibraryOrigin;
+  
+  if (!canGoBack || !currentOrigin || shouldHideForMasterTab) {
     return null;
   }
 
-  const isMasterLibraryOrigin = currentOrigin.type === 'master-library';
+  // isMasterLibraryOrigin already computed above
 
   const handleBack = () => {
     // Use currentOrigin snapshot (already available) for decisions
