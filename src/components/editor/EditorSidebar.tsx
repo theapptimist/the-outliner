@@ -377,6 +377,7 @@ export function EditorSidebar({
               fullPage={libraryFullPage}
               onToggleFullPage={() => setLibraryFullPage(prev => !prev)}
               onNavigateToDocument={onNavigateToDocument}
+              onOpenMasterLibrary={() => setMasterLibraryOpen(true)}
             />
           )}
         </div>
