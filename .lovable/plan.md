@@ -1,90 +1,62 @@
 
-Goal: When you “Jump to document” from the Master Library, the top back bar should say “Back to Snippets” (not “Back to ‘Untitled’”), and clicking it should reliably re-open the Master Library instead of trying to navigate back to an unsaved/ephemeral document.
+# Fix "Back to Snippets" Opening Blank Dialog
 
-What’s happening (why you still see “Back to ‘Untitled’”)
-- The back bar label comes from the NavigationContext “stack” top entry (`currentOrigin.title`).
-- We already push a special stack entry from MasterLibraryDialog:
-  - `pushDocument('master-library', 'Snippets', { type: 'master-library' })`
-- But you’re still ending up with “Back to ‘Untitled’” because another navigation path is also pushing the current document (“Untitled”) onto the stack after (or instead of) the “master-library” entry.
-- The key culprit is the context navigation handler registered in `EditorContent` (Editor.tsx). It currently does this for link-style navigation:
-  - Always `pushDocument(document.meta.id, document.meta.title)` before navigating.
-- If MasterLibraryDialog ever falls back to the context-based `navigateToDocument` path (or any path that triggers that handler), the handler will push the current doc (often “Untitled”) onto the stack, causing the back bar to show “Back to ‘Untitled’” and leading to a broken “go back” attempt (because that document ID may not exist in the backend).
+## Problem
+When clicking "Back to Snippets", the Master Library dialog opens but appears blank. This happens because:
 
-High-confidence fix (robust against all entry points)
-We’ll prevent unsaved/ephemeral “Untitled” documents from ever being pushed onto the navigation stack. This makes the navigation stack safe, even if MasterLibraryDialog uses the context pipeline for navigation in some cases.
+1. The `lazyDialog` HOC keeps the component mounted after first open (to maintain stable hook counts)
+2. When the dialog re-opens via "Back to Snippets", the component is already mounted with stale state
+3. The data-fetching hooks (`useMasterEntities`, `useMasterLibraryDocuments`, etc.) run their initial `useEffect` on mount, not when `open` changes
+4. Since the component doesn't unmount/remount, the data isn't refreshed
 
-Implementation plan (code changes)
+## Solution
+Add explicit data refresh when the dialog's `open` prop transitions to `true`. This ensures fresh data loads every time the dialog opens, regardless of whether it's the first open or a subsequent one.
 
-1) Guard stack pushes in the EditorContent navigation handler (Editor.tsx)
-Where:
-- `src/pages/Editor.tsx` inside `EditorContent`’s `useEffect` that registers the `setNavigateToDocument(handler)`.
+## Implementation
 
-Change:
-- Before calling `pushDocument(document.meta.id, document.meta.title)`, compute “is this document safely navigable back to?”
-- Use the same heuristic already used elsewhere in the project:
-  - treat as “saved” if:
-    - title is not “Untitled”, OR
-    - createdAt !== updatedAt
-- Only push if it’s “saved”.
-- If it is not “saved”, skip the push (so we don’t create “Back to Untitled” entries that can’t be reopened).
+### File: `src/components/editor/MasterLibraryDialog.tsx`
 
-Expected result:
-- Even if MasterLibraryDialog falls back to `navigateToDocument`, the stack will not get polluted with “Untitled”.
-- Therefore the top stack entry remains the “master-library / Snippets” entry, so the back bar renders “Back to Snippets”.
+Add a `useEffect` that triggers data refresh when `open` becomes `true`:
 
-2) Add a safety clean-up for existing persisted bad stack entries (NavigationContext.tsx)
-Why:
-- The navigation stack is persisted in sessionStorage. If there’s already an “Untitled” entry at the top from earlier runs, it can continue to show until replaced/cleared.
+```typescript
+// Refresh data every time dialog opens (not just on mount)
+useEffect(() => {
+  if (open) {
+    // Refresh master entities
+    refreshMaster();
+    // Refresh documents
+    refreshDocs();
+    // Shared count is already fetched in existing effect
+  }
+}, [open, refreshMaster, refreshDocs]);
+```
 
-Where:
-- `src/contexts/NavigationContext.tsx` in the initialization of `stack` (the `useState(() => getStoredValue(...))` initializer).
+This needs to be placed after the hooks that provide `refreshMaster` and `refreshDocs` are declared.
 
-Change:
-- After loading the stored stack, filter out clearly-invalid entries that we never want to show:
-  - entries with `title === 'Untitled'` and missing `type` (or `type === 'document'`) are the common problematic case.
-- Keep `type === 'master-library'` entries and all normal document entries with real titles.
+Looking at the current code:
+- Line 796: `const { entities: masterEntities, refresh: refreshMaster } = useMasterEntities();`
+- Line 702: `const { documents: libraryDocuments, loading: loadingDocs, refresh: refreshDocs } = useMasterLibraryDocuments();`
 
-Expected result:
-- Existing sessions won’t keep showing “Back to Untitled” just because it was saved in sessionStorage previously.
+I'll add a dedicated effect after these hooks to trigger refresh on every dialog open.
 
-3) Strengthen MasterLibraryDialog’s “prefer direct navigation” behavior (optional but recommended)
-Where:
-- `src/components/editor/MasterLibraryDialog.tsx` `handleJumpToDocument`
+### Why This Works
+- First open: Component mounts, initial useEffects run, data loads
+- Subsequent opens: Component already mounted, but new effect detects `open=true` and explicitly calls refresh
+- The existing `open`-gated effects (lines 806-838, 841-852, 854-858) will also run since they depend on `open`
 
-Change:
-- Keep current behavior (use `onJumpToDocument` first).
-- Add a defensive console warning (temporary) or toast (optional) if `onJumpToDocument` is missing, because that’s when the dialog is forced to use the context pipeline, which has different side effects.
-- (We can remove debug logging after validation.)
+### Technical Notes
+- The `refreshMaster` and `refreshDocs` functions from hooks are stable (created with `useCallback`)
+- This approach is safe and won't cause infinite loops since we only call refresh when `open` is `true`
+- The existing loading states (`loading`, `loadingDocs`) will properly show spinners during refresh
 
-Expected result:
-- Easier to spot if some part of the UI opens Master Library without wiring the direct navigation callback.
+## Files to Change
 
-Test plan (what you’ll verify in the UI)
-A. Main scenario (the one in your screenshot)
-1. Start from a brand-new local “Untitled” document (not saved).
-2. Open Master Library.
-3. Click “Jump to document” on a snippet thumbnail.
-4. Confirm the top bar reads “Back to Snippets”.
-5. Click it.
-6. Confirm the Master Library re-opens (instead of the editor going blank / document “disappearing”).
+| File | Change |
+|------|--------|
+| `src/components/editor/MasterLibraryDialog.tsx` | Add `useEffect` to refresh data when `open` becomes `true` |
 
-B. Regression checks
-1. Navigate document-to-document using in-document link nodes.
-2. Confirm the back bar still works for saved documents (e.g., “Back to ‘My Contract Draft’”).
-3. Confirm “Back to Untitled” does not appear after any navigation path.
-4. Refresh the page mid-session and confirm the back bar does not resurrect “Back to Untitled” from persistence.
-
-Files that will be modified
-- `src/pages/Editor.tsx` (guard `pushDocument` in the registered navigation handler)
-- `src/contexts/NavigationContext.tsx` (sanitize persisted stack on initialization)
-- (Optional) `src/components/editor/MasterLibraryDialog.tsx` (diagnostic hardening; remove later)
-
-Why this approach is the right fix
-- It addresses the root issue: pushing “unstable” origins onto a stack that assumes it can re-open items by ID.
-- It makes the system resilient regardless of which component instance opened the Master Library (Sidebar dialog vs LibraryPane dialog vs any future entry point).
-- It prevents the broken “doc disappeared but tiles stayed” state by ensuring “Back” never tries to open a non-existent backend document.
-
-Potential trade-off (explicit)
-- If a user navigates away from an unsaved “Untitled” document via a link, they won’t have a “Back” entry to return to that unsaved doc. This is intentional: returning to it by ID is not reliable because it was never saved. We can later add an explicit “Save before navigating” UX if you want to preserve local drafts across navigation.
-
-If you want, we can follow up after this fix with “restore Master Library state” (remember which entity was expanded) using the `entityId/entityType` fields already added to NavigationEntry, so “Back to Snippets” returns you to the exact same expanded entity view.
+## Expected Outcome
+1. User opens Master Library, views entities, clicks "Jump to document"
+2. User clicks "Back to Snippets"
+3. Master Library dialog opens with fresh data loading (shows loading spinner briefly)
+4. Data populates correctly - no blank screen
