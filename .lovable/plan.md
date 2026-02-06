@@ -1,79 +1,82 @@
 
-## What’s happening (in plain English)
+## Goal
+Make “Back to Snippets” reliably reopen the Snippets (Master Library) every time, without regressing doc/library loading.
 
-You’re seeing an unstable “sometimes it loads, sometimes it doesn’t” behavior because one core utility is currently triggering a React state update **during rendering**.
+## What’s actually broken now
+Right now the “Back to Snippets” button renders, but clicking it often does nothing because `popDocument()` is no longer returning the popped navigation entry reliably.
 
-That specific pattern can cause:
-- rapid repeated re-renders (you’re seeing this as the repeated `[NavigationBackBar] Render check` spam),
-- UI pieces that intermittently don’t finish rendering (blank library/doc area),
-- racey behavior where the “Return to Snippets” button appears/disappears unpredictably depending on which render “wins”.
+### Root cause
+In `src/contexts/NavigationContext.tsx`, `popDocument()` was changed to:
 
-So even though we previously fixed the “fewer hooks than expected” crash by keeping lazy dialogs mounted after the first open, the current `lazyDialog` implementation still has a serious React anti-pattern.
+- compute `popped` inside the `setStack(prev => ...)` updater
+- immediately return `popped`
 
-## Evidence from your logs
+In React, the state updater function is not guaranteed to run before the function returns (especially under batching/concurrent behavior). So `popped` frequently remains `null`, causing:
 
-- Your console snapshot shows the same `[NavigationBackBar] Render check` message printed many times in a row with the same values.
-- That strongly suggests a render loop / thrash rather than a normal navigation flow.
+- `NavigationBackBar.handleBack()` to do `if (!origin) return;`
+- result: button click appears to do nothing
 
-## Root cause (technical)
+This matches your symptom: “now I only got the Back to Snippets” (it shows, but it can’t successfully act on the origin entry).
 
-File: `src/lib/lazyComponent.tsx`
+## Fix (deterministic pop that returns the correct entry)
+### A) Make `popDocument()` synchronous in terms of its returned value
+Update `NavigationContext` to keep a `stackRef` that always contains the latest stack. Then `popDocument()` can:
 
-Current code (problematic):
+1. read the current stack from the ref synchronously
+2. compute the popped entry synchronously
+3. trigger `setStack(prev => prev.slice(0, -1))`
+4. return the popped entry immediately and reliably
 
-```ts
-if (props.open && !hasBeenOpened) {
-  setHasBeenOpened(true);
-}
-```
+**File:** `src/contexts/NavigationContext.tsx`
+**Changes:**
+- import `useRef`
+- add `const stackRef = useRef<NavigationEntry[]>([])`
+- `useEffect(() => { stackRef.current = stack; }, [stack])`
+- rewrite `popDocument` to read from `stackRef.current`
 
-This runs **inside render**. React warns against this, and it can create repeated renders and unpredictable UI.
+### B) (Optional but recommended) Make `NavigationBackBar` not depend on `popDocument()` return value
+Even with the ref fix, the back-bar already has `currentOrigin` available. The most robust pattern is:
 
-We must move that update into a `useEffect`.
+- store `const origin = currentOrigin` (synchronous)
+- then call `popDocument()` only to mutate the stack
+- proceed using `origin`
 
-## Fix approach
+**File:** `src/components/editor/NavigationBackBar.tsx`
+**Change:**
+- use `currentOrigin` as the origin for decisions, call `popDocument()` as a side-effect
 
-### 1) Fix `lazyDialog` to never call setState during render
-Update `lazyDialog` so it:
-- always calls hooks in the same order,
-- uses `useEffect` to “arm” `hasBeenOpened` when `open` becomes true,
-- returns `null` until the first open (so the heavy bundle is still deferred),
-- once opened, it stays mounted and receives open/close via props (preserving hook stability inside the lazy-loaded dialog).
+This removes future fragility if `popDocument` changes again.
 
-Implementation outline:
+## Logging cleanup (after verification)
+Once confirmed fixed, remove or downgrade the noisy console logs:
+- `[NavigationBackBar] Render check`
+- `[NavigationContext] pushDocument called`
+These were useful for diagnosis but make debugging harder long-term.
 
-- Add `useEffect(() => { if (props.open) setHasBeenOpened(true) }, [props.open])`
-- Remove the inline `if (props.open && !hasBeenOpened) setHasBeenOpened(true)` from render
+## Step-by-step implementation order
+1. Edit `src/contexts/NavigationContext.tsx`
+   - add `stackRef`
+   - refactor `popDocument()` to return deterministically
+2. Edit `src/components/editor/NavigationBackBar.tsx`
+   - stop early-returning due to null origin; use `currentOrigin` snapshot
+3. Manual test pass (see below)
+4. Remove debug logs (optional follow-up if you want)
 
-This should eliminate render thrash and stop the “blank doc + blank library” intermittent state.
+## Verification checklist (end-to-end)
+Please test this exact flow 5 times in a row (the bug is intermittent):
+1. Open Snippets (Master Library dialog).
+2. Use “Jump to document”.
+3. Confirm:
+   - the document loads
+   - the Library sidebar still loads normally
+   - the top bar shows “Back to Snippets”
+4. Click “Back to Snippets”.
+5. Confirm:
+   - Snippets dialog opens
+   - it is populated (not blank)
 
-### 2) (If needed) Add minimal guardrails to reduce re-render spam
-After step (1), the spam should stop. If it doesn’t, we’ll:
-- add targeted logs in `EditorSidebar` and `Editor.tsx` to detect which state is toggling repeatedly (likely `masterLibraryOpen` or `activeSidebarTab`),
-- inspect whether any `useEffect` is repeatedly calling `setActiveSidebarTab('library')` (there is one in `EditorSidebar` that can run whenever `isInMasterMode/activeEntityTab` changes).
+If it still fails after this fix, the next likely culprit is that the button click is firing but `masterLibraryOpen` is being immediately set back to `false` (a competing state update). At that point we’ll add one very targeted log in the click handler plus a log where `setMasterLibraryOpen(false)` is called to find the competing close event.
 
-But we should not preemptively change that logic until we confirm it still loops after fixing `lazyDialog`.
-
-### 3) Verification checklist (what you should see after the fix)
-After implementing step (1):
-
-1. Open the Snippets (Master Library) dialog.
-2. Click “Jump to document”.
-3. The editor document should load.
-4. The “Back to Snippets” bar should appear once (no render spam in console).
-5. Clicking “Back to Snippets” should re-open Snippets with content (and no blank dialog).
-
-Expected console behavior:
-- The `[NavigationBackBar] Render check` log should appear a normal number of times (a couple on route changes), not dozens/hundreds.
-
-## Files that will change
-- `src/lib/lazyComponent.tsx`
-  - Change `lazyDialog` to set `hasBeenOpened` via `useEffect` instead of during render.
-
-## Why this is the right next step
-Right now your symptoms alternate between:
-- “button but blank content”
-- “content but missing button”
-
-That’s exactly what you get when React is forced into repeated rerenders while asynchronous navigation + dialog open/close are happening. Fixing the render-loop source restores determinism, and then any remaining navigation-state issues become straightforward to diagnose.
-
+## Files involved
+- `src/contexts/NavigationContext.tsx` (primary fix)
+- `src/components/editor/NavigationBackBar.tsx` (robustness improvement)
