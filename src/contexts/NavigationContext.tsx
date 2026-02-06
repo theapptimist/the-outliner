@@ -30,6 +30,7 @@ const MASTER_DOC_KEY = 'outliner:masterDocument';
 const ACTIVE_SUB_KEY = 'outliner:activeSubOutlineId';
 const ENTITY_TAB_KEY = 'outliner:activeEntityTab';
 const NAV_STACK_KEY = 'outliner:navigationStack';
+const JUMPED_FROM_LIBRARY_KEY = 'outliner:jumpedFromMasterLibrary';
 
 interface NavigationContextValue {
   /** Stack of documents we've navigated through */
@@ -62,6 +63,10 @@ interface NavigationContextValue {
   activeSidebarTab: SidebarTab;
   /** Set the active sidebar tab */
   setActiveSidebarTab: (tab: SidebarTab) => void;
+  /** Simple flag: did we just jump from Master Library? */
+  jumpedFromMasterLibrary: boolean;
+  /** Set the jumped-from-library flag */
+  setJumpedFromMasterLibrary: (value: boolean) => void;
 }
 
 const NavigationContext = createContext<NavigationContextValue>({
@@ -80,6 +85,8 @@ const NavigationContext = createContext<NavigationContextValue>({
   setActiveEntityTab: () => {},
   activeSidebarTab: 'tools',
   setActiveSidebarTab: () => {},
+  jumpedFromMasterLibrary: false,
+  setJumpedFromMasterLibrary: () => {},
 });
 
 interface NavigationProviderProps {
@@ -127,6 +134,9 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     getStoredValue<EntityTab | null>(ENTITY_TAB_KEY, null)
   );
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('tools');
+  const [jumpedFromMasterLibrary, setJumpedFromMasterLibraryState] = useState<boolean>(() =>
+    getStoredValue<boolean>(JUMPED_FROM_LIBRARY_KEY, false)
+  );
 
   // Keep a ref to the stack for synchronous reads in popDocument
   const stackRef = useRef<NavigationEntry[]>(stack);
@@ -165,6 +175,11 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       sessionStorage.removeItem(ENTITY_TAB_KEY);
     }
   }, [activeEntityTab]);
+
+  // Persist jumpedFromMasterLibrary to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem(JUMPED_FROM_LIBRARY_KEY, JSON.stringify(jumpedFromMasterLibrary));
+  }, [jumpedFromMasterLibrary]);
 
   const canGoBack = stack.length > 0;
   const currentOrigin = stack.length > 0 ? stack[stack.length - 1] : null;
@@ -210,6 +225,11 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     setActiveEntityTabState(tab);
   }, []);
 
+  const setJumpedFromMasterLibrary = useCallback((value: boolean) => {
+    console.log('[NavigationContext] setJumpedFromMasterLibrary:', value);
+    setJumpedFromMasterLibraryState(value);
+  }, []);
+
   return (
     <NavigationContext.Provider
       value={{
@@ -228,6 +248,8 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
         setActiveEntityTab,
         activeSidebarTab,
         setActiveSidebarTab,
+        jumpedFromMasterLibrary,
+        setJumpedFromMasterLibrary,
       }}
     >
       {children}

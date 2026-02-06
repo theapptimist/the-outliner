@@ -8,43 +8,58 @@ interface NavigationBackBarProps {
 }
 
 export function NavigationBackBar({ onNavigateBack, onOpenMasterLibrary }: NavigationBackBarProps) {
-  const { canGoBack, currentOrigin, popDocument, masterDocument, setActiveSubOutlineId, activeSidebarTab, stack } = useNavigation();
+  const { 
+    canGoBack, 
+    currentOrigin, 
+    popDocument, 
+    masterDocument, 
+    setActiveSubOutlineId, 
+    activeSidebarTab,
+    jumpedFromMasterLibrary,
+    setJumpedFromMasterLibrary
+  } = useNavigation();
+
+  // Determine what kind of "back" we should show
+  // Priority 1: Simple boolean flag for "Back to Snippets" (most reliable)
+  // Priority 2: Stack-based navigation for document-to-document navigation
+  const showBackToSnippets = jumpedFromMasterLibrary;
+  const showBackToDocument = !showBackToSnippets && canGoBack && currentOrigin && currentOrigin.type !== 'master-library';
 
   // Hide the back bar when viewing the Master Outline pane (it has its own navigation)
-  // BUT: Always show for master-library origin so "Back to Snippets" is never hidden
-  const isMasterLibraryOrigin = currentOrigin?.type === 'master-library';
-  const shouldHideForMasterTab = activeSidebarTab === 'master' && !isMasterLibraryOrigin;
+  // BUT: Always show "Back to Snippets" since that's a different UI flow
+  const shouldHideForMasterTab = activeSidebarTab === 'master' && !showBackToSnippets;
   
-  // Debug logging to trace visibility issues
+  // Debug logging
   console.log('[NavigationBackBar] Visibility check:', {
+    jumpedFromMasterLibrary,
+    showBackToSnippets,
+    showBackToDocument,
     canGoBack,
-    currentOrigin,
     activeSidebarTab,
-    isMasterLibraryOrigin,
     shouldHideForMasterTab,
-    stackLength: stack.length,
-    willRender: canGoBack && currentOrigin && !shouldHideForMasterTab
   });
   
-  if (!canGoBack || !currentOrigin || shouldHideForMasterTab) {
+  if (shouldHideForMasterTab) {
     return null;
   }
 
-  // isMasterLibraryOrigin already computed above
+  if (!showBackToSnippets && !showBackToDocument) {
+    return null;
+  }
 
-  const handleBack = () => {
-    // Use currentOrigin snapshot (already available) for decisions
-    // Call popDocument() only to mutate the stack
+  const handleBackToSnippets = () => {
+    console.log('[NavigationBackBar] Back to Snippets clicked');
+    // Clear the flag first
+    setJumpedFromMasterLibrary(false);
+    // Open the Master Library dialog
+    onOpenMasterLibrary?.();
+  };
+
+  const handleBackToDocument = () => {
     const origin = currentOrigin;
     if (!origin) return;
 
     popDocument(); // mutate stack
-
-    // If coming from Master Library, re-open it instead of navigating to a document
-    if (origin.type === 'master-library') {
-      onOpenMasterLibrary?.();
-      return;
-    }
 
     // If returning to the master document, clear sub-outline marker
     if (masterDocument && origin.id === masterDocument.id) {
@@ -55,24 +70,27 @@ export function NavigationBackBar({ onNavigateBack, onOpenMasterLibrary }: Navig
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-b border-border">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleBack}
-        className="gap-2 text-muted-foreground hover:text-foreground"
-      >
-        {isMasterLibraryOrigin ? (
-          <>
-            <Library className="h-4 w-4" />
-            <span>Back to Snippets</span>
-          </>
-        ) : (
-          <>
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to "{currentOrigin.title}"</span>
-          </>
-        )}
-      </Button>
+      {showBackToSnippets ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleBackToSnippets}
+          className="gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <Library className="h-4 w-4" />
+          <span>Back to Snippets</span>
+        </Button>
+      ) : showBackToDocument ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleBackToDocument}
+          className="gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to "{currentOrigin?.title}"</span>
+        </Button>
+      ) : null}
     </div>
   );
 }
