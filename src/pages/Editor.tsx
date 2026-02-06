@@ -432,26 +432,21 @@ export default function Editor() {
 
   // Handle navigation to a document (for both regular open and link navigation)
   const handleNavigateToDocument = useCallback(async (id: string, skipConfirm = false) => {
-    console.log('[nav] handleNavigateToDocument called', { id, skipConfirm });
-    
     const docIsEmpty = document && isDocumentEmpty(document);
     if (!skipConfirm && hasUnsavedChanges && !docIsEmpty && !confirm('Discard unsaved changes?')) return;
     
     try {
-      console.log('[nav] About to call loadCloudDocument for:', id);
       const doc = await loadCloudDocument(id);
-      console.log('[nav] loadCloudDocument returned:', doc ? doc.meta.title : null);
       if (doc) {
         setDocument(doc);
         setDocumentVersion(v => v + 1);
         setHasUnsavedChanges(false);
       } else {
         // Document not found - likely an unsaved local document that was in the nav stack
-        console.warn('[nav] Document not found in cloud, may have been unsaved:', id);
         toast.error('Document not found (may not have been saved)');
       }
     } catch (e) {
-      console.error('[nav] loadCloudDocument failed:', e);
+      console.error('Failed to open document:', e);
       toast.error('Failed to open document');
     }
   }, [hasUnsavedChanges, document]);
