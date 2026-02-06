@@ -755,7 +755,7 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   // Handler for jumping to a document from entity cards
   // This dialog owns the responsibility of pushing 'master-library' to the navigation stack
   const { navigateToDocument, document: currentDoc } = useDocumentContext();
-  const { pushDocument } = useNavigation();
+  const { setJumpedFromMasterLibrary } = useNavigation();
   
   const [isNavigating, setIsNavigating] = useState(false);
   
@@ -768,17 +768,15 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     setIsNavigating(true);
     
-    // CRITICAL: Push navigation entry BEFORE closing dialog
-    // This ensures NavigationBackBar sees the entry when it re-renders after dialog closes
-    pushDocument('master-library', 'Snippets', { type: 'master-library' });
+    // Set the simple boolean flag - this is the source of truth for "Back to Snippets"
+    // This is much more reliable than stack-based navigation timing
+    setJumpedFromMasterLibrary(true);
     
-    // Close dialog - React will re-render with the stack already updated
+    // Close dialog
     onOpenChange(false);
     
     // Navigate after a microtask to let the dialog close animation start
-    // Using queueMicrotask instead of requestAnimationFrame for more reliable timing
     queueMicrotask(() => {
-      // Navigate using the prop callback (preferred) or context fallback
       if (onJumpToDocument) {
         onJumpToDocument(docId);
       } else if (navigateToDocument) {
@@ -786,7 +784,7 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
       }
       setIsNavigating(false);
     });
-  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, pushDocument]);
+  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, setJumpedFromMasterLibrary]);
   
   // Migration state
   const { user } = useAuth();
