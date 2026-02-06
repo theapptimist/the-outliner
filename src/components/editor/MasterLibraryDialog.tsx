@@ -800,14 +800,34 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   const { getSharedWithMe } = useEntityPermissions();
   const [sharedCount, setSharedCount] = useState(0);
   
+  // Request versioning to prevent stale requests from updating state
+  // Each time the dialog opens, we increment the sequence counter
+  // and cancel any in-flight requests from the previous session
+  const openSeqRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
   // Refresh data every time dialog opens (not just on mount)
   // This is critical for the lazyDialog pattern which keeps the component mounted
   useEffect(() => {
     if (open) {
+      // Cancel any previous in-flight requests
+      abortControllerRef.current?.abort();
+      
+      // Create new controller for this open session
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+      const seq = ++openSeqRef.current;
+      
       // Reset navigation state on re-open
       setIsNavigating(false);
-      refreshMaster();
-      refreshDocs();
+      
+      // Refresh with abort signal - only update state if still current session
+      refreshMaster(signal);
+      refreshDocs(signal);
+    } else {
+      // Dialog closed - abort all in-flight requests to prevent stale updates
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     }
   }, [open, refreshMaster, refreshDocs]);
   
@@ -819,13 +839,21 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   useEffect(() => {
     if (!open || !user?.id) return;
     
+    const controller = new AbortController();
+    const seq = openSeqRef.current;
+    
     setLoadingAllDocs(true);
     supabase
       .from('documents')
       .select('id, title, folder_id, content, hierarchy_blocks')
       .eq('user_id', user.id)
       .order('title')
+      .abortSignal(controller.signal)
       .then(({ data, error }) => {
+        // Check if request is stale or aborted
+        if (openSeqRef.current !== seq) return;
+        if (controller.signal.aborted) return;
+        
         if (error) {
           console.error('[MasterLibrary] Error fetching documents:', error);
           setAllDocuments([]);
@@ -848,26 +876,41 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
         }
         setLoadingAllDocs(false);
       });
+    
+    return () => {
+      controller.abort();
+    };
   }, [open, user?.id, libraryDocuments]);
   
   // Check if migration is needed when dialog opens
   useEffect(() => {
-    if (open && user?.id && !migrationComplete) {
-      checkMigrationNeeded(user.id).then(result => {
-        setMigrationInfo({
-          needed: result.needed,
-          count: result.documentEntityCount,
-          backfillNeeded: result.backfillNeeded,
-          backfillCount: result.backfillCount,
-        });
+    if (!open || !user?.id || migrationComplete) return;
+    
+    const seq = openSeqRef.current;
+    
+    checkMigrationNeeded(user.id).then(result => {
+      // Don't update state if we've moved to a different open sequence
+      if (openSeqRef.current !== seq) return;
+      
+      setMigrationInfo({
+        needed: result.needed,
+        count: result.documentEntityCount,
+        backfillNeeded: result.backfillNeeded,
+        backfillCount: result.backfillCount,
       });
-    }
+    });
   }, [open, user?.id, migrationComplete]);
   
   useEffect(() => {
-    if (open) {
-      getSharedWithMe().then(ids => setSharedCount(ids.length));
-    }
+    if (!open) return;
+    
+    const seq = openSeqRef.current;
+    
+    getSharedWithMe().then(ids => {
+      // Don't update state if we've moved to a different open sequence
+      if (openSeqRef.current !== seq) return;
+      setSharedCount(ids.length);
+    });
   }, [open, getSharedWithMe]);
 
   // Build folder tree with documents

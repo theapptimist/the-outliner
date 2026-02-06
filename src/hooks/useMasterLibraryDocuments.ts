@@ -66,7 +66,8 @@ export function useMasterLibraryDocuments() {
   const [documents, setDocuments] = useState<DocumentWithEntityCount[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchDocuments = useCallback(async () => {
+  // Fetch documents - supports AbortSignal for cancellation
+  const fetchDocuments = useCallback(async (signal?: AbortSignal) => {
     if (!user) {
       setDocuments([]);
       setLoading(false);
@@ -77,11 +78,20 @@ export function useMasterLibraryDocuments() {
 
     try {
       // Get all entities with source_document_id for this user
-      const { data: entities, error: entitiesError } = await supabase
+      let entitiesQuery = supabase
         .from('entities')
         .select('source_document_id')
         .eq('owner_id', user.id)
         .not('source_document_id', 'is', null);
+
+      if (signal) {
+        entitiesQuery = entitiesQuery.abortSignal(signal);
+      }
+
+      const { data: entities, error: entitiesError } = await entitiesQuery;
+
+      // Don't update state if request was aborted
+      if (signal?.aborted) return;
 
       if (entitiesError) throw entitiesError;
 
@@ -95,16 +105,25 @@ export function useMasterLibraryDocuments() {
 
       if (countMap.size === 0) {
         setDocuments([]);
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
         return;
       }
 
       // Fetch document titles
       const docIds = Array.from(countMap.keys());
-      const { data: docs, error: docsError } = await supabase
+      let docsQuery = supabase
         .from('documents')
         .select('id, title, folder_id, content, hierarchy_blocks')
         .in('id', docIds);
+
+      if (signal) {
+        docsQuery = docsQuery.abortSignal(signal);
+      }
+
+      const { data: docs, error: docsError } = await docsQuery;
+
+      // Don't update state if request was aborted
+      if (signal?.aborted) return;
 
       if (docsError) throw docsError;
 
@@ -121,10 +140,15 @@ export function useMasterLibraryDocuments() {
 
       setDocuments(result);
     } catch (err) {
+      // Don't set error state for aborted requests
+      if (signal?.aborted) return;
       console.error('[useMasterLibraryDocuments] Error:', err);
       setDocuments([]);
     } finally {
-      setLoading(false);
+      // Only clear loading if not aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [user]);
 
