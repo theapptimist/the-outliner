@@ -8,12 +8,23 @@ interface NavigationBackBarProps {
 }
 
 export function NavigationBackBar({ onNavigateBack, onOpenMasterLibrary }: NavigationBackBarProps) {
-  const { canGoBack, currentOrigin, popDocument, masterDocument, setActiveSubOutlineId, activeSidebarTab } = useNavigation();
+  const { canGoBack, currentOrigin, popDocument, masterDocument, setActiveSubOutlineId, activeSidebarTab, stack } = useNavigation();
 
   // Hide the back bar when viewing the Master Outline pane (it has its own navigation)
   // BUT: Always show for master-library origin so "Back to Snippets" is never hidden
   const isMasterLibraryOrigin = currentOrigin?.type === 'master-library';
   const shouldHideForMasterTab = activeSidebarTab === 'master' && !isMasterLibraryOrigin;
+  
+  // Debug logging to trace visibility issues
+  console.log('[NavigationBackBar] Visibility check:', {
+    canGoBack,
+    currentOrigin,
+    activeSidebarTab,
+    isMasterLibraryOrigin,
+    shouldHideForMasterTab,
+    stackLength: stack.length,
+    willRender: canGoBack && currentOrigin && !shouldHideForMasterTab
+  });
   
   if (!canGoBack || !currentOrigin || shouldHideForMasterTab) {
     return null;
