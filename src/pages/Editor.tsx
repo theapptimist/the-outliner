@@ -285,8 +285,10 @@ function NavigationAwareContent({
   // CRITICAL: This callback pushes to navigation stack BEFORE navigating
   // Because it runs in a stable component (not the lazy dialog), the stack update commits reliably
   const handleJumpFromMasterLibrary = useCallback((docId: string) => {
+    console.log('[Editor] handleJumpFromMasterLibrary called:', { docId });
     // Push master-library to stack before navigating
     pushDocument('master-library', 'Snippets', { type: 'master-library' });
+    console.log('[Editor] pushDocument called, now navigating...');
     // Then navigate
     handleNavigateToDocument(docId, true);
   }, [pushDocument, handleNavigateToDocument]);
