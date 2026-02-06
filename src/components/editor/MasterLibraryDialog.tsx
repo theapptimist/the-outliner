@@ -608,32 +608,13 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
   const filteredEntities = useMemo(() => {
     let entities = getEntities();
     
-    // Filter by selected documents using union approach (only for my-library)
-    // Show entities that either:
-    // 1. Have a matching row in document_entity_refs, OR
-    // 2. Have a source_document_id matching one of the selected documents
-    if (scope === 'my-library' && selectedDocumentIds.size > 0) {
-      console.log('[LibraryTabContent] Filtering by document selection:', {
-        allowedIdsLoaded: allowedEntityIds !== null,
-        allowedCount: allowedEntityIds?.size ?? 0,
-        selectedDocs: selectedDocumentIds.size,
+    // Filter by selected documents using document_entity_refs (only for my-library)
+    if (scope === 'my-library' && allowedEntityIds !== null) {
+      console.log('[LibraryTabContent] Filtering by document refs:', {
+        allowedCount: allowedEntityIds.size,
         totalEntities: entities.length,
       });
-
-      const filteredByDocs = entities.filter(
-        (e) =>
-          (allowedEntityIds !== null && allowedEntityIds.has(e.id)) ||
-          (e.source_document_id && selectedDocumentIds.has(e.source_document_id))
-      );
-
-      // Safety: if linkage data is missing (no refs and no source_document_id matches),
-      // do NOT blank the UI—show unfiltered tiles instead.
-      if (filteredByDocs.length === 0) {
-        console.warn('[LibraryTabContent] Document filter produced 0 results; falling back to unfiltered list');
-      } else {
-        entities = filteredByDocs;
-      }
-
+      entities = entities.filter(e => allowedEntityIds.has(e.id));
       console.log('[LibraryTabContent] After filter:', entities.length, 'entities');
     }
     
@@ -649,7 +630,7 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
     }
     
     return entities;
-  }, [scope, ownedEntities, sharedEntities, publicEntities, searchQuery, entityTypeFilter, allowedEntityIds, selectedDocumentIds]);
+  }, [scope, ownedEntities, sharedEntities, publicEntities, searchQuery, entityTypeFilter, allowedEntityIds]);
   
   // Pre-fetch document counts for visible entities
   useEffect(() => {
