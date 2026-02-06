@@ -1,93 +1,84 @@
 
-## What I can see right now (from your console snapshot)
-- `NavigationBackBar` is repeatedly logging:
-  - `canGoBack: false`
-  - `currentOrigin: null`
-  - `activeSidebarTab: "library"`
-- That means the “Back to Snippets” bar is missing because the navigation stack is empty at the moment it renders (so there is nothing to go “back” to).
+## Goal
+Stop the “see‑saw” where fixing **Back to Snippets** breaks editor visibility. Make “Jump to document” from Snippets do two things reliably:
+1) Close Snippets modal
+2) Navigate to the document and show the Back bar (“Back to Snippets”)
 
-## What the code is supposed to do (and why it’s still failing)
-### Intended flow
-1. In `MasterLibraryDialog`, clicking **Jump to document** calls `handleJumpToDocument(docId)`.
-2. That closes the dialog (`onOpenChange(false)`), then in `requestAnimationFrame` it calls:
-   - `onJumpToDocument(docId)` if provided (preferred)
-   - otherwise falls back to `navigateToDocument(docId, '')` (context pipeline)
-3. In `Editor.tsx` (inside `NavigationAwareContent`), `handleJumpFromMasterLibrary(docId)` should run and do:
-   - `pushDocument('master-library', 'Snippets', { type: 'master-library' })`
-   - `handleNavigateToDocument(docId, true)`
+## What’s happening now (based on code + your symptom)
+You’re currently passing the **special Snippets jump callback** (`handleJumpFromMasterLibrary`) into `EditorSidebar` as `onNavigateToDocument`.
 
-If (and only if) `onJumpToDocument` is not actually present at runtime, the dialog will use the fallback `navigateToDocument` and you will still successfully navigate to the doc, but the stack never gets the “master-library” entry — so `canGoBack` stays `false` and the bar never appears.
+That means **every** navigation initiated from the sidebar (Library pane, Timeline pane, Master outline pane, etc.) is now treated as “jumped from Snippets”, which:
+- pushes a `master-library` entry to the navigation stack when it shouldn’t
+- can cause the UI to re-open / remain in “Snippets” mode (modal stays open or effectively dominates the UI)
+- creates exactly the “Snippets shows but editor/library don’t” kind of broken state
 
-### Most likely root cause now
-Even though the code *looks* wired correctly, at runtime `onJumpToDocument` is very likely **undefined** inside `MasterLibraryDialog` during the Jump click, causing the fallback path to be used:
-- Navigation works (document opens)
-- Stack stays empty (no “Back to Snippets” bar)
+In short: the callback wiring is too broad. The Snippets-only behavior must be scoped to Snippets-only actions.
 
-This fits your exact symptom: “After Jump to document, doc opens, but no back-to-snippets button.”
+## Fix strategy (deterministic and minimal)
+### Key change
+Introduce a dedicated prop path for Snippets jump:
+- Keep `onNavigateToDocument` for normal navigation (Library pane / Timeline / Master outline)
+- Add `onJumpFromMasterLibrary` strictly for the Snippets modal
+- Ensure closing the modal happens in a stable place even if the dialog’s internal close is delayed
 
-## Plan: Prove which path is executing, then fix it deterministically
+This prevents the Snippets stack push / close logic from hijacking other navigation paths.
 
-### Phase 1 — Add targeted diagnostics (temporary, minimal, high-signal)
-Add a few logs that answer these questions in one reproduction:
-1. Does `MasterLibraryDialog.handleJumpToDocument` see `onJumpToDocument` as a function or undefined?
-2. Does `handleJumpFromMasterLibrary` in `Editor.tsx` actually run?
-3. Does `pushDocument` run and what does the stack become immediately after?
+## Implementation steps (what I will change)
 
-Concrete logging locations:
-- `src/components/editor/MasterLibraryDialog.tsx`
-  - Inside `handleJumpToDocument`:
-    - log whether `typeof onJumpToDocument === 'function'`
-    - log which branch is taken (`prop callback` vs `navigateToDocument fallback`)
-- `src/pages/Editor.tsx`
-  - Inside `handleJumpFromMasterLibrary`:
-    - log that it fired and the `docId`
-- `src/contexts/NavigationContext.tsx`
-  - You already have `pushDocument` logs; keep them for this test (or add a single “stack length before/after” log if needed)
+### 1) `src/components/editor/EditorSidebar.tsx`
+**Add a new optional prop**:
+- `onJumpFromMasterLibrary?: (docId: string) => void`
 
-Repro steps you’ll run once after the logging:
-1. Open Snippets (Master Library)
-2. Click Jump to document
-3. Immediately check console: we should see which branch executed and whether `pushDocument` fired
+Then wire the modal like this:
+- `<LazyMasterLibraryDialog onJumpToDocument={onJumpFromMasterLibrary ?? onNavigateToDocument} />`
 
-### Phase 2 — Fix based on what we learn (two robust options)
-#### Option A (most likely fix): Guarantee `onJumpToDocument` is always passed
-If diagnostics confirm `onJumpToDocument` is undefined:
-- Trace the prop thread:
-  - `NavigationAwareContent` → `EditorSidebar onNavigateToDocument` → `LazyMasterLibraryDialog onJumpToDocument` → `MasterLibraryDialog props`
-- Fix whatever is breaking that chain (common causes):
-  - prop name mismatch
-  - a different `MasterLibraryDialog` instance being opened than the one you think (duplicate instance / ghost instance)
-  - `EditorSidebar` opening the dialog in an uncontrolled mode in some paths, not receiving the parent callback
-- After fix: ensure `MasterLibraryDialog` never needs the fallback `navigateToDocument` for this feature.
+So:
+- Snippets modal uses the special callback if provided
+- Otherwise falls back to normal navigation (safe default)
 
-#### Option B (defensive fix): Push stack inside `MasterLibraryDialog` again, but safely
-If for any reason ensuring the prop chain is fragile, we can make the feature resilient:
-- Add a dedicated prop like `onBeforeJumpToDocument?: (docId) => void` that **only pushes the stack** (no navigation).
-- Call `onBeforeJumpToDocument(docId)` synchronously (before closing).
-- Then close dialog, then navigate (prop or fallback).
-This preserves the “close first, navigate after” UX while making stack setup independent from the navigation callback.
+Also: keep `LibraryPane`, `TimelinePane`, `MasterOutlinePane` using the existing `onNavigateToDocument` prop (normal navigation).
 
-This option eliminates the “button missing” failure mode even if the navigation callback wiring breaks again later.
+### 2) `src/pages/Editor.tsx` (inside `NavigationAwareContent`)
+Right now you pass:
+- `onNavigateToDocument={handleJumpFromMasterLibrary}` (too broad)
 
-### Phase 3 — Verification (must be repeatable)
-After implementing the chosen fix:
-- Test the flow 5 times:
-  1. Open Snippets
-  2. Jump to document
-  3. Confirm “Back to Snippets” bar appears
-  4. Click it; confirm Snippets reopens
+Change to:
+- `onNavigateToDocument={(id) => handleNavigateToDocument(id, true)}` (normal navigation)
+- `onJumpFromMasterLibrary={handleJumpFromMasterLibrary}` (new prop, Snippets-only)
 
-### Phase 4 — Clean up logs
-- Remove the added diagnostics and also remove the noisy render-loop logs currently in `NavigationBackBar` once stable.
+Additionally, make `handleJumpFromMasterLibrary` explicitly close the modal as a defensive guarantee:
+- `setMasterLibraryOpen(false)` first
+- then `pushDocument('master-library', 'Snippets', { type: 'master-library' })`
+- then `handleNavigateToDocument(docId, true)`
 
-## Why I’m proposing diagnostics first
-Right now the UI symptom (“doc opens, but stack is empty”) can happen from a small handful of causes that require different fixes. The fastest way to stop the loop of regressions is to log the *actual branch* being executed at runtime during the jump.
+This way, even if Radix Dialog’s close timing is weird, the controlling state is forced shut before navigation starts.
+
+### 3) `src/components/editor/MasterLibraryDialog.tsx`
+Keep the current behavior (close first, then rAF navigate). The diagnostics can stay temporarily until we confirm stability, but once fixed we should remove them.
+
+No further behavioral logic needed here once the callback wiring is corrected.
+
+## Why this should end the “see-saw”
+- Snippets-specific side effects (push master-library stack entry, force-close modal) only run when navigation originates from the Snippets modal.
+- Normal navigation from Library/Timeline/Master outline won’t mistakenly push a `master-library` origin or interfere with modal visibility.
+- The editor view will no longer get “covered” by a modal that remains open due to a missed close state update.
+
+## Validation checklist (end-to-end)
+1. Open Snippets → pick an entity → “Jump to document”
+   - Snippets modal closes
+   - Document editor is visible
+   - Back bar shows “Back to Snippets”
+2. Click “Back to Snippets”
+   - Snippets modal opens
+   - It lands where expected (at least opens reliably; preserving exact expansion state is separate)
+3. From regular Library pane (not Snippets modal), click any “Jump to document”
+   - It navigates without creating a “Back to Snippets” entry
+4. Repeat steps (1)-(2) five times in a row to ensure the race is gone.
 
 ## Files involved
-- `src/components/editor/MasterLibraryDialog.tsx` (diagnose branch; possibly adjust jump flow)
-- `src/pages/Editor.tsx` (confirm callback runs; potentially adjust callback wiring)
-- `src/components/editor/EditorSidebar.tsx` (likely where callback chain breaks, if it’s breaking)
-- `src/contexts/NavigationContext.tsx` (existing push logs; possibly minor improvements)
+- `src/pages/Editor.tsx`
+- `src/components/editor/EditorSidebar.tsx`
+- (optional cleanup after verification) `src/components/editor/MasterLibraryDialog.tsx` to remove diagnostic logs
 
-## Expected outcome
-After this, one Jump action will always create a stack entry of type `master-library`, so `NavigationBackBar` will render consistently and show “Back to Snippets”.
+## Rollback safety
+These are isolated prop-threading changes; if something unexpected happens, we can revert to the previous callback wiring without touching database/backend logic.
