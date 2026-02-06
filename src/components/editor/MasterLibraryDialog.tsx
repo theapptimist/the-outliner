@@ -798,6 +798,15 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   const { getSharedWithMe } = useEntityPermissions();
   const [sharedCount, setSharedCount] = useState(0);
   
+  // Refresh data every time dialog opens (not just on mount)
+  // This is critical for the lazyDialog pattern which keeps the component mounted
+  useEffect(() => {
+    if (open) {
+      refreshMaster();
+      refreshDocs();
+    }
+  }, [open, refreshMaster, refreshDocs]);
+  
   // All documents state (not just library docs)
   const [allDocuments, setAllDocuments] = useState<Array<{id: string; title: string; folder_id: string | null; entityCount: number}>>([]);
   const [loadingAllDocs, setLoadingAllDocs] = useState(false);
