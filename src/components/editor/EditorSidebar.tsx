@@ -52,6 +52,8 @@ interface EditorSidebarProps {
   canRedo: boolean;
   fileMenuProps: React.ComponentProps<typeof FileMenu>;
   onNavigateToDocument?: (id: string) => void;
+  onMasterLibraryOpenChange?: (open: boolean) => void;
+  masterLibraryOpen?: boolean;
 }
 
 export function EditorSidebar({
@@ -73,12 +75,18 @@ export function EditorSidebar({
   canRedo,
   fileMenuProps,
   onNavigateToDocument,
+  onMasterLibraryOpenChange,
+  masterLibraryOpen: controlledMasterLibraryOpen,
 }: EditorSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryFullPage, setLibraryFullPage] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [masterLibraryOpen, setMasterLibraryOpen] = useState(false);
+  const [internalMasterLibraryOpen, setInternalMasterLibraryOpen] = useState(false);
+  
+  // Support both controlled and uncontrolled modes for Master Library
+  const masterLibraryOpen = controlledMasterLibraryOpen ?? internalMasterLibraryOpen;
+  const setMasterLibraryOpen = onMasterLibraryOpenChange ?? setInternalMasterLibraryOpen;
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );

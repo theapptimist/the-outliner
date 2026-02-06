@@ -1,12 +1,13 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Library } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/contexts/NavigationContext';
 
 interface NavigationBackBarProps {
   onNavigateBack: (documentId: string) => void;
+  onOpenMasterLibrary?: () => void;
 }
 
-export function NavigationBackBar({ onNavigateBack }: NavigationBackBarProps) {
+export function NavigationBackBar({ onNavigateBack, onOpenMasterLibrary }: NavigationBackBarProps) {
   const { canGoBack, currentOrigin, popDocument, masterDocument, setActiveSubOutlineId, activeSidebarTab } = useNavigation();
 
   // Hide the back bar when viewing the Master Outline pane (it has its own navigation)
@@ -14,15 +15,23 @@ export function NavigationBackBar({ onNavigateBack }: NavigationBackBarProps) {
     return null;
   }
 
+  const isMasterLibraryOrigin = currentOrigin.type === 'master-library';
+
   const handleBack = () => {
     const origin = popDocument();
-    if (origin) {
-      // If returning to the master document, clear sub-outline marker
-      if (masterDocument && origin.id === masterDocument.id) {
-        setActiveSubOutlineId(null);
-      }
-      onNavigateBack(origin.id);
+    if (!origin) return;
+
+    // If coming from Master Library, re-open it instead of navigating to a document
+    if (origin.type === 'master-library') {
+      onOpenMasterLibrary?.();
+      return;
     }
+
+    // If returning to the master document, clear sub-outline marker
+    if (masterDocument && origin.id === masterDocument.id) {
+      setActiveSubOutlineId(null);
+    }
+    onNavigateBack(origin.id);
   };
 
   return (
@@ -33,8 +42,17 @@ export function NavigationBackBar({ onNavigateBack }: NavigationBackBarProps) {
         onClick={handleBack}
         className="gap-2 text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Back to "{currentOrigin.title}"</span>
+        {isMasterLibraryOrigin ? (
+          <>
+            <Library className="h-4 w-4" />
+            <span>Back to Snippets</span>
+          </>
+        ) : (
+          <>
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to "{currentOrigin.title}"</span>
+          </>
+        )}
       </Button>
     </div>
   );
