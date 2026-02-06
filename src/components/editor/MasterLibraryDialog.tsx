@@ -61,7 +61,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkMigrationNeeded, migrateDocumentEntitiesToMaster, backfillSourceDocumentIds } from '@/lib/masterEntityMigration';
 import { FullScreenModalHeader } from './FullScreenModalHeader';
-import { useNavigation } from '@/contexts/NavigationContext';
 
 // MasterLibraryDialog - Full-page modal for managing the Master Library
 type MasterLibraryTab = 'my-library' | 'shared' | 'public';
@@ -751,7 +750,6 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
   // Handler for jumping to a document from entity cards
   // Prefer onJumpToDocument (direct editor callback) over navigateToDocument (context pipeline)
   const { navigateToDocument, document: currentDoc } = useDocumentContext();
-  const { pushDocument } = useNavigation();
   
   const [isNavigating, setIsNavigating] = useState(false);
   
@@ -764,16 +762,14 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     setIsNavigating(true);
     
-    // Push a special "master-library" entry to the navigation stack
-    // This allows the Back button to return to the Master Library instead of a document
-    pushDocument('master-library', 'Snippets', { type: 'master-library' });
+    // NOTE: pushDocument is now called by the parent (EditorContent) via onJumpToDocument
+    // This ensures the stack update happens in a stable component that doesn't unmount
     
-    // CRITICAL: Close dialog BEFORE triggering navigation
-    // This ensures the navigation callback captures current context before dialog unmounts
+    // Close dialog BEFORE triggering navigation
     onOpenChange(false);
     
     // Navigate using the DIRECT prop callback (preferred - bypasses context pipeline)
-    // Use requestAnimationFrame to ensure dialog close is processed first
+    // The parent callback now handles pushing to the navigation stack
     requestAnimationFrame(() => {
       if (onJumpToDocument) {
         onJumpToDocument(docId);
@@ -782,7 +778,7 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
       }
       setIsNavigating(false);
     });
-  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id, pushDocument]);
+  }, [onOpenChange, onJumpToDocument, navigateToDocument, currentDoc?.meta?.id]);
   
   // Migration state
   const { user } = useAuth();
