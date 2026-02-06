@@ -768,14 +768,16 @@ export function MasterLibraryDialog({ open, onOpenChange, onJumpToDocument }: Ma
     
     setIsNavigating(true);
     
-    // Close dialog BEFORE triggering navigation
+    // CRITICAL: Push navigation entry BEFORE closing dialog
+    // This ensures NavigationBackBar sees the entry when it re-renders after dialog closes
+    pushDocument('master-library', 'Snippets', { type: 'master-library' });
+    
+    // Close dialog - React will re-render with the stack already updated
     onOpenChange(false);
     
-    requestAnimationFrame(() => {
-      // CRITICAL: Push the master-library entry HERE so Back to Snippets always appears
-      // This makes the dialog the source of truth for "this navigation came from Snippets"
-      pushDocument('master-library', 'Snippets', { type: 'master-library' });
-      
+    // Navigate after a microtask to let the dialog close animation start
+    // Using queueMicrotask instead of requestAnimationFrame for more reliable timing
+    queueMicrotask(() => {
       // Navigate using the prop callback (preferred) or context fallback
       if (onJumpToDocument) {
         onJumpToDocument(docId);
