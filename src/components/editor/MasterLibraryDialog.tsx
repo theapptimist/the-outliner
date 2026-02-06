@@ -619,10 +619,21 @@ function LibraryTabContent({ scope, searchQuery, entityTypeFilter, selectedDocum
         selectedDocs: selectedDocumentIds.size,
         totalEntities: entities.length,
       });
-      entities = entities.filter(e => 
-        (allowedEntityIds !== null && allowedEntityIds.has(e.id)) ||
-        (e.source_document_id && selectedDocumentIds.has(e.source_document_id))
+
+      const filteredByDocs = entities.filter(
+        (e) =>
+          (allowedEntityIds !== null && allowedEntityIds.has(e.id)) ||
+          (e.source_document_id && selectedDocumentIds.has(e.source_document_id))
       );
+
+      // Safety: if linkage data is missing (no refs and no source_document_id matches),
+      // do NOT blank the UI—show unfiltered tiles instead.
+      if (filteredByDocs.length === 0) {
+        console.warn('[LibraryTabContent] Document filter produced 0 results; falling back to unfiltered list');
+      } else {
+        entities = filteredByDocs;
+      }
+
       console.log('[LibraryTabContent] After filter:', entities.length, 'entities');
     }
     
