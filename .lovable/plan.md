@@ -1,82 +1,114 @@
 
-## Goal
-Make “Back to Snippets” reliably reopen the Snippets (Master Library) every time, without regressing doc/library loading.
+# Fix: "Back to Snippets" Button Not Appearing After Jump
 
-## What’s actually broken now
-Right now the “Back to Snippets” button renders, but clicking it often does nothing because `popDocument()` is no longer returning the popped navigation entry reliably.
+## Problem Summary
+When you click "Jump to document" from the Master Library (Snippets), the document loads correctly but the "Back to Snippets" button doesn't appear. This happens because the navigation stack update (`pushDocument`) is racing with the dialog close and document load sequence.
 
-### Root cause
-In `src/contexts/NavigationContext.tsx`, `popDocument()` was changed to:
+## Root Cause
+The `handleJumpToDocument` function in `MasterLibraryDialog.tsx` does:
+1. Push `'master-library'` to navigation stack
+2. Close the dialog
+3. Navigate (in `requestAnimationFrame`)
 
-- compute `popped` inside the `setStack(prev => ...)` updater
-- immediately return `popped`
+The problem: `pushDocument` is called inside a lazy-loaded component (`lazyDialog` wrapper). When the dialog closes immediately after, React's batching may not guarantee the stack update is committed before `NavigationBackBar` checks `canGoBack`.
 
-In React, the state updater function is not guaranteed to run before the function returns (especially under batching/concurrent behavior). So `popped` frequently remains `null`, causing:
+## Solution
+Move the `pushDocument` call **outside** the lazy-loaded dialog - into the parent's navigation callback. This ensures the stack push happens in a stable component (`Editor.tsx`) that doesn't unmount during navigation.
 
-- `NavigationBackBar.handleBack()` to do `if (!origin) return;`
-- result: button click appears to do nothing
+## Implementation
 
-This matches your symptom: “now I only got the Back to Snippets” (it shows, but it can’t successfully act on the origin entry).
+### File: `src/pages/Editor.tsx`
 
-## Fix (deterministic pop that returns the correct entry)
-### A) Make `popDocument()` synchronous in terms of its returned value
-Update `NavigationContext` to keep a `stackRef` that always contains the latest stack. Then `popDocument()` can:
+Create a new wrapper function that:
+1. Pushes `'master-library'` to the navigation stack
+2. Then navigates to the document
 
-1. read the current stack from the ref synchronously
-2. compute the popped entry synchronously
-3. trigger `setStack(prev => prev.slice(0, -1))`
-4. return the popped entry immediately and reliably
+```typescript
+// New function around line 452 (after handleNavigateToDocument)
+const handleJumpFromMasterLibrary = useCallback((docId: string) => {
+  // Push master-library origin to stack BEFORE navigating
+  // This happens in a stable component, not the lazy dialog
+  const { pushDocument } = /* get from context or pass down */;
+  pushDocument('master-library', 'Snippets', { type: 'master-library' });
+  
+  // Now navigate
+  handleNavigateToDocument(docId, true);
+}, [handleNavigateToDocument]);
+```
 
-**File:** `src/contexts/NavigationContext.tsx`
-**Changes:**
-- import `useRef`
-- add `const stackRef = useRef<NavigationEntry[]>([])`
-- `useEffect(() => { stackRef.current = stack; }, [stack])`
-- rewrite `popDocument` to read from `stackRef.current`
+**However**, since `Editor.tsx` is outside `NavigationProvider`, we need to:
+1. Either move the push logic into `EditorContent` (which is inside the provider), OR
+2. Pass a specialized callback from `EditorContent` to `EditorSidebar`
 
-### B) (Optional but recommended) Make `NavigationBackBar` not depend on `popDocument()` return value
-Even with the ref fix, the back-bar already has `currentOrigin` available. The most robust pattern is:
+The cleanest approach is option 2:
 
-- store `const origin = currentOrigin` (synchronous)
-- then call `popDocument()` only to mutate the stack
-- proceed using `origin`
+### Detailed Changes
 
-**File:** `src/components/editor/NavigationBackBar.tsx`
-**Change:**
-- use `currentOrigin` as the origin for decisions, call `popDocument()` as a side-effect
+**1. `src/pages/Editor.tsx` - EditorContent component (lines 68-205)**
 
-This removes future fragility if `popDocument` changes again.
+Add a new callback that wraps navigation with the stack push:
 
-## Logging cleanup (after verification)
-Once confirmed fixed, remove or downgrade the noisy console logs:
-- `[NavigationBackBar] Render check`
-- `[NavigationContext] pushDocument called`
-These were useful for diagnosis but make debugging harder long-term.
+```typescript
+// Inside EditorContent, after the existing useNavigation destructure (line 85)
+const handleJumpFromMasterLibrary = useCallback((docId: string) => {
+  // Push master-library to stack before navigating
+  pushDocument('master-library', 'Snippets', { type: 'master-library' });
+  onNavigateToDocument(docId);
+}, [pushDocument, onNavigateToDocument]);
+```
 
-## Step-by-step implementation order
-1. Edit `src/contexts/NavigationContext.tsx`
-   - add `stackRef`
-   - refactor `popDocument()` to return deterministically
-2. Edit `src/components/editor/NavigationBackBar.tsx`
-   - stop early-returning due to null origin; use `currentOrigin` snapshot
-3. Manual test pass (see below)
-4. Remove debug logs (optional follow-up if you want)
+Then expose this via a new prop to the parent, OR pass it down through EditorSidebar.
 
-## Verification checklist (end-to-end)
-Please test this exact flow 5 times in a row (the bug is intermittent):
-1. Open Snippets (Master Library dialog).
-2. Use “Jump to document”.
-3. Confirm:
-   - the document loads
-   - the Library sidebar still loads normally
-   - the top bar shows “Back to Snippets”
-4. Click “Back to Snippets”.
-5. Confirm:
-   - Snippets dialog opens
-   - it is populated (not blank)
+**2. `src/components/editor/MasterLibraryDialog.tsx` - handleJumpToDocument (lines 758-785)**
 
-If it still fails after this fix, the next likely culprit is that the button click is firing but `masterLibraryOpen` is being immediately set back to `false` (a competing state update). At that point we’ll add one very targeted log in the click handler plus a log where `setMasterLibraryOpen(false)` is called to find the competing close event.
+Remove the `pushDocument` call from inside the dialog - the parent will handle it.
 
-## Files involved
-- `src/contexts/NavigationContext.tsx` (primary fix)
-- `src/components/editor/NavigationBackBar.tsx` (robustness improvement)
+Change from:
+```typescript
+pushDocument('master-library', 'Snippets', { type: 'master-library' });
+onOpenChange(false);
+requestAnimationFrame(() => {
+  if (onJumpToDocument) {
+    onJumpToDocument(docId);
+  }
+  ...
+});
+```
+
+To:
+```typescript
+onOpenChange(false);
+requestAnimationFrame(() => {
+  if (onJumpToDocument) {
+    onJumpToDocument(docId);
+  }
+  ...
+});
+```
+
+**3. Threading the callback**
+
+- `Editor.tsx` creates a callback in `EditorContent` that does: push + navigate
+- Pass it to `EditorSidebar` as `onJumpFromMasterLibrary`
+- `EditorSidebar` passes it to `LazyMasterLibraryDialog` as `onJumpToDocument`
+
+## Technical Details
+
+### Why this works
+- `pushDocument` is now called in `EditorContent`, which is a stable component that doesn't unmount
+- The stack update commits before navigation starts
+- `NavigationBackBar` (also in `EditorContent`) will see `canGoBack = true` after the document loads
+
+### Files to modify
+1. `src/pages/Editor.tsx` - Add `handleJumpFromMasterLibrary` in `EditorContent`, pass through props
+2. `src/components/editor/EditorSidebar.tsx` - Accept and pass through the new callback
+3. `src/components/editor/MasterLibraryDialog.tsx` - Remove the `pushDocument` call
+
+## Verification Checklist
+After implementation:
+1. Open Snippets (Master Library)
+2. Expand any entity, click "Jump to document"
+3. Document should load
+4. "Back to Snippets" bar should appear at the top
+5. Clicking "Back to Snippets" should reopen the Master Library
+6. Repeat 5 times to confirm reliability
