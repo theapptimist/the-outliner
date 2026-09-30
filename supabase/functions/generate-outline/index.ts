@@ -121,21 +121,27 @@ Only output valid JSON. No markdown, no explanation, just the JSON array.`;
         .replace(/,\s*}/g, '}')   // Remove trailing commas in objects
         .replace(/,\s*]/g, ']');  // Remove trailing commas in arrays
       
-      // Try parsing, and if it fails due to unescaped quotes, try to fix them
+      // Keep only the array portion
+      const start = cleanContent.indexOf('[');
+      const end = cleanContent.lastIndexOf(']');
+      if (start !== -1 && end > start) {
+        cleanContent = cleanContent.slice(start, end + 1);
+      }
+
+      // Try parsing, and if it fails due to unescaped quotes, repair them
       try {
         items = JSON.parse(cleanContent);
       } catch {
-        // Fix unescaped quotes inside string values like ("The Party") -> (\"The Party\")
-        // This regex finds "label": "..." patterns and escapes internal quotes
-        cleanContent = cleanContent.replace(
-          /"label"\s*:\s*"((?:[^"\\]|\\.)*)"/g,
+        // Capture everything between `"label": "` and the `", "depth"` that follows,
+        // then escape any quote not already escaped (e.g. the "Purpose" -> the \"Purpose\").
+        const repaired = cleanContent.replace(
+          /"label"\s*:\s*"([\s\S]*?)"\s*,\s*"depth"/g,
           (_match: string, labelContent: string) => {
-            // Check if there are parenthetical quotes like ("word") that need escaping
-            const fixed = labelContent.replace(/\(\"([^\"]+)\"\)/g, '(\\"$1\\")');
-            return `"label": "${fixed}"`;
+            const fixed = labelContent.replace(/(?<!\\)"/g, '\\"');
+            return `"label": "${fixed}", "depth"`;
           }
         );
-        items = JSON.parse(cleanContent);
+        items = JSON.parse(repaired);
       }
       
       if (!Array.isArray(items)) {
