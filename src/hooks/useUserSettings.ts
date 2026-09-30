@@ -15,7 +15,7 @@ export interface UserSettings {
 }
 
 const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'system',
+  theme: 'light',
   fontSize: 'medium',
   pageWidth: 'normal',
   autoSave: true,
