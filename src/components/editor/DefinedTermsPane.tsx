@@ -58,7 +58,7 @@ export function DefinedTermsPane({ collapsed, selectedText }: DefinedTermsPanePr
   
   // Undo capability - store deleted terms temporarily
   const deletedTermsBackup = useRef<DefinedTerm[] | null>(null);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Cleanup timeout on unmount
   useEffect(() => {
