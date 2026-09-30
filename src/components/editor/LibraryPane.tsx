@@ -227,7 +227,7 @@ export function LibraryPane({
 
   // Backup refs for undo
   const backupRef = useRef<any>(null);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
