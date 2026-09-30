@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useTheme } from 'next-themes';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -92,6 +93,7 @@ export function EditorSidebar({
   const [isDark, setIsDark] = useState(() => 
     document.documentElement.classList.contains('dark')
   );
+  const { resolvedTheme, setTheme } = useTheme();
   const { editor, onInsertHierarchy, onFindReplace, selectedText, onPasteHierarchy, panelState } = useEditorContext();
   const { isInMasterMode, activeEntityTab, activeSidebarTab, setActiveSidebarTab } = useNavigation();
 
@@ -138,16 +140,12 @@ export function EditorSidebar({
   }, [isInMasterMode, activeEntityTab]);
 
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
+    setIsDark(resolvedTheme === 'dark');
+  }, [resolvedTheme]);
 
   const handleToggleTheme = useCallback(() => {
-    setIsDark(prev => !prev);
-  }, []);
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  }, [resolvedTheme, setTheme]);
 
   return (
     <div
